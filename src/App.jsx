@@ -977,6 +977,7 @@ export default function App() {
       valor_pago: valorPago,
       forma_pagamento: 'Pix',
       observacao: 'Pagamento registrado pelo Mini ERP',
+      status: 'CONFIRMADO',
     })
 
     if (erroPagamento) {
@@ -1007,7 +1008,278 @@ export default function App() {
     buscarTudo()
   }
 
+  async function recalcularVendaAposMovimento(vendaId) {
+    if (!vendaId) {
+      throw new Error('Venda não informada para recálculo.')
+    }
 
+    const { data: vendaAtual, error: erroVenda } = await supabase
+      .from('vendas')
+      .select('*')
+      .eq('id', vendaId)
+      .maybeSingle()
+
+    if (erroVenda || !vendaAtual) {
+      throw erroVenda || new Error('Venda não localizada.')
+    }
+
+    const { data: pagamentosDaVenda, error: erroPagamentos } = await supabase
+      .from('pagamentos')
+      .select('valor_pago, status')
+      .eq('venda_id', vendaId)
+
+    if (erroPagamentos) {
+      throw erroPagamentos
+    }
+
+    const totalPagoConfirmado = (pagamentosDaVenda || [])
+      .filter((item) => normalizarStatus(item.status || 'CONFIRMADO') !== 'ESTORNADO')
+      .reduce((acc, item) => acc + Number(item.valor_pago || 0), 0)
+
+    const valorTotalVenda = Number(vendaAtual.valor_total || 0)
+    const saldoRestante = Math.max(valorTotalVenda - totalPagoConfirmado, 0)
+    const novoStatus = saldoRestante <= 0 ? 'PAGO' : totalPagoConfirmado > 0 ? 'PARCIAL' : 'EM ABERTO'
+
+    const { error: erroAtualizarVenda } = await supabase
+      .from('vendas')
+      .update({ status: novoStatus })
+      .eq('id', vendaId)
+
+    if (erroAtualizarVenda) {
+      throw erroAtualizarVenda
+    }
+
+    const { data: pendenciaExistente, error: erroPendenciaBusca } = await supabase
+      .from('pendencias')
+      .select('*')
+      .eq('venda_id', vendaId)
+      .maybeSingle()
+
+    if (erroPendenciaBusca) {
+      throw erroPendenciaBusca
+    }
+
+    if (novoStatus === 'PAGO') {
+      if (pendenciaExistente) {
+        const { error } = await supabase
+          .from('pendencias')
+          .update({ saldo_restante: 0, status: 'PAGO' })
+          .eq('venda_id', vendaId)
+
+        if (error) throw error
+      }
+    } else if (pendenciaExistente) {
+      const { error } = await supabase
+        .from('pendencias')
+        .update({ saldo_restante: saldoRestante, status: novoStatus })
+        .eq('venda_id', vendaId)
+
+      if (error) throw error
+    } else {
+      const { error } = await supabase.from('pendencias').insert({
+        venda_id: vendaId,
+        vencimento: null,
+        saldo_restante: saldoRestante,
+        status: novoStatus,
+        dias_atraso: 0,
+      })
+
+      if (error) throw error
+    }
+
+    return { totalPagoConfirmado, saldoRestante, novoStatus }
+  }
+
+  async function estornarPagamento(pagamento) {
+    const statusPagamento = normalizarStatus(pagamento.status || 'CONFIRMADO')
+
+    if (statusPagamento === 'ESTORNADO') {
+      alert('Este pagamento já está estornado.')
+      return
+    }
+
+    const cliente = pagamento.vendas?.clientes?.nome || 'cliente não informado'
+    const numeroVenda = pagamento.vendas?.numero_venda ? `#${pagamento.vendas.numero_venda}` : 'sem número'
+    const confirmar = window.confirm(
+      `Deseja estornar o pagamento de ${moeda(pagamento.valor_pago)} do cliente ${cliente}, venda ${numeroVenda}?\n\nO pagamento ficará no histórico como ESTORNADO, sairá do total recebido e a venda será recalculada.`
+    )
+
+    if (!confirmar) return
+
+    const motivo = prompt('Motivo do estorno:', 'Pagamento lançado no cliente errado')
+    if (motivo === null) return
+
+    const { data: pagamentoAtualizado, error: erroEstorno } = await supabase
+      .from('pagamentos')
+      .update({
+        status: 'ESTORNADO',
+        estornado_em: new Date().toISOString(),
+        observacao_estorno: motivo || 'Estorno registrado pelo Mini ERP',
+      })
+      .eq('id', pagamento.id)
+      .select('id, status, estornado_em, observacao_estorno')
+      .maybeSingle()
+
+    if (erroEstorno) {
+      alert('Erro ao estornar pagamento.')
+      console.error(erroEstorno)
+      return
+    }
+
+    if (normalizarStatus(pagamentoAtualizado?.status || '') !== 'ESTORNADO') {
+      alert('O Supabase gravou a observação, mas não confirmou o status ESTORNADO. Vou recarregar os dados. Se continuar como CONFIRMADO, use o botão Forçar estorno nesta mesma linha.')
+      buscarTudo()
+      return
+    }
+
+    try {
+      await recalcularVendaAposMovimento(pagamento.venda_id)
+      alert('Pagamento estornado e venda recalculada com sucesso.')
+      buscarTudo()
+    } catch (erro) {
+      alert('Pagamento estornado, mas houve erro ao recalcular venda ou pendência. Verifique a aba Pendências.')
+      console.error(erro)
+      buscarTudo()
+    }
+  }
+
+  async function forcarEstornoPagamento(pagamento) {
+    const confirmar = window.confirm('Forçar este pagamento como ESTORNADO e recalcular a venda vinculada?')
+    if (!confirmar) return
+
+    const { error } = await supabase
+      .from('pagamentos')
+      .update({
+        status: 'ESTORNADO',
+        estornado_em: pagamento.estornado_em || new Date().toISOString(),
+        observacao_estorno: pagamento.observacao_estorno || 'Estorno corrigido pelo Mini ERP',
+      })
+      .eq('id', pagamento.id)
+
+    if (error) {
+      alert('Erro ao forçar estorno.')
+      console.error(error)
+      return
+    }
+
+    try {
+      await recalcularVendaAposMovimento(pagamento.venda_id)
+      alert('Estorno corrigido e venda recalculada.')
+      buscarTudo()
+    } catch (erro) {
+      alert('Estorno corrigido, mas houve erro ao recalcular venda ou pendência.')
+      console.error(erro)
+      buscarTudo()
+    }
+  }
+
+  async function reativarPagamento(pagamento) {
+    const confirmar = window.confirm('Reativar este pagamento como CONFIRMADO e recalcular a venda vinculada?')
+    if (!confirmar) return
+
+    const { error } = await supabase
+      .from('pagamentos')
+      .update({
+        status: 'CONFIRMADO',
+        estornado_em: null,
+        observacao_estorno: null,
+      })
+      .eq('id', pagamento.id)
+
+    if (error) {
+      alert('Erro ao reativar pagamento.')
+      console.error(error)
+      return
+    }
+
+    try {
+      await recalcularVendaAposMovimento(pagamento.venda_id)
+      alert('Pagamento reativado e venda recalculada.')
+      buscarTudo()
+    } catch (erro) {
+      alert('Pagamento reativado, mas houve erro ao recalcular venda ou pendência.')
+      console.error(erro)
+      buscarTudo()
+    }
+  }
+
+  async function ajustarStatusFinanceiroVenda(pagamento) {
+    const vendaId = pagamento.venda_id
+    if (!vendaId) {
+      alert('Este pagamento não possui venda vinculada.')
+      return
+    }
+
+    const statusInformado = prompt('Status da venda: EM ABERTO, PARCIAL ou PAGO', 'EM ABERTO')
+    if (statusInformado === null) return
+
+    const novoStatus = normalizarStatus(statusInformado)
+    if (!['EM ABERTO', 'PARCIAL', 'PAGO'].includes(novoStatus)) {
+      alert('Status inválido. Use EM ABERTO, PARCIAL ou PAGO.')
+      return
+    }
+
+    const saldoInformado = prompt('Saldo restante em aberto:', novoStatus === 'PAGO' ? '0' : String(Number(pagamento.valor_pago || 0)).replace('.', ','))
+    if (saldoInformado === null) return
+
+    const saldoRestante = novoStatus === 'PAGO' ? 0 : Math.max(numero(saldoInformado), 0)
+
+    const { error: erroVenda } = await supabase
+      .from('vendas')
+      .update({ status: novoStatus })
+      .eq('id', vendaId)
+
+    if (erroVenda) {
+      alert('Erro ao atualizar status da venda.')
+      console.error(erroVenda)
+      return
+    }
+
+    const { data: pendenciaExistente, error: erroBuscaPendencia } = await supabase
+      .from('pendencias')
+      .select('id')
+      .eq('venda_id', vendaId)
+      .maybeSingle()
+
+    if (erroBuscaPendencia) {
+      alert('Venda atualizada, mas houve erro ao localizar a pendência.')
+      console.error(erroBuscaPendencia)
+      buscarTudo()
+      return
+    }
+
+    if (pendenciaExistente) {
+      const { error } = await supabase
+        .from('pendencias')
+        .update({ saldo_restante: saldoRestante, status: novoStatus })
+        .eq('venda_id', vendaId)
+
+      if (error) {
+        alert('Venda atualizada, mas houve erro ao atualizar a pendência.')
+        console.error(error)
+        buscarTudo()
+        return
+      }
+    } else if (novoStatus !== 'PAGO') {
+      const { error } = await supabase.from('pendencias').insert({
+        venda_id: vendaId,
+        vencimento: null,
+        saldo_restante: saldoRestante,
+        status: novoStatus,
+        dias_atraso: 0,
+      })
+
+      if (error) {
+        alert('Venda atualizada, mas houve erro ao criar a pendência.')
+        console.error(error)
+        buscarTudo()
+        return
+      }
+    }
+
+    alert('Status financeiro ajustado com sucesso.')
+    buscarTudo()
+  }
 
   async function editarPendenciaFinanceira(pendencia) {
     const saldoAtual = Number(pendencia.saldo_restante || 0)
@@ -3793,18 +4065,24 @@ Delber Vilaça`
         ${pagamento.vendas?.numero_venda}
         ${pagamento.valor_pago}
         ${pagamento.forma_pagamento}
+        ${pagamento.status}
         ${pagamento.observacao}
+        ${pagamento.observacao_estorno}
       `)
 
       return contemTermos(texto, termo) && dentroPeriodoFiltro(pagamento.data_pagamento, filtroPagamentosInicio, filtroPagamentosFim)
     })
 
-    const totalRecebidoFiltrado = pagamentosFiltrados.reduce(
+    const pagamentosConfirmadosFiltrados = pagamentosFiltrados.filter(
+      (pagamento) => normalizarStatus(pagamento.status || 'CONFIRMADO') !== 'ESTORNADO'
+    )
+
+    const totalRecebidoFiltrado = pagamentosConfirmadosFiltrados.reduce(
       (acc, pagamento) => acc + Number(pagamento.valor_pago || 0),
       0
     )
 
-    const ultimoPagamento = pagamentosFiltrados[0]
+    const ultimoPagamento = pagamentosConfirmadosFiltrados[0]
 
     return (
       <section className="mobile-panel-card mini-pagamentos-panel bg-black border border-orange-950 rounded-[28px] p-8">
@@ -3861,7 +4139,7 @@ Delber Vilaça`
 
           <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-5">
             <p className="text-zinc-500 uppercase text-xs font-bold tracking-[0.2em]">Registros</p>
-            <h3 className="text-2xl font-bold mt-2">{pagamentosFiltrados.length}</h3>
+            <h3 className="text-2xl font-bold mt-2">{pagamentosConfirmadosFiltrados.length}</h3>
           </div>
 
           <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-5">
@@ -3877,34 +4155,80 @@ Delber Vilaça`
             <div className="mini-pagamento-vazio">Nenhum pagamento encontrado.</div>
           )}
 
-          {pagamentosFiltrados.map((pagamento) => (
-            <article key={pagamento.id} className="mini-pagamento-card">
-              <div className="mini-pagamento-card-topo">
-                <div>
-                  <strong>{moeda(pagamento.valor_pago)}</strong>
-                  <span>{pagamento.forma_pagamento || 'Forma não informada'}</span>
+          {pagamentosFiltrados.map((pagamento) => {
+            const pagamentoEstornado = normalizarStatus(pagamento.status || 'CONFIRMADO') === 'ESTORNADO'
+
+            return (
+              <article key={pagamento.id} className={`mini-pagamento-card ${pagamentoEstornado ? 'border-red-900 bg-red-950/20 opacity-80' : ''}`}>
+                <div className="mini-pagamento-card-topo">
+                  <div>
+                    <strong className={pagamentoEstornado ? 'text-red-300 line-through' : ''}>{moeda(pagamento.valor_pago)}</strong>
+                    <span>{pagamento.forma_pagamento || 'Forma não informada'}</span>
+                  </div>
+                  <div className="grid justify-items-end gap-2">
+                    <time>{dataBR(pagamento.data_pagamento)}</time>
+                    {pagamentoEstornado && <span className="inline-flex rounded-full bg-red-950 px-3 py-1 text-[10px] font-bold text-red-200">ESTORNADO</span>}
+                  </div>
                 </div>
-                <time>{dataBR(pagamento.data_pagamento)}</time>
-              </div>
 
-              <div className="mini-pagamento-card-corpo">
-                <p>
-                  {pagamento.vendas?.clientes?.nome || 'Cliente não informado'}
-                  {pagamento.vendas?.clientes?.referencia
-                    ? ` • ${pagamento.vendas.clientes.referencia}`
-                    : ''}
-                </p>
-                <small>Venda #{pagamento.vendas?.numero_venda || 'sem número'}</small>
-              </div>
+                <div className="mini-pagamento-card-corpo">
+                  <p>
+                    {pagamento.vendas?.clientes?.nome || 'Cliente não informado'}
+                    {pagamento.vendas?.clientes?.referencia
+                      ? ` • ${pagamento.vendas.clientes.referencia}`
+                      : ''}
+                  </p>
+                  <small>Venda #{pagamento.vendas?.numero_venda || 'sem número'}</small>
+                </div>
 
-              {pagamento.observacao && (
-                <details className="mini-pagamento-detalhes">
-                  <summary>Ver observação</summary>
-                  <p>{pagamento.observacao}</p>
-                </details>
-              )}
-            </article>
-          ))}
+                {(pagamento.observacao || pagamento.observacao_estorno) && (
+                  <details className="mini-pagamento-detalhes">
+                    <summary>Ver observação</summary>
+                    {pagamento.observacao && <p>{pagamento.observacao}</p>}
+                    {pagamento.observacao_estorno && <p className="text-red-300">Estorno: {pagamento.observacao_estorno}</p>}
+                  </details>
+                )}
+
+                <div className="mt-3 grid grid-cols-1 gap-2">
+                  {!pagamentoEstornado ? (
+                    <button
+                      type="button"
+                      onClick={() => estornarPagamento(pagamento)}
+                      className="w-full rounded-xl bg-red-950 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-900"
+                    >
+                      Estornar
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => reativarPagamento(pagamento)}
+                      className="w-full rounded-xl bg-zinc-800 px-3 py-2 text-xs font-bold text-white hover:bg-zinc-700"
+                    >
+                      Reativar pagamento
+                    </button>
+                  )}
+
+                  {!pagamentoEstornado && pagamento.observacao_estorno && (
+                    <button
+                      type="button"
+                      onClick={() => forcarEstornoPagamento(pagamento)}
+                      className="w-full rounded-xl bg-orange-950 px-3 py-2 text-xs font-bold text-orange-100 hover:bg-orange-900"
+                    >
+                      Forçar estorno
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => ajustarStatusFinanceiroVenda(pagamento)}
+                    className="w-full rounded-xl bg-zinc-900 px-3 py-2 text-xs font-bold text-zinc-100 hover:bg-zinc-800"
+                  >
+                    Ajustar venda
+                  </button>
+                </div>
+              </article>
+            )
+          })}
         </div>
 
         <div className="mini-pagamentos-tabela-desktop mini-table-wrap overflow-x-auto rounded-2xl border border-zinc-900">
@@ -3917,28 +4241,83 @@ Delber Vilaça`
                 <th className="p-5">Valor pago</th>
                 <th className="p-5">Forma</th>
                 <th className="p-5">Observação</th>
+                <th className="p-5">Status</th>
+                <th className="p-5">Ação</th>
               </tr>
             </thead>
 
             <tbody>
               {pagamentosFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="p-5 text-zinc-500">
+                  <td colSpan="8" className="p-5 text-zinc-500">
                     Nenhum pagamento encontrado.
                   </td>
                 </tr>
               )}
 
-              {pagamentosFiltrados.map((pagamento) => (
-                <tr key={pagamento.id} className="border-t border-zinc-900">
-                  <td className="p-5">{dataBR(pagamento.data_pagamento)}</td>
-                  <td className="p-5">{pagamento.vendas?.clientes?.nome}</td>
-                  <td className="p-5">#{pagamento.vendas?.numero_venda}</td>
-                  <td className="p-5 text-green-300">{moeda(pagamento.valor_pago)}</td>
-                  <td className="p-5">{pagamento.forma_pagamento}</td>
-                  <td className="p-5 text-zinc-500">{pagamento.observacao}</td>
-                </tr>
-              ))}
+              {pagamentosFiltrados.map((pagamento) => {
+                const pagamentoEstornado = normalizarStatus(pagamento.status || 'CONFIRMADO') === 'ESTORNADO'
+
+                return (
+                  <tr key={pagamento.id} className={`border-t border-zinc-900 ${pagamentoEstornado ? 'bg-red-950/20 opacity-80' : ''}`}>
+                    <td className="p-5">{dataBR(pagamento.data_pagamento)}</td>
+                    <td className="p-5">{pagamento.vendas?.clientes?.nome}</td>
+                    <td className="p-5">#{pagamento.vendas?.numero_venda}</td>
+                    <td className={`p-5 ${pagamentoEstornado ? 'text-red-300 line-through' : 'text-green-300'}`}>{moeda(pagamento.valor_pago)}</td>
+                    <td className="p-5">{pagamento.forma_pagamento}</td>
+                    <td className="p-5 text-zinc-500">
+                      <div className="grid gap-1">
+                        <span>{pagamento.observacao}</span>
+                        {pagamento.observacao_estorno && <span className="text-red-300">Estorno: {pagamento.observacao_estorno}</span>}
+                      </div>
+                    </td>
+                    <td className="p-5">
+                      <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${pagamentoEstornado ? 'bg-red-950 text-red-200' : 'bg-green-950 text-green-200'}`}>
+                        {pagamentoEstornado ? 'ESTORNADO' : 'CONFIRMADO'}
+                      </span>
+                    </td>
+                    <td className="p-5">
+                      <div className="grid gap-2">
+                        {!pagamentoEstornado ? (
+                          <button
+                            type="button"
+                            onClick={() => estornarPagamento(pagamento)}
+                            className="rounded-xl bg-red-950 px-3 py-2 text-xs font-bold text-red-100 hover:bg-red-900"
+                          >
+                            Estornar
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => reativarPagamento(pagamento)}
+                            className="rounded-xl bg-zinc-800 px-3 py-2 text-xs font-bold text-white hover:bg-zinc-700"
+                          >
+                            Reativar
+                          </button>
+                        )}
+
+                        {!pagamentoEstornado && pagamento.observacao_estorno && (
+                          <button
+                            type="button"
+                            onClick={() => forcarEstornoPagamento(pagamento)}
+                            className="rounded-xl bg-orange-950 px-3 py-2 text-xs font-bold text-orange-100 hover:bg-orange-900"
+                          >
+                            Forçar estorno
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => ajustarStatusFinanceiroVenda(pagamento)}
+                          className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-bold text-zinc-100 hover:bg-zinc-800"
+                        >
+                          Ajustar venda
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
