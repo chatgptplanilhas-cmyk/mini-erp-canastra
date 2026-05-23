@@ -2,6 +2,8 @@ name: Backup Supabase
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
 
 permissions:
   contents: write
@@ -13,27 +15,31 @@ jobs:
     steps:
       - name: Clonar repositório
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
-      - name: Instalar PostgreSQL Client
-        run: sudo apt-get install -y postgresql-client
+      - name: Instalar PostgreSQL 17 Client
+        uses: tj-actions/install-postgresql@v3
+        with:
+          postgresql-version: 17
+
+      - name: Verificar versão do pg_dump
+        run: pg_dump --version
 
       - name: Criar pasta de backup
         run: mkdir -p backups
 
       - name: Gerar backup do banco
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          pg_dump "$SUPABASE_DB_URL" > backups/backup_$(date +'%Y%m%d_%H%M%S').sql
+          pg_dump "${{ secrets.SUPABASE_DB_URL }}" \
+            --clean \
+            --if-exists \
+            --no-owner \
+            --no-privileges \
+            -f "backups/backup_$(date +'%Y-%m-%d_%H-%M-%S').sql"
 
       - name: Commit backup
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          git config user.name "Backup Bot"
+          git config user.email "backup@github.com"
           git add backups/
-          git commit -m "Novo backup Supabase" || echo "Sem alterações"
-
-      - name: Push backup
-        run: git push
+          git commit -m "Backup automático Supabase" || echo "Nenhuma alteração para salvar"
+          git push
