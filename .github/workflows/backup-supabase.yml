@@ -1,9 +1,10 @@
 name: Backup Supabase
 
 on:
-  schedule:
-    - cron: '0 3 * * 0'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   backup:
@@ -12,9 +13,11 @@ jobs:
     steps:
       - name: Clonar repositório
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Instalar PostgreSQL Client
-        run: sudo apt-get install postgresql-client -y
+        run: sudo apt-get install -y postgresql-client
 
       - name: Criar pasta de backup
         run: mkdir -p backups
@@ -23,10 +26,14 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          pg_dump "$SUPABASE_DB_URL" > backups/backup_$(date +%Y%m%d_%H%M%S).sql
+          pg_dump "$SUPABASE_DB_URL" > backups/backup_$(date +'%Y%m%d_%H%M%S').sql
 
-      - name: Upload backup
-        uses: actions/upload-artifact@v4
-        with:
-          name: supabase-backup
-          path: backups/
+      - name: Commit backup
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add backups/
+          git commit -m "Novo backup Supabase" || echo "Sem alterações"
+
+      - name: Push backup
+        run: git push
