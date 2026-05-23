@@ -36,10 +36,14 @@ jobs:
             --no-privileges \
             -f "backups/backup_$(date +'%Y-%m-%d_%H-%M-%S').sql"
 
-      - name: Commit backup
+      - name: Manter apenas os últimos 30 backups
+        run: |
+          ls -1t backups/*.sql 2>/dev/null | tail -n +31 | xargs -r rm
+
+      - name: Commit backup e limpeza
         run: |
           git config user.name "Backup Bot"
           git config user.email "backup@github.com"
           git add backups/
-          git commit -m "Backup automático Supabase" || echo "Nenhuma alteração para salvar"
+          git commit -m "Backup automático Supabase com limpeza" || echo "Nenhuma alteração para salvar"
           git push
