@@ -6605,3 +6605,421 @@
     font-weight: 900 !important;
   }
 }
+
+
+/* FASE 90, Cadastro Produtos | Precificação */
+.mini-preco-atual-card {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.preco-atual-valor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #86efac;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .mini-produtos-tabela-limpa th:nth-child(1),
+  .mini-produtos-tabela-limpa td:nth-child(1) {
+    width: 21% !important;
+  }
+
+  .mini-produtos-tabela-limpa th:nth-child(2),
+  .mini-produtos-tabela-limpa td:nth-child(2) {
+    width: 15% !important;
+  }
+
+  .mini-produtos-tabela-limpa th:nth-child(3),
+  .mini-produtos-tabela-limpa td:nth-child(3),
+  .mini-produtos-tabela-limpa th:nth-child(4),
+  .mini-produtos-tabela-limpa td:nth-child(4),
+  .mini-produtos-tabela-limpa th:nth-child(5),
+  .mini-produtos-tabela-limpa td:nth-child(5),
+  .mini-produtos-tabela-limpa th:nth-child(6),
+  .mini-produtos-tabela-limpa td:nth-child(6),
+  .mini-produtos-tabela-limpa th:nth-child(7),
+  .mini-produtos-tabela-limpa td:nth-child(7),
+  .mini-produtos-tabela-limpa th:nth-child(8),
+  .mini-produtos-tabela-limpa td:nth-child(8) {
+    width: 8% !important;
+  }
+
+  .mini-produtos-tabela-limpa th:nth-child(9),
+  .mini-produtos-tabela-limpa td:nth-child(9) {
+    width: 12% !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .mini-preco-atual-card {
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .mini-preco-atual-card p:first-child {
+    font-size: 10px !important;
+    letter-spacing: 0.14em !important;
+  }
+
+  .mini-preco-atual-card p:last-child {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+
+  .mini-preco-atual-card select,
+  .mini-preco-atual-card input,
+  .mini-preco-atual-card button {
+    min-height: 42px !important;
+    border-radius: 14px !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(1)::before { content: "Produto" !important; }
+  .mini-produtos-tabela-limpa td:nth-child(2)::before { content: "Fornecedor" !important; }
+  .mini-produtos-tabela-limpa td:nth-child(3)::before { content: "Custo anterior" !important; }
+  .mini-produtos-tabela-limpa td:nth-child(4)::before { content: "Custo atual" !important; }
+  .mini-produtos-tabela-limpa td:nth-child(5)::before { content: "Venda" !important; }
+  .mini-produtos-tabela-limpa td:nth-child(6)::before { content: "Lucro bruto" !important; }
+  .mini-produtos-tabela-limpa td:nth-child(7)::before { content: "Margem" !important; }
+  .mini-produtos-tabela-limpa td:nth-child(8)::before { content: "Markup" !important; }
+  .mini-produtos-tabela-limpa td:nth-child(9)::before { content: "Ações" !important; }
+
+  .mini-produtos-tabela-limpa td:nth-child(1),
+  .mini-produtos-tabela-limpa td:nth-child(9) {
+    grid-column: 1 / -1 !important;
+  }
+
+  .produto-acoes-compactas {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 7px !important;
+  }
+}
+
+/* FASE 91, Precificação: leitura limpa de custos */
+@media (min-width: 768px) {
+  .mini-produtos-tabela-limpa th:nth-child(3),
+  .mini-produtos-tabela-limpa td:nth-child(3),
+  .mini-produtos-tabela-limpa th:nth-child(4),
+  .mini-produtos-tabela-limpa td:nth-child(4) {
+    text-align: center !important;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+
+  .mini-produtos-tabela-limpa th:nth-child(3),
+  .mini-produtos-tabela-limpa td:nth-child(3),
+  .mini-produtos-tabela-limpa th:nth-child(4),
+  .mini-produtos-tabela-limpa td:nth-child(4),
+  .mini-produtos-tabela-limpa th:nth-child(5),
+  .mini-produtos-tabela-limpa td:nth-child(5),
+  .mini-produtos-tabela-limpa th:nth-child(6),
+  .mini-produtos-tabela-limpa td:nth-child(6),
+  .mini-produtos-tabela-limpa th:nth-child(7),
+  .mini-produtos-tabela-limpa td:nth-child(7),
+  .mini-produtos-tabela-limpa th:nth-child(8),
+  .mini-produtos-tabela-limpa td:nth-child(8) {
+    width: 9% !important;
+  }
+
+  .mini-produtos-tabela-limpa th:nth-child(1),
+  .mini-produtos-tabela-limpa td:nth-child(1) {
+    width: 22% !important;
+  }
+
+  .mini-produtos-tabela-limpa th:nth-child(2),
+  .mini-produtos-tabela-limpa td:nth-child(2) {
+    width: 14% !important;
+  }
+
+  .mini-produtos-tabela-limpa th:nth-child(9),
+  .mini-produtos-tabela-limpa td:nth-child(9) {
+    width: 10% !important;
+  }
+}
+
+
+/* FASE 90, Precificação: custo anterior correto na leitura e card mobile compacto */
+@media (min-width: 768px) {
+  .mini-produtos-tabela-limpa th:nth-child(3),
+  .mini-produtos-tabela-limpa th:nth-child(4),
+  .mini-produtos-tabela-limpa td:nth-child(3),
+  .mini-produtos-tabela-limpa td:nth-child(4) {
+    text-align: center !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(3),
+  .mini-produtos-tabela-limpa td:nth-child(4) {
+    vertical-align: middle !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .mini-produtos-tabela-limpa tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    padding: 16px !important;
+    border-radius: 22px !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(1),
+  .mini-produtos-tabela-limpa td:nth-child(2),
+  .mini-produtos-tabela-limpa td:nth-child(9) {
+    grid-column: 1 / -1 !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(3),
+  .mini-produtos-tabela-limpa td:nth-child(4),
+  .mini-produtos-tabela-limpa td:nth-child(5),
+  .mini-produtos-tabela-limpa td:nth-child(6),
+  .mini-produtos-tabela-limpa td:nth-child(7),
+  .mini-produtos-tabela-limpa td:nth-child(8) {
+    display: grid !important;
+    place-items: center !important;
+    min-height: 66px !important;
+    padding: 10px 8px !important;
+    border: 1px solid rgba(39, 39, 42, 0.86) !important;
+    border-radius: 15px !important;
+    background: rgba(5, 5, 5, 0.78) !important;
+    text-align: center !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(3)::before,
+  .mini-produtos-tabela-limpa td:nth-child(4)::before,
+  .mini-produtos-tabela-limpa td:nth-child(5)::before,
+  .mini-produtos-tabela-limpa td:nth-child(6)::before,
+  .mini-produtos-tabela-limpa td:nth-child(7)::before,
+  .mini-produtos-tabela-limpa td:nth-child(8)::before {
+    margin: 0 0 6px !important;
+    color: #8b8b93 !important;
+    font-size: 8.5px !important;
+    line-height: 1 !important;
+    letter-spacing: 0.16em !important;
+    text-align: center !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(3) {
+    color: #d4d4d8 !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(4),
+  .mini-produtos-tabela-limpa td:nth-child(5),
+  .mini-produtos-tabela-limpa td:nth-child(6),
+  .mini-produtos-tabela-limpa td:nth-child(7) {
+    font-size: 15px !important;
+    font-weight: 900 !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(8) {
+    color: #fdba74 !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+  }
+
+  .mini-produtos-tabela-limpa .preco-atual-valor {
+    display: block !important;
+    color: #86efac !important;
+    font-size: 15px !important;
+    line-height: 1.1 !important;
+    font-weight: 900 !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(7) .flex {
+    display: grid !important;
+    justify-items: center !important;
+    gap: 0 !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(7) span:last-child {
+    display: none !important;
+  }
+
+  .mini-produtos-tabela-limpa .produto-acoes-vertical,
+  .mini-produtos-tabela-limpa .produto-acoes-compactas {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .mini-produtos-tabela-limpa .produto-acoes-vertical button,
+  .mini-produtos-tabela-limpa .produto-acoes-compactas button {
+    min-height: 40px !important;
+    border-radius: 13px !important;
+    font-size: 12px !important;
+  }
+
+  .mini-produtos-tabela-limpa .produto-acoes-vertical button:nth-child(3),
+  .mini-produtos-tabela-limpa .produto-acoes-compactas button:nth-child(3) {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+
+/* FASE 92, Precificação mobile enxuta e correção visual final */
+@media (max-width: 767px) {
+  .mini-preco-atual-card {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  .mini-preco-atual-card select,
+  .mini-preco-atual-card input,
+  .mini-preco-atual-card button {
+    width: 100% !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 13px !important;
+    border-radius: 14px !important;
+    font-size: 14px !important;
+  }
+
+  .mini-preco-atual-card button {
+    height: 46px !important;
+    min-height: 46px !important;
+  }
+
+  .mini-produtos-tabela-limpa tr {
+    gap: 8px !important;
+    padding: 13px !important;
+    border-radius: 18px !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(1),
+  .mini-produtos-tabela-limpa td:nth-child(2),
+  .mini-produtos-tabela-limpa td:nth-child(9) {
+    grid-column: 1 / -1 !important;
+    padding: 0 !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(3),
+  .mini-produtos-tabela-limpa td:nth-child(4),
+  .mini-produtos-tabela-limpa td:nth-child(5),
+  .mini-produtos-tabela-limpa td:nth-child(6),
+  .mini-produtos-tabela-limpa td:nth-child(7),
+  .mini-produtos-tabela-limpa td:nth-child(8) {
+    min-height: 48px !important;
+    padding: 8px 6px !important;
+    border-radius: 12px !important;
+    display: grid !important;
+    align-content: center !important;
+    justify-items: center !important;
+    gap: 3px !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(3)::before,
+  .mini-produtos-tabela-limpa td:nth-child(4)::before,
+  .mini-produtos-tabela-limpa td:nth-child(5)::before,
+  .mini-produtos-tabela-limpa td:nth-child(6)::before,
+  .mini-produtos-tabela-limpa td:nth-child(7)::before,
+  .mini-produtos-tabela-limpa td:nth-child(8)::before {
+    margin: 0 !important;
+    font-size: 7.8px !important;
+    letter-spacing: 0.14em !important;
+    line-height: 1 !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(3),
+  .mini-produtos-tabela-limpa td:nth-child(4),
+  .mini-produtos-tabela-limpa td:nth-child(5),
+  .mini-produtos-tabela-limpa td:nth-child(6),
+  .mini-produtos-tabela-limpa td:nth-child(7),
+  .mini-produtos-tabela-limpa td:nth-child(8),
+  .mini-produtos-tabela-limpa .preco-atual-valor {
+    font-size: 13.5px !important;
+    line-height: 1.05 !important;
+    font-weight: 900 !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(7) .flex {
+    display: block !important;
+    text-align: center !important;
+  }
+
+  .mini-produtos-tabela-limpa td:nth-child(7) span:last-child {
+    display: none !important;
+  }
+
+  .mini-produtos-tabela-limpa .produto-acoes-vertical,
+  .mini-produtos-tabela-limpa .produto-acoes-compactas {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    margin-top: 4px !important;
+  }
+
+  .mini-produtos-tabela-limpa .produto-acoes-vertical button,
+  .mini-produtos-tabela-limpa .produto-acoes-compactas button {
+    min-height: 36px !important;
+    height: 36px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+  }
+
+  .mini-produtos-tabela-limpa .produto-acoes-vertical button:nth-child(3),
+  .mini-produtos-tabela-limpa .produto-acoes-compactas button:nth-child(3) {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+
+/* FASE 94 - Produtos: arquivados fora da lista principal e botão excluir seguro */
+@media (min-width: 768px) {
+  .produto-filtro-arquivados {
+    align-items: stretch;
+  }
+
+  .produto-filtro-arquivados button {
+    min-height: 48px;
+  }
+
+  .produto-acoes-compactas {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .produto-acoes-compactas button {
+    width: 100% !important;
+    min-height: 32px !important;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .produto-filtro-arquivados {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .produto-filtro-arquivados button {
+    width: 100% !important;
+    min-height: 42px !important;
+    border-radius: 14px !important;
+    font-size: 12px !important;
+  }
+
+  .produto-acoes-compactas {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .produto-acoes-compactas button {
+    min-height: 38px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+  }
+
+  .produto-acoes-compactas button:last-child:nth-child(odd) {
+    grid-column: 1 / -1 !important;
+  }
+}

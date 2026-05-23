@@ -31,6 +31,7 @@ export default function App() {
   const [buscaPendencias, setBuscaPendencias] = useState('')
   const [buscaPagamentos, setBuscaPagamentos] = useState('')
   const [buscaProdutos, setBuscaProdutos] = useState('')
+  const [mostrarProdutosArquivados, setMostrarProdutosArquivados] = useState(false)
   const [buscaProdutosControle, setBuscaProdutosControle] = useState('')
   const [buscaProdutoLancamento, setBuscaProdutoLancamento] = useState('')
   const [dataControleProdutos, setDataControleProdutos] = useState(dataHoje())
@@ -95,6 +96,12 @@ export default function App() {
     preco_venda: '',
     estoque: '',
     ativo: true,
+  })
+
+  const [formPrecoAtual, setFormPrecoAtual] = useState({
+    produto_id: '',
+    custo_anterior: '',
+    preco_atual: '',
   })
 
   const [formTaxa, setFormTaxa] = useState({
@@ -1698,6 +1705,113 @@ Delber Vilaça`
     })
   }
 
+  function lerCustosAnterioresProdutos() {
+    try {
+      return JSON.parse(localStorage.getItem('mini_erp_custos_anteriores_produtos') || '{}')
+    } catch {
+      return {}
+    }
+  }
+
+  function salvarCustoAnteriorProduto(produtoId, custoAnterior) {
+    const historico = lerCustosAnterioresProdutos()
+    localStorage.setItem(
+      'mini_erp_custos_anteriores_produtos',
+      JSON.stringify({
+        ...historico,
+        [String(produtoId)]: Number(custoAnterior || 0),
+      })
+    )
+  }
+
+  function custoAnteriorProduto(produto) {
+    const historico = lerCustosAnterioresProdutos()
+    const custoSalvo = historico[String(produto?.id || '')]
+    const custoAtual = Number(produto?.preco_custo || 0)
+    const custoSalvoNumero = Number(custoSalvo || 0)
+    const custoBancoNumero = Number(produto?.preco_custo_anterior ?? produto?.custo_anterior ?? 0)
+
+    // Prioriza o histórico local gravado antes do reajuste.
+    // Isso corrige o caso em que a coluna do banco foi sobrescrita e passou a repetir o custo atual.
+    if (custoSalvoNumero > 0 && custoSalvoNumero !== custoAtual) return custoSalvoNumero
+    if (custoBancoNumero > 0 && custoBancoNumero !== custoAtual) return custoBancoNumero
+
+    return custoAtual
+  }
+
+  function selecionarProdutoPrecoAtual(produtoId) {
+    const produtoSelecionado = produtos.find((item) => String(item.id) === String(produtoId))
+    const custoAnterior = produtoSelecionado ? custoAnteriorProduto(produtoSelecionado) : 0
+
+    setFormPrecoAtual({
+      produto_id: produtoId,
+      custo_anterior: custoAnterior > 0 ? String(custoAnterior).replace('.', ',') : '',
+      preco_atual: '',
+    })
+  }
+
+  async function atualizarPrecoAtual(e) {
+    e.preventDefault()
+
+    if (!formPrecoAtual.produto_id) {
+      alert('Selecione o produto que terá o custo atual atualizado.')
+      return
+    }
+
+    const novoPreco = numero(formPrecoAtual.preco_atual)
+
+    if (novoPreco <= 0) {
+      alert('Informe um novo custo válido.')
+      return
+    }
+
+    const produto = produtos.find((item) => String(item.id) === String(formPrecoAtual.produto_id))
+
+    if (!produto) {
+      alert('Produto não encontrado.')
+      return
+    }
+
+    const confirmar = window.confirm(
+      `Atualizar o custo atual de "${produto.nome}" para ${moeda(novoPreco)}?\n\nAs próximas vendas usarão este novo custo para cálculo de lucro, margem e markup. As vendas já lançadas continuam preservadas com os valores originais.`
+    )
+
+    if (!confirmar) return
+
+    const custoAnteriorInformado = numero(formPrecoAtual.custo_anterior)
+    const custoAnterior = custoAnteriorInformado > 0 ? custoAnteriorInformado : Number(produto.preco_custo || 0)
+    salvarCustoAnteriorProduto(produto.id, custoAnterior)
+
+    let { error } = await supabase
+      .from('produtos')
+      .update({ preco_custo: novoPreco, preco_custo_anterior: custoAnterior })
+      .eq('id', produto.id)
+
+    if (error) {
+      const tentativaBasica = await supabase
+        .from('produtos')
+        .update({ preco_custo: novoPreco })
+        .eq('id', produto.id)
+
+      error = tentativaBasica.error
+    }
+
+    if (error) {
+      alert('Erro ao atualizar custo atual do produto.')
+      console.error(error)
+      return
+    }
+
+    setFormPrecoAtual({
+      produto_id: '',
+      custo_anterior: '',
+      preco_atual: '',
+    })
+
+    buscarTudo()
+    alert('Custo atual atualizado com sucesso. Lucro bruto, margem e markup já foram recalculados.')
+  }
+
   async function alternarStatusProduto(produto) {
     const novoStatus = !Boolean(produto.ativo)
     const acao = novoStatus ? 'reativar' : 'inativar'
@@ -1742,7 +1856,7 @@ Delber Vilaça`
 
     if (itensVinculados && itensVinculados.length > 0) {
       alert(
-        'Este produto já possui itens lançados em vendas. Para preservar o histórico financeiro, ele não pode ser excluído. Edite o produto e marque como inativo.'
+        'Este produto já possui itens lançados em vendas. Para preservar o histórico financeiro, ele não pode ser excluído. Use Arquivar ou Inativar.'
       )
       return
     }
@@ -5021,6 +5135,8 @@ Delber Vilaça`
     }
 
     const produtosFiltrados = produtos.filter((produto) => {
+      if (produto.ativo === false && !mostrarProdutosArquivados) return false
+
       const indicadores = indicadoresProduto(produto)
       const texto = normalizarTexto(`
         ${produto.nome}
@@ -5028,7 +5144,7 @@ Delber Vilaça`
         ${produto.preco_custo}
         ${produto.preco_venda}
         ${produto.estoque}
-        ${produto.ativo ? 'ativo' : 'inativo'}
+        ${produto.ativo ? 'ativo' : 'inativo arquivado'}
         ${indicadores.lucroBruto}
         ${indicadores.margem}
         ${indicadores.markup}
@@ -5041,17 +5157,52 @@ Delber Vilaça`
       <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-8">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-3xl font-bold">Cadastro de produtos</h2>
-            <p className="text-zinc-500 mt-2">Controle de custo, venda, lucro bruto, margem e markup por item.</p>
+            <h2 className="text-3xl font-bold">Cadastro Produtos | Precificação</h2>
+            <p className="text-zinc-500 mt-2">Controle de cadastro, custo atual, lucro bruto, margem e markup por item.</p>
           </div>
 
-          <input
-            value={buscaProdutos}
-            onChange={(e) => setBuscaProdutos(e.target.value)}
-            placeholder="Buscar produto, fornecedor, margem ou status"
-            className="w-full lg:w-[420px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
-          />
+          <div className="produto-filtro-arquivados flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+            <input
+              value={buscaProdutos}
+              onChange={(e) => setBuscaProdutos(e.target.value)}
+              placeholder="Buscar produto, fornecedor, margem ou status"
+              className="w-full lg:w-[420px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+            />
+            <button
+              type="button"
+              onClick={() => setMostrarProdutosArquivados(!mostrarProdutosArquivados)}
+              className={mostrarProdutosArquivados
+                ? 'bg-orange-950 hover:bg-orange-900 border border-orange-900 rounded-2xl px-4 py-3 font-semibold text-sm whitespace-nowrap'
+                : 'bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-2xl px-4 py-3 font-semibold text-sm whitespace-nowrap'}
+            >
+              {mostrarProdutosArquivados ? 'Ocultar arquivados' : 'Mostrar arquivados'}
+            </button>
+          </div>
         </div>
+
+        <form onSubmit={atualizarPrecoAtual} className="mini-preco-atual-card grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6 rounded-2xl border border-zinc-900 bg-zinc-950/70 p-4">
+          <div className="lg:col-span-2">
+            <p className="text-xs uppercase tracking-[0.22em] text-orange-300 font-bold">Atualizar custo atual</p>
+            <p className="text-zinc-500 text-sm mt-1">Informe o custo anterior e o novo custo. As vendas antigas permanecem intactas.</p>
+          </div>
+
+          <select value={formPrecoAtual.produto_id} onChange={(e) => selecionarProdutoPrecoAtual(e.target.value)} className="bg-black border border-zinc-800 rounded-2xl p-4">
+            <option value="">Selecionar produto</option>
+            {produtos.filter((produto) => produto.ativo !== false).map((produto) => (
+              <option key={produto.id} value={produto.id}>
+                {produto.nome}
+              </option>
+            ))}
+          </select>
+
+          <input value={formPrecoAtual.custo_anterior} onChange={(e) => setFormPrecoAtual({ ...formPrecoAtual, custo_anterior: e.target.value })} placeholder="Custo anterior" className="bg-black border border-zinc-800 rounded-2xl p-4" />
+
+          <input value={formPrecoAtual.preco_atual} onChange={(e) => setFormPrecoAtual({ ...formPrecoAtual, preco_atual: e.target.value })} placeholder="Novo custo de hoje" className="bg-black border border-zinc-800 rounded-2xl p-4" />
+
+          <button className="bg-green-900 hover:bg-green-800 rounded-2xl p-4 font-semibold">
+            Atualizar custo
+          </button>
+        </form>
 
         <form onSubmit={salvarProduto} className="grid grid-cols-6 gap-4 mb-8">
           <input value={formProduto.nome} onChange={(e) => setFormProduto({ ...formProduto, nome: e.target.value })} placeholder="Produto" className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4" />
@@ -5066,7 +5217,7 @@ Delber Vilaça`
           </select>
 
           <input value={formProduto.preco_custo} onChange={(e) => setFormProduto({ ...formProduto, preco_custo: e.target.value })} placeholder="Custo" className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4" />
-          <input value={formProduto.preco_venda} onChange={(e) => setFormProduto({ ...formProduto, preco_venda: e.target.value })} placeholder="Venda" className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4" />
+          <input value={formProduto.preco_venda} onChange={(e) => setFormProduto({ ...formProduto, preco_venda: e.target.value })} placeholder="Preço de venda" className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4" />
           <input value={formProduto.estoque} onChange={(e) => setFormProduto({ ...formProduto, estoque: e.target.value })} placeholder="Estoque" className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4" />
 
           <button className="bg-orange-950 hover:bg-orange-900 rounded-2xl p-4 font-semibold">
@@ -5086,7 +5237,8 @@ Delber Vilaça`
               <tr className="text-left text-zinc-500 uppercase text-xs">
                 <th className="p-3">Produto</th>
                 <th className="p-3">Fornecedor</th>
-                <th className="p-3">Custo</th>
+                <th className="p-3">Custo anterior</th>
+                <th className="p-3">Custo atual</th>
                 <th className="p-3">Venda</th>
                 <th className="p-3">Lucro bruto</th>
                 <th className="p-3">Margem</th>
@@ -5098,7 +5250,7 @@ Delber Vilaça`
             <tbody>
               {produtosFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="p-4 text-zinc-500">
+                  <td colSpan="9" className="p-4 text-zinc-500">
                     Nenhum produto encontrado.
                   </td>
                 </tr>
@@ -5124,7 +5276,10 @@ Delber Vilaça`
                       </div>
                     </td>
                     <td className="p-3 align-middle text-zinc-300">{produto.fornecedores?.nome || 'Sem fornecedor'}</td>
-                    <td className="p-3 align-middle text-red-300">{moeda(indicadores.custo)}</td>
+                    <td className="p-3 align-middle text-zinc-400 text-center font-semibold">{moeda(custoAnteriorProduto(produto))}</td>
+                    <td className="p-3 align-middle text-center">
+                      <strong className="preco-atual-valor">{moeda(indicadores.custo)}</strong>
+                    </td>
                     <td className="p-3 align-middle text-green-300">{moeda(indicadores.venda)}</td>
                     <td className={indicadores.lucroBruto >= 0 ? 'p-3 align-middle text-green-300 font-semibold' : 'p-3 align-middle text-red-300 font-semibold'}>
                       {moeda(indicadores.lucroBruto)}
@@ -5142,19 +5297,26 @@ Delber Vilaça`
                     </td>
                     <td className="p-3 align-middle">
                       <div className="produto-acoes-vertical produto-acoes-compactas">
-                        <button onClick={() => editarProduto(produto)} className="bg-zinc-800 hover:bg-zinc-700">
+                        <button type="button" onClick={() => editarProduto(produto)} className="bg-zinc-800 hover:bg-zinc-700">
                           Editar
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => alternarStatusProduto(produto)}
                           className={produto.ativo ? 'bg-orange-950 hover:bg-orange-900' : 'bg-green-900 hover:bg-green-800'}
                         >
                           {produto.ativo ? 'Inativar' : 'Ativar'}
                         </button>
 
-                        <button onClick={() => arquivarProduto(produto)} className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700">
-                          Arquivar
+                        {produto.ativo && (
+                          <button type="button" onClick={() => arquivarProduto(produto)} className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700">
+                            Arquivar
+                          </button>
+                        )}
+
+                        <button type="button" onClick={() => excluirProduto(produto)} className="bg-red-950 hover:bg-red-900 border border-red-900">
+                          Excluir
                         </button>
                       </div>
                     </td>
