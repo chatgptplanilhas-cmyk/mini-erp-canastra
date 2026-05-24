@@ -1463,6 +1463,30 @@ export default function App() {
     alert('Pendência atualizada com sucesso.')
   }
 
+  async function excluirSaldoAnterior(pendencia) {
+    const cliente = clienteDaPendencia(pendencia)
+    const descricao = pendenciaEhHerdada(pendencia) ? 'saldo anterior herdado' : 'pendência de mês anterior'
+    const confirmar = window.confirm(
+      `Deseja realmente excluir este ${descricao} de ${cliente.nome || 'cliente não informado'} no valor de ${moeda(pendencia.saldo_restante)}?\n\nUse esta opção somente para lançamento incorreto.`
+    )
+
+    if (!confirmar) return
+
+    const { error } = await supabase
+      .from('pendencias')
+      .delete()
+      .eq('id', pendencia.id)
+
+    if (error) {
+      alert('Erro ao excluir saldo anterior.')
+      console.error(error)
+      return
+    }
+
+    buscarTudo()
+    alert('Saldo anterior excluído com sucesso.')
+  }
+
   function enviarConfirmacaoPagamentoWhatsApp(pendencia, saldoAnterior, valorPago, saldoFinal) {
     const cliente = clienteDaPendencia(pendencia)
     const telefone = limparTelefone(cliente.telefone)
@@ -4213,6 +4237,14 @@ Delber Vilaça`
         return contemTermos(texto, termo) && periodoOk
       })
 
+    const saldosAnterioresDetalhados = pendencias
+      .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+      .filter((item) => pendenciaContaComoSaldoAnterior(item))
+      .sort((a, b) => String(a.vencimento || '').localeCompare(String(b.vencimento || '')))
+
+    const totalSaldosAnterioresDetalhados = saldosAnterioresDetalhados
+      .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+
     return (
       <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-8">
         <div className="flex items-center justify-between gap-4 mb-6">
@@ -4278,6 +4310,91 @@ Delber Vilaça`
             + Adicionar saldo anterior
           </button>
         </form>
+
+        <div className="mb-5 rounded-2xl border border-yellow-900/70 bg-yellow-950/10 p-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-500 font-bold">Detalhamento do saldo anterior</p>
+              <p className="text-sm text-zinc-400 mt-1">Conferência dos valores que aparecem no card Saldo anterior em aberto.</p>
+            </div>
+
+            <div className="rounded-2xl border border-yellow-900/70 bg-black px-4 py-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">Total conferido</p>
+              <h3 className="text-2xl font-black text-yellow-300 mt-1">{moeda(totalSaldosAnterioresDetalhados)}</h3>
+            </div>
+          </div>
+
+          {saldosAnterioresDetalhados.length === 0 ? (
+            <div className="rounded-2xl border border-zinc-900 bg-black p-4 text-zinc-500 text-sm">
+              Nenhum saldo anterior em aberto encontrado.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-zinc-900 bg-black">
+              <table className="w-full min-w-[900px]">
+                <thead className="bg-zinc-950">
+                  <tr className="text-left text-zinc-500 uppercase text-xs">
+                    <th className="p-3">Cliente</th>
+                    <th className="p-3">Referência</th>
+                    <th className="p-3">Origem</th>
+                    <th className="p-3">Vencimento</th>
+                    <th className="p-3">Observação</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Valor</th>
+                    <th className="p-3">Ações</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {saldosAnterioresDetalhados.map((pendencia) => {
+                    const clientePendencia = clienteDaPendencia(pendencia)
+                    const ehHerdada = pendenciaEhHerdada(pendencia)
+
+                    return (
+                      <tr key={pendencia.id} className="border-t border-zinc-900">
+                        <td className="p-3 font-bold text-white">{clientePendencia.nome || 'Cliente não informado'}</td>
+                        <td className="p-3 text-zinc-400">{clientePendencia.referencia || 'Sem referência'}</td>
+                        <td className="p-3 text-zinc-300">{ehHerdada ? 'Saldo herdado' : 'Venda de mês anterior'}</td>
+                        <td className="p-3 text-zinc-300">{dataBR(pendencia.vencimento)}</td>
+                        <td className="p-3 text-zinc-500">{pendencia.observacao_manual || (ehHerdada ? 'Saldo herdado de planilha antiga' : `Venda #${pendencia.vendas?.numero_venda || ''}`)}</td>
+                        <td className="p-3">
+                          <span className="bg-orange-950 text-orange-300 px-3 py-1 rounded-xl text-xs">
+                            {normalizarStatus(pendencia.status)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right text-yellow-300 font-black">{moeda(pendencia.saldo_restante)}</td>
+                        <td className="p-3">
+                          <div className="grid grid-cols-2 gap-2 min-w-[240px]">
+                            <button type="button" onClick={() => cobrarWhatsApp(pendencia)} className="bg-emerald-700 hover:bg-emerald-600 px-3 py-2 rounded-xl text-xs font-bold">
+                              Cobrar
+                            </button>
+
+                            <button type="button" onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-green-700 hover:bg-green-600 px-3 py-2 rounded-xl text-xs font-bold">
+                              Registrar
+                            </button>
+
+                            <button type="button" onClick={() => editarPendenciaFinanceira(pendencia)} className="bg-orange-950 hover:bg-orange-900 px-3 py-2 rounded-xl text-xs font-bold">
+                              Editar
+                            </button>
+
+                            {ehHerdada ? (
+                              <button type="button" onClick={() => excluirSaldoAnterior(pendencia)} className="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-xl text-xs font-bold">
+                                Excluir
+                              </button>
+                            ) : (
+                              <button type="button" disabled className="bg-zinc-900 text-zinc-600 px-3 py-2 rounded-xl text-xs font-bold cursor-not-allowed">
+                                Histórico
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         <div className="mb-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 p-4">
           <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
