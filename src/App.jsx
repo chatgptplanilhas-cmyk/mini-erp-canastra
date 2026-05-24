@@ -26,6 +26,7 @@ export default function App() {
   const [roteirosVendas, setRoteirosVendas] = useState([])
 
   const [buscaClientes, setBuscaClientes] = useState('')
+  const [filtroClientes, setFiltroClientes] = useState('ativos')
   const [buscaVendas, setBuscaVendas] = useState('')
   const [buscaClienteVenda, setBuscaClienteVenda] = useState('')
   const [buscaPendencias, setBuscaPendencias] = useState('')
@@ -276,6 +277,18 @@ export default function App() {
 
   function limparTelefone(telefone) {
     return String(telefone || '').replace(/\D/g, '')
+  }
+
+  function abrirWhatsApp({ telefone = '', mensagem = '' } = {}) {
+    const telefoneLimpo = limparTelefone(telefone)
+    const texto = encodeURIComponent(mensagem || '')
+    const parametros = telefoneLimpo
+      ? `phone=${telefoneLimpo}&text=${texto}`
+      : `text=${texto}`
+
+    const linkDiretoApp = `whatsapp://send?${parametros}`
+
+    window.location.href = linkDiretoApp
   }
 
   function normalizarTexto(valor) {
@@ -1394,8 +1407,7 @@ Delber Vilaça
 Queijos Serra da Canastra`
 
     const mensagem = saldoFinal > 0 ? mensagemParcial : mensagemQuitada
-    const link = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`
-    window.open(link, '_blank')
+    abrirWhatsApp({ telefone, mensagem })
   }
 
   async function excluirVenda(venda) {
@@ -1470,8 +1482,7 @@ Assim que realizar a transferência, peço a gentileza de enviar o comprovante p
 Atenciosamente,
 Delber Vilaça | Queijos Serra da Canastra`
 
-    const link = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`
-    window.open(link, '_blank')
+    abrirWhatsApp({ telefone, mensagem })
   }
 
   function confirmarPagamentoWhatsApp(pendencia) {
@@ -1491,8 +1502,7 @@ Se precisar fazer um novo pedido ou tiver alguma dúvida, basta entrar em contat
 Atenciosamente,
 Delber Vilaça`
 
-    const link = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`
-    window.open(link, '_blank')
+    abrirWhatsApp({ telefone, mensagem })
   }
 
   async function salvarCliente(e) {
@@ -1575,23 +1585,31 @@ Delber Vilaça`
   }
 
   async function excluirCliente(cliente) {
-    const { count, error: erroContagem } = await supabase
-      .from('vendas')
-      .select('id', { count: 'exact', head: true })
-      .eq('cliente_id', cliente.id)
+    const [vendasHistorico, deliveriesHistorico] = await Promise.all([
+      supabase
+        .from('vendas')
+        .select('id', { count: 'exact', head: true })
+        .eq('cliente_id', cliente.id),
+      supabase
+        .from('deliveries')
+        .select('id', { count: 'exact', head: true })
+        .eq('cliente_id', cliente.id),
+    ])
 
-    if (erroContagem) {
+    if (vendasHistorico.error || deliveriesHistorico.error) {
       alert('Erro ao verificar histórico do cliente.')
-      console.error(erroContagem)
+      console.error(vendasHistorico.error || deliveriesHistorico.error)
       return
     }
 
-    if (Number(count || 0) > 0) {
-      alert('Este cliente possui vendas vinculadas. Para preservar o histórico financeiro, use a opção Inativar.')
+    const possuiHistorico = Number(vendasHistorico.count || 0) > 0 || Number(deliveriesHistorico.count || 0) > 0
+
+    if (possuiHistorico) {
+      alert('Este cliente possui histórico financeiro ou operacional. Para preservar os registros, use a opção Inativar.')
       return
     }
 
-    const confirmar = window.confirm(`Deseja excluir definitivamente o cliente ${cliente.nome}?`)
+    const confirmar = window.confirm(`Deseja excluir definitivamente o cliente ${cliente.nome}? Esta ação deve ser usada apenas para cadastro duplicado ou lançado por engano.`)
 
     if (!confirmar) return
 
@@ -1606,6 +1624,7 @@ Delber Vilaça`
       return
     }
 
+    setClienteExpandidoId(null)
     buscarClientes()
   }
 
@@ -2921,10 +2940,25 @@ Delber Vilaça`
   }
 
   function TelaPainel() {
-    const totalBruto = vendas.reduce((acc, venda) => acc + Number(venda.valor_total || 0), 0)
-    const totalLiquidoVendas = vendas.reduce((acc, venda) => acc + Number(venda.valor_liquido || 0), 0)
-    const totalTaxas = vendas.reduce((acc, venda) => acc + Number(venda.valor_taxa || 0), 0)
     const inicioMesPainel = inicioMesAtual()
+
+    function dataBasePainel(item, campoPrincipal = 'data_venda') {
+      return String(item?.[campoPrincipal] || item?.vendas?.data_venda || item?.created_at || '').slice(0, 10)
+    }
+
+    function pertenceAoMesAtualPainel(item, campoPrincipal = 'data_venda') {
+      const data = dataBasePainel(item, campoPrincipal)
+      return data && data >= inicioMesPainel
+    }
+
+    const vendasMesPainel = vendas.filter((venda) => pertenceAoMesAtualPainel(venda, 'data_venda'))
+    const pagamentosMesPainel = pagamentos.filter((pagamento) => pertenceAoMesAtualPainel(pagamento, 'data_pagamento'))
+    const movimentacoesMesPainel = movimentacoesProdutos.filter((item) => pertenceAoMesAtualPainel(item, 'data_venda'))
+    const despesasMesPainel = despesas.filter((item) => pertenceAoMesAtualPainel(item, 'data_despesa'))
+
+    const totalBruto = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_total || 0), 0)
+    const totalLiquidoVendas = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_liquido || 0), 0)
+    const totalTaxas = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_taxa || 0), 0)
     const totalPendencias = pendencias
       .filter((item) => {
         const dataVenda = String(item.vendas?.data_venda || '').slice(0, 10)
@@ -2937,22 +2971,22 @@ Delber Vilaça`
         return dataVenda && dataVenda < inicioMesPainel
       })
       .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
-    const totalRecebido = pagamentos.reduce((acc, pagamento) => acc + Number(pagamento.valor_pago || 0), 0)
-    const totalCustoProdutos = movimentacoesProdutos.reduce((acc, item) => acc + Number(item.subtotal_custo || 0), 0)
-    const totalDespesas = despesas.reduce((acc, item) => acc + Number(item.valor || 0), 0)
-    const totalAbastecimentos = despesas.filter((item) => item.categoria === 'Abastecimento').reduce((acc, item) => acc + Number(item.valor || 0), 0)
-    const totalDegustacoes = despesas.filter((item) => item.categoria === 'Degustação' || item.categoria === 'Degustações').reduce((acc, item) => acc + Number(item.valor || 0), 0)
-    const totalOutrosCustos = despesas.filter((item) => item.categoria === 'Outros custos').reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const totalRecebido = pagamentosMesPainel.reduce((acc, pagamento) => acc + Number(pagamento.valor_pago || 0), 0)
+    const totalCustoProdutos = movimentacoesMesPainel.reduce((acc, item) => acc + Number(item.subtotal_custo || 0), 0)
+    const totalDespesas = despesasMesPainel.reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const totalAbastecimentos = despesasMesPainel.filter((item) => item.categoria === 'Abastecimento').reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const totalDegustacoes = despesasMesPainel.filter((item) => item.categoria === 'Degustação' || item.categoria === 'Degustações').reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const totalOutrosCustos = despesasMesPainel.filter((item) => item.categoria === 'Outros custos').reduce((acc, item) => acc + Number(item.valor || 0), 0)
 
     const totalLiquidoAtual = totalBruto - totalCustoProdutos - totalTaxas - totalDespesas - totalPendencias
     const totalProjetadoFinal = totalLiquidoAtual + totalPendencias
     const subtotalOperacional = totalProjetadoFinal
 
-    const pecasVendidas = movimentacoesProdutos.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
-    const numeroVendas = vendas.length
-    const clientesAtendidos = new Set(vendas.map((venda) => venda.cliente_id).filter(Boolean)).size
+    const pecasVendidas = movimentacoesMesPainel.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
+    const numeroVendas = vendasMesPainel.length
+    const clientesAtendidos = new Set(vendasMesPainel.map((venda) => venda.cliente_id).filter(Boolean)).size
 
-    const amostras = movimentacoesProdutos.reduce((acc, item) => {
+    const amostras = movimentacoesMesPainel.reduce((acc, item) => {
       const observacao = normalizarTexto(item.observacao)
       return observacao.includes('amostra') || observacao.includes('degust')
         ? acc + Number(item.quantidade || 0)
@@ -2974,13 +3008,13 @@ Delber Vilaça`
     }
 
     const brutoPorSemana = semanas.map((semana) => {
-      return vendas
+      return vendasMesPainel
         .filter((venda) => semanaDoMes(venda.data_venda) === semana)
         .reduce((acc, venda) => acc + Number(venda.valor_total || 0), 0)
     })
 
     const clientesPorSemana = semanas.map((semana) => {
-      const clientesSemana = vendas
+      const clientesSemana = vendasMesPainel
         .filter((venda) => semanaDoMes(venda.data_venda) === semana)
         .map((venda) => venda.cliente_id)
         .filter(Boolean)
@@ -3497,23 +3531,50 @@ Delber Vilaça`
 
   function TelaClientes() {
     const termo = normalizarTexto(buscaClientes)
+    const totalClientesAtivos = clientes.filter((cliente) => cliente.ativo !== false).length
+    const totalClientesInativos = clientes.filter((cliente) => cliente.ativo === false).length
 
     const clientesFiltrados = clientes.filter((cliente) => {
+      const clienteInativo = cliente.ativo === false
+
+      if (filtroClientes === 'ativos' && clienteInativo) return false
+      if (filtroClientes === 'inativos' && !clienteInativo) return false
+
       const texto = normalizarTexto(`
         ${cliente.nome}
         ${cliente.referencia}
         ${cliente.observacao}
         ${cliente.telefone}
-        ${cliente.ativo === false ? 'inativo' : 'ativo'}
+        ${clienteInativo ? 'inativo' : 'ativo'}
       `)
 
       return contemTermos(texto, termo)
     })
 
+    const botaoFiltroCliente = (id, texto, total) => (
+      <button
+        type="button"
+        onClick={() => {
+          setFiltroClientes(id)
+          setClienteExpandidoId(null)
+        }}
+        className={`px-4 py-3 rounded-2xl font-bold border transition ${
+          filtroClientes === id
+            ? 'bg-orange-950 border-orange-800 text-white'
+            : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900'
+        }`}
+      >
+        {texto} <span className="text-xs text-zinc-500">{total}</span>
+      </button>
+    )
+
     return (
       <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-8">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <h2 className="text-3xl font-bold">Clientes</h2>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-3xl font-bold">Clientes</h2>
+            <p className="text-zinc-500 text-sm mt-1">Lista principal com clientes ativos. Inativos ficam preservados e ocultos por padrão.</p>
+          </div>
 
           <input
             value={buscaClientes}
@@ -3521,6 +3582,12 @@ Delber Vilaça`
             placeholder="Buscar cliente, referência, observação ou status"
             className="w-full lg:w-[420px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
           />
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-5 mini-clientes-filtros">
+          {botaoFiltroCliente('ativos', 'Ativos', totalClientesAtivos)}
+          {botaoFiltroCliente('inativos', 'Inativos', totalClientesInativos)}
+          {botaoFiltroCliente('todos', 'Todos', clientes.length)}
         </div>
 
         <form onSubmit={salvarCliente} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
@@ -5489,7 +5556,7 @@ Delber Vilaça`
         return
       }
 
-      window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, '_blank')
+      abrirWhatsApp({ mensagem })
     }
 
     async function copiarListaPedidosFornecedor() {
@@ -5869,7 +5936,7 @@ Delber Vilaça`
                         const grupos = montarGruposPorFornecedor(itensGrupo.filter((pedido) => String(pedido.status || '').toLowerCase() !== 'cancelado'))
                         const mensagem = mensagemGeralPedidosFornecedor(grupos)
                         if (!mensagem) return alert('Pedido salvo sem itens para enviar.')
-                        window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, '_blank')
+                        abrirWhatsApp({ mensagem })
                       }}
                       className="bg-green-900 hover:bg-green-800 rounded-xl px-4 py-2 font-semibold text-sm"
                     >
