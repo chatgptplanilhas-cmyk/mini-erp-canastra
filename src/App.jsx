@@ -73,6 +73,13 @@ export default function App() {
   const [filtroPendenciasInicio, setFiltroPendenciasInicio] = useState('')
   const [filtroPendenciasFim, setFiltroPendenciasFim] = useState('')
 
+  const [formSaldoAnterior, setFormSaldoAnterior] = useState({
+    cliente_id: '',
+    valor: '',
+    vencimento: '',
+    observacao: 'Saldo herdado de planilha antiga',
+  })
+
   const [editandoVendaId, setEditandoVendaId] = useState(null)
   const [editandoClienteId, setEditandoClienteId] = useState(null)
   const [editandoProdutoId, setEditandoProdutoId] = useState(null)
@@ -974,6 +981,63 @@ export default function App() {
     if (fiado) setTaxaSelecionadaId(fiado.id)
   }
 
+  function clienteDaPendencia(pendencia) {
+    if (pendencia?.vendas?.clientes) return pendencia.vendas.clientes
+    return clientes.find((cliente) => cliente.id === pendencia?.cliente_id) || {}
+  }
+
+  function pendenciaEhHerdada(pendencia) {
+    return String(pendencia?.origem || '').toUpperCase() === 'SALDO_ANTERIOR' || !pendencia?.venda_id
+  }
+
+  function dataBaseDaPendencia(pendencia) {
+    if (pendenciaEhHerdada(pendencia)) return pendencia?.created_at || pendencia?.vencimento || ''
+    return pendencia?.vendas?.data_venda || pendencia?.created_at || ''
+  }
+
+  async function cadastrarSaldoAnterior(e) {
+    e.preventDefault()
+
+    if (!formSaldoAnterior.cliente_id) {
+      alert('Selecione o cliente.')
+      return
+    }
+
+    const valor = numero(formSaldoAnterior.valor)
+
+    if (valor <= 0) {
+      alert('Informe um valor válido para o saldo anterior.')
+      return
+    }
+
+    const { error } = await supabase.from('pendencias').insert({
+      venda_id: null,
+      cliente_id: formSaldoAnterior.cliente_id,
+      vencimento: formSaldoAnterior.vencimento || null,
+      saldo_restante: valor,
+      status: 'EM ABERTO',
+      dias_atraso: 0,
+      origem: 'SALDO_ANTERIOR',
+      observacao_manual: formSaldoAnterior.observacao || 'Saldo herdado de planilha antiga',
+    })
+
+    if (error) {
+      alert('Erro ao cadastrar saldo anterior. Verifique se o SQL de preparação foi executado no Supabase.')
+      console.error(error)
+      return
+    }
+
+    setFormSaldoAnterior({
+      cliente_id: '',
+      valor: '',
+      vencimento: '',
+      observacao: 'Saldo herdado de planilha antiga',
+    })
+
+    buscarTudo()
+    alert('Saldo anterior cadastrado com sucesso.')
+  }
+
   async function registrarPagamento(vendaId, saldoAtual, pendencia = null) {
     const valor = prompt('Digite o valor pago:')
 
@@ -990,6 +1054,29 @@ export default function App() {
     const novoSaldo = saldoAnterior - valorPago
     const saldoFinal = novoSaldo <= 0 ? 0 : novoSaldo
     const novoStatus = saldoFinal <= 0 ? 'PAGO' : 'PARCIAL'
+
+    if (pendenciaEhHerdada(pendencia) || !vendaId) {
+      const { error: erroPendenciaHerdada } = await supabase
+        .from('pendencias')
+        .update({
+          saldo_restante: saldoFinal,
+          status: novoStatus,
+        })
+        .eq('id', pendencia.id)
+
+      if (erroPendenciaHerdada) {
+        alert('Erro ao registrar pagamento do saldo anterior.')
+        console.error(erroPendenciaHerdada)
+        return
+      }
+
+      if (pendencia) {
+        enviarConfirmacaoPagamentoWhatsApp(pendencia, saldoAnterior, valorPago, saldoFinal)
+      }
+
+      buscarTudo()
+      return
+    }
 
     const { error: erroPagamento } = await supabase.from('pagamentos').insert({
       venda_id: vendaId,
@@ -1365,17 +1452,20 @@ export default function App() {
       return
     }
 
-    await supabase
-      .from('vendas')
-      .update({ status: novoStatus })
-      .eq('id', pendencia.venda_id)
+    if (!pendenciaEhHerdada(pendencia) && pendencia.venda_id) {
+      await supabase
+        .from('vendas')
+        .update({ status: novoStatus })
+        .eq('id', pendencia.venda_id)
+    }
 
     buscarTudo()
     alert('Pendência atualizada com sucesso.')
   }
 
   function enviarConfirmacaoPagamentoWhatsApp(pendencia, saldoAnterior, valorPago, saldoFinal) {
-    const telefone = limparTelefone(pendencia.vendas?.clientes?.telefone)
+    const cliente = clienteDaPendencia(pendencia)
+    const telefone = limparTelefone(cliente.telefone)
 
     if (!telefone) {
       alert('Pagamento registrado, mas este cliente não possui telefone cadastrado para envio da confirmação.')
@@ -1453,9 +1543,40 @@ Queijos Serra da Canastra`
     }
   }
 
+  function pendenciaContaComoSaldoAnterior(pendencia) {
+    if (pendenciaEhHerdada(pendencia)) return true
+    const dataVenda = String(pendencia?.vendas?.data_venda || '').slice(0, 10)
+    return Boolean(dataVenda && dataVenda < inicioMesAtual())
+  }
+
+  function montarMensagemCobranca({ cliente, valor, detalhe = '', titulo = 'da sua compra', mostrarValorFinal = true }) {
+    const nomeCliente = cliente.nome || 'cliente'
+    const detalheTexto = detalhe ? `
+${detalhe}
+` : ''
+    const valorTexto = mostrarValorFinal ? `
+Valor: ${valor}
+` : ''
+
+    return `Olá, ${nomeCliente}. Tudo bem?
+
+Conforme combinado, seguem os dados para o pagamento via Pix ${titulo}:${detalheTexto}
+Chave Pix:
+queijosserradacanastra@hotmail.com
+
+Dados para conferência:
+Delber Juliano Vilaça
+Stone Pagamentos S.A.
+${valorTexto}
+Assim que realizar a transferência, peço a gentileza de enviar o comprovante para registro.
+
+Atenciosamente,
+Delber Vilaça | Queijos Serra da Canastra`
+  }
+
   function cobrarWhatsApp(pendencia) {
-    const telefone = limparTelefone(pendencia.vendas?.clientes?.telefone)
-    const nomeCliente = pendencia.vendas?.clientes?.nome || 'cliente'
+    const cliente = clienteDaPendencia(pendencia)
+    const telefone = limparTelefone(cliente.telefone)
     const valor = moeda(pendencia.saldo_restante)
 
     if (!telefone) {
@@ -1463,30 +1584,63 @@ Queijos Serra da Canastra`
       return
     }
 
-    const mensagem = `Olá, ${nomeCliente}. Tudo bem?
+    const detalhe = pendenciaEhHerdada(pendencia)
+      ? `Referente ao saldo anterior em aberto.\nVencimento: ${dataBR(pendencia.vencimento)}`
+      : `Referente à pendência selecionada.\nVencimento: ${dataBR(pendencia.vencimento)}`
 
-Conforme combinado, seguem os dados para o pagamento via Pix da sua compra:
+    abrirWhatsApp({
+      telefone,
+      mensagem: montarMensagemCobranca({ cliente, valor, detalhe }),
+    })
+  }
 
-Chave Pix (e-mail):
+  function cobrarWhatsAppConsolidado(cliente, itens, somenteVencidos = true) {
+    const telefone = limparTelefone(cliente.telefone)
 
-queijosserradacanastra@hotmail.com
+    if (!telefone) {
+      alert('Este cliente não possui telefone cadastrado.')
+      return
+    }
 
-Dados para conferência:
-Delber Juliano Vilaça
-Stone Pagamentos S.A.
+    const hoje = dataHoje()
+    const itensValidos = (itens || [])
+      .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+      .filter((item) => !somenteVencidos || !item.vencimento || item.vencimento <= hoje)
 
-Valor: ${valor}
+    if (itensValidos.length === 0) {
+      alert('Não há pendências vencidas para cobrar deste cliente.')
+      return
+    }
 
-Assim que realizar a transferência, peço a gentileza de enviar o comprovante para registro.
+    const total = itensValidos.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+    const linhasDetalhadas = itensValidos.map((item) => {
+      const valorItem = moeda(item.saldo_restante)
+      const vencimentoItem = dataBR(item.vencimento)
 
-Atenciosamente,
-Delber Vilaça | Queijos Serra da Canastra`
+      if (pendenciaContaComoSaldoAnterior(item)) {
+        return `• Saldo anterior${vencimentoItem ? `, vencido em ${vencimentoItem}` : ''}: ${valorItem}`
+      }
 
-    abrirWhatsApp({ telefone, mensagem })
+      return `• Compra vencida em ${vencimentoItem}: ${valorItem}`
+    })
+
+    const detalhe = `${linhasDetalhadas.join('\n')}\n\nTotal para pagamento: ${moeda(total)}`
+
+    abrirWhatsApp({
+      telefone,
+      mensagem: montarMensagemCobranca({
+        cliente,
+        valor: moeda(total),
+        detalhe,
+        titulo: somenteVencidos ? 'das pendências vencidas' : 'do total em aberto',
+        mostrarValorFinal: false,
+      }),
+    })
   }
 
   function confirmarPagamentoWhatsApp(pendencia) {
-    const telefone = limparTelefone(pendencia.vendas?.clientes?.telefone)
+    const cliente = clienteDaPendencia(pendencia)
+    const telefone = limparTelefone(cliente.telefone)
 
     if (!telefone) {
       alert('Este cliente não possui telefone cadastrado.')
@@ -2961,12 +3115,14 @@ Delber Vilaça`
     const totalTaxas = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_taxa || 0), 0)
     const totalPendencias = pendencias
       .filter((item) => {
+        if (pendenciaEhHerdada(item)) return false
         const dataVenda = String(item.vendas?.data_venda || '').slice(0, 10)
-        return !dataVenda || dataVenda >= inicioMesPainel
+        return dataVenda && dataVenda >= inicioMesPainel
       })
       .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
     const saldoAnteriorEmAberto = pendencias
       .filter((item) => {
+        if (pendenciaEhHerdada(item)) return true
         const dataVenda = String(item.vendas?.data_venda || '').slice(0, 10)
         return dataVenda && dataVenda < inicioMesPainel
       })
@@ -3734,6 +3890,7 @@ Delber Vilaça`
     const inicioMesCobrancas = inicioMesAtual()
 
     function pendenciaEhSaldoAnterior(pendencia) {
+      if (pendenciaEhHerdada(pendencia)) return true
       const dataVenda = String(pendencia.vendas?.data_venda || '').slice(0, 10)
       return Boolean(dataVenda && dataVenda < inicioMesCobrancas)
     }
@@ -3752,7 +3909,7 @@ Delber Vilaça`
     }
 
     function chaveClienteCobranca(pendencia) {
-      const cliente = pendencia.vendas?.clientes || {}
+      const cliente = clienteDaPendencia(pendencia)
       return normalizarTexto(`${cliente.nome || ''}|${cliente.telefone || ''}|${cliente.referencia || ''}`) || String(pendencia.venda_id || pendencia.id)
     }
 
@@ -3766,9 +3923,11 @@ Delber Vilaça`
       .filter((pendencia) => {
         const texto = normalizarTexto(`
           ${pendencia.vendas?.numero_venda}
-          ${pendencia.vendas?.clientes?.nome}
-          ${pendencia.vendas?.clientes?.referencia}
-          ${pendencia.vendas?.clientes?.telefone}
+          ${clienteDaPendencia(pendencia).nome}
+          ${clienteDaPendencia(pendencia).referencia}
+          ${clienteDaPendencia(pendencia).telefone}
+          ${pendencia.observacao_manual}
+          ${pendenciaEhHerdada(pendencia) ? 'saldo anterior herdado planilha antiga' : ''}
           ${pendencia.vencimento}
           ${normalizarStatus(pendencia.status)}
         `)
@@ -3777,7 +3936,7 @@ Delber Vilaça`
       })
 
     const grupos = listaPendencias.reduce((acc, pendencia) => {
-      const referencia = pendencia.vendas?.clientes?.referencia || 'Sem referência'
+      const referencia = clienteDaPendencia(pendencia).referencia || 'Sem referência'
       const chave = String(referencia).trim() || 'Sem referência'
 
       if (!acc[chave]) acc[chave] = []
@@ -3788,7 +3947,7 @@ Delber Vilaça`
     const locais = Object.entries(grupos)
       .map(([local, itens]) => {
         const clientesUnicos = new Set(
-          itens.map((item) => item.vendas?.clientes?.nome || item.venda_id).filter(Boolean)
+          itens.map((item) => clienteDaPendencia(item).nome || item.cliente_id || item.venda_id).filter(Boolean)
         ).size
 
         const saldosGrupo = saldosPorPeriodo(itens)
@@ -3803,7 +3962,7 @@ Delber Vilaça`
         return {
           local,
           itens: [...itens].sort((a, b) =>
-            String(a.vendas?.clientes?.nome || '').localeCompare(String(b.vendas?.clientes?.nome || ''), 'pt-BR')
+            String(clienteDaPendencia(a).nome || '').localeCompare(String(clienteDaPendencia(b).nome || ''), 'pt-BR')
           ),
           clientesUnicos,
           total,
@@ -3821,7 +3980,7 @@ Delber Vilaça`
     const totalMesAtualCobrancas = saldosCobrancas.atual
     const totalSaldoAnteriorCobrancas = saldosCobrancas.anterior
     const totalClientes = new Set(
-      listaPendencias.map((item) => item.vendas?.clientes?.nome || item.venda_id).filter(Boolean)
+      listaPendencias.map((item) => clienteDaPendencia(item).nome || item.venda_id || item.id).filter(Boolean)
     ).size
     const totalAtrasados = listaPendencias.filter((item) => item.vencimento && item.vencimento < hoje).length
     const totalHoje = listaPendencias.filter((item) => item.vencimento === hoje).length
@@ -3944,20 +4103,25 @@ Delber Vilaça`
                   <tbody>
                     {localSelecionado.itens.map((pendencia) => {
                       const statusAtual = statusCobranca(pendencia)
-                      const saldosCliente = saldosClienteNoLocal(localSelecionado.itens, pendencia)
+                      const clientePendencia = clienteDaPendencia(pendencia)
+                      const ehSaldoAnterior = pendenciaEhSaldoAnterior(pendencia)
+                      const itensCliente = localSelecionado.itens.filter((item) => chaveClienteCobranca(item) === chaveClienteCobranca(pendencia))
+                      const valorLinha = Number(pendencia.saldo_restante || 0)
+                      const valorAtualLinha = ehSaldoAnterior ? 0 : valorLinha
+                      const valorAnteriorLinha = ehSaldoAnterior ? valorLinha : 0
                       return (
                         <tr key={pendencia.id} className="border-t border-zinc-900">
-                          <td className="p-4 font-bold">{pendencia.vendas?.clientes?.nome || 'Cliente não informado'}</td>
-                          <td className="p-4 text-zinc-300 font-semibold">{dataBR(pendencia.vendas?.data_venda)}</td>
+                          <td className="p-4 font-bold">{clientePendencia.nome || 'Cliente não informado'}</td>
+                          <td className="p-4 text-zinc-300 font-semibold">{ehSaldoAnterior ? 'Saldo anterior' : dataBR(pendencia.vendas?.data_venda)}</td>
                           <td className={`p-4 font-semibold ${statusAtual.classe}`}>{dataBR(pendencia.vencimento)}</td>
                           <td className="p-4"><span className={`px-3 py-1 rounded-xl text-xs font-bold ${statusAtual.badge}`}>{statusAtual.texto}</span></td>
-                          <td className="p-4 font-black text-green-300">{moeda(saldosCliente.atual)}</td>
-                          <td className="p-4 font-black text-yellow-300">{moeda(saldosCliente.anterior)}</td>
-                          <td className="p-4 font-black text-orange-300">{moeda(saldosCliente.total)}</td>
+                          <td className="p-4 font-black text-green-300">{moeda(valorAtualLinha)}</td>
+                          <td className="p-4 font-black text-yellow-300">{moeda(valorAnteriorLinha)}</td>
+                          <td className="p-4 font-black text-orange-300">{moeda(valorLinha)}</td>
                           <td className="p-4">
                             <div className="grid grid-cols-2 gap-2 min-w-[220px]">
-                              <button onClick={() => cobrarWhatsApp(pendencia)} className="bg-green-700 hover:bg-green-600 px-3 py-2 rounded-xl font-bold text-xs">Cobrar</button>
-                              <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-green-800 hover:bg-green-700 px-3 py-2 rounded-xl font-bold text-xs">Registrar</button>
+                              <button onClick={() => cobrarWhatsAppConsolidado(clientePendencia, itensCliente, true)} className="bg-green-800 hover:bg-green-700 px-3 py-2 rounded-xl font-bold text-xs">Cobrar vencido</button>
+                              <button onClick={() => cobrarWhatsApp(pendencia)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-xl font-bold text-xs">Só este item</button>
                               <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-xl font-bold text-xs">Confirmar</button>
                               <button onClick={() => editarPendenciaFinanceira(pendencia)} className="bg-orange-950 hover:bg-orange-900 px-3 py-2 rounded-xl font-bold text-xs">Editar</button>
                             </div>
@@ -3972,18 +4136,23 @@ Delber Vilaça`
               <div className="lg:hidden grid gap-3 p-4 mini-cobrancas-clientes-abertos">
                 {localSelecionado.itens.map((pendencia) => {
                   const statusAtual = statusCobranca(pendencia)
-                  const saldosCliente = saldosClienteNoLocal(localSelecionado.itens, pendencia)
+                  const clientePendencia = clienteDaPendencia(pendencia)
+                  const ehSaldoAnterior = pendenciaEhSaldoAnterior(pendencia)
+                  const itensCliente = localSelecionado.itens.filter((item) => chaveClienteCobranca(item) === chaveClienteCobranca(pendencia))
+                  const valorLinha = Number(pendencia.saldo_restante || 0)
+                  const valorAtualLinha = ehSaldoAnterior ? 0 : valorLinha
+                  const valorAnteriorLinha = ehSaldoAnterior ? valorLinha : 0
                   return (
                     <article key={pendencia.id} className="mini-cobranca-operacional rounded-2xl border border-zinc-900 bg-black p-4">
                       <div className="border-b border-zinc-900 pb-3 mb-3">
                         <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-bold">Cliente</p>
-                        <h4 className="text-xl font-black">{pendencia.vendas?.clientes?.nome || 'Cliente não informado'}</h4>
+                        <h4 className="text-xl font-black">{clientePendencia.nome || 'Cliente não informado'}</h4>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 mb-4">
                         <div>
                           <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-bold">Data da venda</p>
-                          <p className="text-lg font-black text-white">{dataBR(pendencia.vendas?.data_venda)}</p>
+                          <p className="text-lg font-black text-white">{ehSaldoAnterior ? 'Saldo anterior' : dataBR(pendencia.vendas?.data_venda)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-bold">Vencimento</p>
@@ -3992,21 +4161,21 @@ Delber Vilaça`
                         </div>
                         <div>
                           <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-bold">Saldo atual</p>
-                          <p className="text-lg font-black text-green-300">{moeda(saldosCliente.atual)}</p>
+                          <p className="text-lg font-black text-green-300">{moeda(valorAtualLinha)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-bold">Saldo anterior</p>
-                          <p className="text-lg font-black text-yellow-300">{moeda(saldosCliente.anterior)}</p>
+                          <p className="text-lg font-black text-yellow-300">{moeda(valorAnteriorLinha)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-bold">Total consolidado</p>
-                          <p className="text-lg font-black text-orange-300">{moeda(saldosCliente.total)}</p>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-bold">Total da pendência</p>
+                          <p className="text-lg font-black text-orange-300">{moeda(valorLinha)}</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => cobrarWhatsApp(pendencia)} className="bg-green-700 hover:bg-green-600 rounded-2xl px-4 py-3 font-bold">Cobrar</button>
-                        <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-green-800 hover:bg-green-700 rounded-2xl px-4 py-3 font-bold">Registrar</button>
+                        <button onClick={() => cobrarWhatsAppConsolidado(clientePendencia, itensCliente, true)} className="bg-green-800 hover:bg-green-700 rounded-2xl px-4 py-3 font-bold">Cobrar vencido</button>
+                        <button onClick={() => cobrarWhatsApp(pendencia)} className="bg-zinc-800 hover:bg-zinc-700 rounded-2xl px-4 py-3 font-bold">Só este item</button>
                         <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="col-span-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl px-4 py-3 font-bold">Confirmar pagamento</button>
                         <button onClick={() => editarPendenciaFinanceira(pendencia)} className="col-span-2 bg-orange-950 hover:bg-orange-900 rounded-2xl px-4 py-3 font-bold">Editar pendência</button>
                       </div>
@@ -4027,15 +4196,18 @@ Delber Vilaça`
     const listaPendencias = pendencias
       .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
       .filter((pendencia) => {
+        const cliente = clienteDaPendencia(pendencia)
         const texto = normalizarTexto(`
           ${pendencia.vendas?.numero_venda}
-          ${pendencia.vendas?.clientes?.nome}
-          ${pendencia.vendas?.clientes?.referencia}
-          ${pendencia.vendas?.clientes?.telefone}
+          ${cliente.nome}
+          ${cliente.referencia}
+          ${cliente.telefone}
+          ${pendencia.observacao_manual}
+          ${pendenciaEhHerdada(pendencia) ? 'saldo anterior herdado planilha antiga' : ''}
           ${normalizarStatus(pendencia.status)}
         `)
 
-        const dataBase = pendencia.vencimento || pendencia.vendas?.data_venda || pendencia.created_at
+        const dataBase = pendencia.vencimento || dataBaseDaPendencia(pendencia)
         const periodoOk = (!filtroPendenciasInicio && !filtroPendenciasFim) || dentroPeriodoFiltro(dataBase, filtroPendenciasInicio, filtroPendenciasFim)
 
         return contemTermos(texto, termo) && periodoOk
@@ -4053,6 +4225,59 @@ Delber Vilaça`
             className="w-full lg:w-[420px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
           />
         </div>
+
+        <form onSubmit={cadastrarSaldoAnterior} className="mb-5 rounded-2xl border border-yellow-900/70 bg-yellow-950/10 p-4 grid grid-cols-1 lg:grid-cols-[1.4fr_0.8fr_0.8fr_1.6fr_auto] gap-3 items-end">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-500 font-bold mb-2">Saldos anteriores</p>
+            <select
+              value={formSaldoAnterior.cliente_id}
+              onChange={(e) => setFormSaldoAnterior({ ...formSaldoAnterior, cliente_id: e.target.value })}
+              className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-white"
+            >
+              <option value="">Selecionar cliente</option>
+              {clientes.filter((cliente) => cliente.ativo !== false).map((cliente) => (
+                <option key={cliente.id} value={cliente.id}>
+                  {cliente.nome}{cliente.referencia ? ` | ${cliente.referencia}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <label className="grid gap-2 text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">
+            Valor
+            <input
+              value={formSaldoAnterior.valor}
+              onChange={(e) => setFormSaldoAnterior({ ...formSaldoAnterior, valor: e.target.value })}
+              placeholder="R$ 0,00"
+              className="bg-black border border-zinc-800 rounded-xl p-3 text-white normal-case tracking-normal"
+            />
+          </label>
+
+          <label className="grid gap-2 text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">
+            Vencimento
+            <input
+              type="date"
+              value={formSaldoAnterior.vencimento}
+              onClick={abrirCalendario}
+              onChange={(e) => setFormSaldoAnterior({ ...formSaldoAnterior, vencimento: e.target.value })}
+              className="bg-black border border-zinc-800 rounded-xl p-3 text-white normal-case tracking-normal"
+            />
+          </label>
+
+          <label className="grid gap-2 text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">
+            Observação
+            <input
+              value={formSaldoAnterior.observacao}
+              onChange={(e) => setFormSaldoAnterior({ ...formSaldoAnterior, observacao: e.target.value })}
+              placeholder="Saldo herdado de planilha antiga"
+              className="bg-black border border-zinc-800 rounded-xl p-3 text-white normal-case tracking-normal"
+            />
+          </label>
+
+          <button type="submit" className="bg-yellow-800 hover:bg-yellow-700 px-4 py-3 rounded-xl font-bold text-sm text-white">
+            + Adicionar saldo anterior
+          </button>
+        </form>
 
         <div className="mb-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 p-4">
           <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
@@ -4088,15 +4313,19 @@ Delber Vilaça`
             </div>
           )}
 
-          {listaPendencias.map((pendencia) => (
+          {listaPendencias.map((pendencia) => {
+            const clientePendencia = clienteDaPendencia(pendencia)
+            const ehHerdada = pendenciaEhHerdada(pendencia)
+
+            return (
             <article
               key={pendencia.id}
               className="mini-pendencia-card-clean rounded-2xl border border-zinc-900 bg-gradient-to-b from-zinc-950 to-black p-4 shadow-xl"
             >
               <div className="mini-pendencia-clean-head">
                 <div className="min-w-0">
-                  <h3>{pendencia.vendas?.clientes?.nome || 'Cliente não informado'}</h3>
-                  <p>{pendencia.vendas?.clientes?.referencia || 'Sem referência'}</p>
+                  <h3>{clientePendencia.nome || 'Cliente não informado'}</h3>
+                  <p>{clientePendencia.referencia || 'Sem referência'}</p>
                 </div>
 
                 <div className="mini-pendencia-clean-saldo">
@@ -4107,8 +4336,8 @@ Delber Vilaça`
 
               <div className="mini-pendencia-clean-info">
                 <div>
-                  <span>Data venda</span>
-                  <strong>{dataBR(pendencia.vendas?.data_venda)}</strong>
+                  <span>{ehHerdada ? 'Origem' : 'Data venda'}</span>
+                  <strong>{ehHerdada ? 'Saldo anterior' : dataBR(pendencia.vendas?.data_venda)}</strong>
                 </div>
 
                 <div>
@@ -4144,20 +4373,23 @@ Delber Vilaça`
                   Editar pendência
                 </button>
 
-                <button
-                  onClick={() =>
-                    excluirVenda({
-                      id: pendencia.venda_id,
-                      numero_venda: pendencia.vendas?.numero_venda,
-                    })
-                  }
-                  className="bg-red-900 hover:bg-red-800 mini-pendencia-action-wide"
-                >
-                  Excluir venda
-                </button>
+                {!ehHerdada && (
+                  <button
+                    onClick={() =>
+                      excluirVenda({
+                        id: pendencia.venda_id,
+                        numero_venda: pendencia.vendas?.numero_venda,
+                      })
+                    }
+                    className="bg-red-900 hover:bg-red-800 mini-pendencia-action-wide"
+                  >
+                    Excluir venda
+                  </button>
+                )}
               </div>
             </article>
-          ))}
+            )
+          })}
         </div>
 
         <div className="hidden lg:block mini-table-wrap overflow-x-auto rounded-2xl border border-zinc-900">
@@ -4183,11 +4415,14 @@ Delber Vilaça`
                 </tr>
               )}
 
-              {listaPendencias.map((pendencia) => (
+              {listaPendencias.map((pendencia) => {
+                const clientePendencia = clienteDaPendencia(pendencia)
+                const ehHerdada = pendenciaEhHerdada(pendencia)
+                return (
                 <tr key={pendencia.id} className="border-t border-zinc-900">
-                  <td className="p-4 font-semibold">{pendencia.vendas?.clientes?.nome}</td>
-                  <td className="p-4 text-zinc-400">{pendencia.vendas?.clientes?.referencia || 'Sem referência'}</td>
-                  <td className="p-4 text-zinc-300 font-semibold">{dataBR(pendencia.vendas?.data_venda)}</td>
+                  <td className="p-4 font-semibold">{clientePendencia.nome || 'Cliente não informado'}</td>
+                  <td className="p-4 text-zinc-400">{clientePendencia.referencia || 'Sem referência'}</td>
+                  <td className="p-4 text-zinc-300 font-semibold">{ehHerdada ? 'Saldo anterior' : dataBR(pendencia.vendas?.data_venda)}</td>
                   <td className="p-4">{dataBR(pendencia.vencimento)}</td>
                   <td className="p-4">
                     <span className="bg-orange-950 text-orange-300 px-3 py-1 rounded-xl text-xs">
@@ -4213,21 +4448,24 @@ Delber Vilaça`
                         Editar pendência
                       </button>
 
-                      <button
-                        onClick={() =>
-                          excluirVenda({
-                            id: pendencia.venda_id,
-                            numero_venda: pendencia.vendas?.numero_venda,
-                          })
-                        }
-                        className="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-xl text-sm col-span-2"
-                      >
-                        Excluir venda
-                      </button>
+                      {!ehHerdada && (
+                        <button
+                          onClick={() =>
+                            excluirVenda({
+                              id: pendencia.venda_id,
+                              numero_venda: pendencia.vendas?.numero_venda,
+                            })
+                          }
+                          className="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-xl text-sm col-span-2"
+                        >
+                          Excluir venda
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
