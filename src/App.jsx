@@ -7212,7 +7212,16 @@ Delber Vilaça`
                 >
                   <div className="mini-delivery-compact-main">
                     <p>{item.clientes?.nome || 'Cliente não informado'}</p>
+                  </div>
+
+                  <div className="mini-delivery-compact-referencia">
                     <span>{referenciaDelivery}</span>
+                  </div>
+
+                  <div className="mini-delivery-compact-desc">
+                    {itensDelivery.map((linha, index) => (
+                      <span key={`${item.id}-item-${index}`}>{linha}</span>
+                    ))}
                   </div>
 
                   <div className="mini-delivery-compact-meta">

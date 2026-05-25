@@ -13430,3 +13430,138 @@ span[class*="rounded-full"] {
     font-size: 28px !important;
   }
 }
+
+
+/* FASE 105, Delivery desktop com colunas reais.
+   Corrige o desktop sem alterar a experiência mobile aprovada. */
+@media (min-width: 768px) {
+  .mini-delivery-list-header {
+    display: grid !important;
+    grid-template-columns: 20% 14% 34% 10% 10% 8% 4% !important;
+    align-items: center !important;
+    column-gap: 0 !important;
+  }
+
+  .mini-delivery-compact-button {
+    display: grid !important;
+    grid-template-columns: 20% 14% 34% 10% 10% 8% 4% !important;
+    align-items: center !important;
+    column-gap: 0 !important;
+    width: 100% !important;
+    min-height: 70px !important;
+    padding: 0 16px !important;
+    text-align: left !important;
+  }
+
+  .mini-delivery-compact-main,
+  .mini-delivery-compact-referencia,
+  .mini-delivery-compact-desc,
+  .mini-delivery-compact-meta,
+  .mini-delivery-status,
+  .mini-delivery-compact-arrow {
+    align-self: center !important;
+    justify-self: start !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  .mini-delivery-compact-main {
+    display: block !important;
+    min-width: 0 !important;
+  }
+
+  .mini-delivery-compact-main p {
+    margin: 0 !important;
+    color: #ffffff !important;
+    font-size: 15px !important;
+    line-height: 1.15 !important;
+    font-weight: 900 !important;
+    white-space: normal !important;
+  }
+
+  .mini-delivery-compact-main span {
+    display: none !important;
+  }
+
+  .mini-delivery-compact-referencia {
+    display: block !important;
+    min-width: 0 !important;
+  }
+
+  .mini-delivery-compact-referencia span {
+    display: block !important;
+    margin: 0 !important;
+    color: #cbd5e1 !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    font-weight: 800 !important;
+    white-space: normal !important;
+  }
+
+  .mini-delivery-compact-desc {
+    display: block !important;
+    min-width: 0 !important;
+  }
+
+  .mini-delivery-compact-desc span {
+    display: block !important;
+    margin: 0 !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    font-weight: 800 !important;
+    white-space: normal !important;
+  }
+
+  .mini-delivery-compact-meta {
+    display: contents !important;
+  }
+
+  .mini-delivery-compact-meta strong {
+    grid-column: 4 !important;
+    align-self: center !important;
+    justify-self: start !important;
+    margin: 0 !important;
+    color: #dbeafe !important;
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .mini-delivery-compact-meta span {
+    grid-column: 5 !important;
+    align-self: center !important;
+    justify-self: start !important;
+    margin: 0 !important;
+    color: #4ade80 !important;
+    font-size: 15px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .mini-delivery-status {
+    grid-column: 6 !important;
+    justify-self: start !important;
+  }
+
+  .mini-delivery-compact-arrow {
+    grid-column: 7 !important;
+    justify-self: end !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .mini-delivery-compact-referencia {
+    display: none !important;
+  }
+
+  .mini-delivery-compact-main span {
+    display: block !important;
+  }
+
+  .mini-delivery-compact-desc {
+    display: none !important;
+  }
+}
