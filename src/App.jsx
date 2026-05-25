@@ -7215,12 +7215,6 @@ Delber Vilaça`
                     <span>{referenciaDelivery}</span>
                   </div>
 
-                  <div className="mini-delivery-compact-desc">
-                    {itensDelivery.map((linha, index) => (
-                      <span key={`${item.id}-item-${index}`}>{linha}</span>
-                    ))}
-                  </div>
-
                   <div className="mini-delivery-compact-meta">
                     <strong>{dataBR(item.data_entrega)}</strong>
                     <span>{moeda(item.valor_total)}</span>
