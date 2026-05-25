@@ -1582,26 +1582,24 @@ Queijos Serra da Canastra`
     return Boolean(dataVenda && dataVenda < inicioMesAtual())
   }
 
-  function montarMensagemCobranca({ cliente, valor, detalhe = '', titulo = 'da sua compra', mostrarValorFinal = true }) {
+  function montarMensagemCobranca({ cliente, valor }) {
     const nomeCliente = cliente.nome || 'cliente'
-    const detalheTexto = detalhe ? `
-${detalhe}
-` : ''
-    const valorTexto = mostrarValorFinal ? `
-Valor: ${valor}
-` : ''
 
     return `Olá, ${nomeCliente}. Tudo bem?
 
-Conforme combinado, seguem os dados para o pagamento via Pix ${titulo}:${detalheTexto}
-Chave Pix:
+Conforme combinado, seguem os dados para pagamento.
+
+*Valor: ${valor}*
+
+Chave Pix (e-mail):
+
 queijosserradacanastra@hotmail.com
 
 Dados para conferência:
 Delber Juliano Vilaça
 Stone Pagamentos S.A.
-${valorTexto}
-Assim que realizar a transferência, peço a gentileza de enviar o comprovante para registro.
+
+Após a transferência, enviar o comprovante para registro.
 
 Atenciosamente,
 Delber Vilaça | Queijos Serra da Canastra`
