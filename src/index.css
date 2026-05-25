@@ -10873,3 +10873,146 @@
     white-space: normal !important;
   }
 }
+
+/* FASE 91 - DELIVERY DESKTOP: ações em linha única, sem quebra */
+@media (min-width: 768px) {
+  .delivery-table-refino {
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+
+  .delivery-table-refino-final {
+    table-layout: fixed !important;
+    width: 100% !important;
+    min-width: 1420px !important;
+  }
+
+  .delivery-table-refino-final .col-pedido {
+    width: 8% !important;
+  }
+
+  .delivery-table-refino-final .col-entrega {
+    width: 8% !important;
+  }
+
+  .delivery-table-refino-final .col-cliente {
+    width: 11% !important;
+  }
+
+  .delivery-table-refino-final .col-referencia {
+    width: 10% !important;
+  }
+
+  .delivery-table-refino-final .col-itens {
+    width: 24% !important;
+  }
+
+  .delivery-table-refino-final .col-valor {
+    width: 8% !important;
+  }
+
+  .delivery-table-refino-final .col-status {
+    width: 9% !important;
+  }
+
+  .delivery-table-refino-final .col-acoes {
+    width: 22% !important;
+    min-width: 300px !important;
+  }
+
+  .delivery-table-refino-final th:last-child,
+  .delivery-table-refino-final td:last-child,
+  .delivery-actions-td {
+    min-width: 300px !important;
+    width: 300px !important;
+    max-width: none !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+    text-align: right !important;
+  }
+
+  .mini-delivery-acoes-inline.delivery-actions-inline-final,
+  .delivery-actions-inline-final {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 276px !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-inline-final .delivery-acao {
+    flex: 0 0 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    min-width: 86px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 11px !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-inline-final .delivery-acao-sucesso {
+    min-width: 112px !important;
+  }
+
+  .mini-delivery-acoes-menu.delivery-menu-final,
+  .delivery-actions-inline-final .delivery-menu-final {
+    flex: 0 0 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+    position: relative !important;
+  }
+
+  .mini-delivery-acoes-menu.delivery-menu-final summary,
+  .delivery-actions-inline-final .delivery-menu-final summary {
+    flex: 0 0 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    white-space: nowrap !important;
+  }
+
+  .mini-delivery-acoes-menu.delivery-menu-final summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  .delivery-status-td {
+    text-align: center !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-status-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 88px !important;
+    white-space: nowrap !important;
+  }
+}
