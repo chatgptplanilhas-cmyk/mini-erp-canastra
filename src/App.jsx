@@ -7353,49 +7353,47 @@ Delber Vilaça`
                       {item.status}
                     </span>
                   </td>
-                  <td className="p-4 delivery-actions-td">
-                    <div className="mini-delivery-acoes-inline delivery-actions-inline-final">
-                      {item.status !== 'Cancelado' && (
+                  <td className="p-4 delivery-actions-td delivery-actions-grid-cell">
+                    <div className="delivery-actions-grid-final delivery-actions-grid-simple">
+                      {item.status !== 'Cancelado' ? (
                         <button
+                          type="button"
                           onClick={() => alterarStatusDelivery(item, 'Cancelado')}
                           className="delivery-acao delivery-acao-alerta"
                         >
                           Cancelar
                         </button>
+                      ) : (
+                        <span className="delivery-action-placeholder" aria-hidden="true" />
                       )}
 
-                      {!item.venda_id && item.status !== 'Cancelado' && (
+                      {!item.venda_id && item.status !== 'Cancelado' ? (
                         <button
+                          type="button"
                           onClick={() => abrirModalDeliveryVenda(item)}
                           className="delivery-acao delivery-acao-sucesso"
                         >
                           Entregar + venda
                         </button>
+                      ) : (
+                        <span className="delivery-action-placeholder" aria-hidden="true" />
                       )}
 
-                      <details className="mini-delivery-acoes-menu delivery-menu-final">
-                        <summary aria-label="Mais ações">⋮</summary>
-                        <div className="mini-delivery-acoes-menu-list">
-                          <div className="delivery-local-menu-info">
-                            <span>Local</span>
-                            <strong>{item.local_entrega || 'Sem local'}</strong>
-                          </div>
+                      <button
+                        type="button"
+                        onClick={() => editarDelivery(item)}
+                        className="delivery-acao delivery-acao-editar"
+                      >
+                        Editar
+                      </button>
 
-                          {item.status !== 'Programado' && (
-                            <button type="button" onClick={() => alterarStatusDelivery(item, 'Programado')}>
-                              Programar
-                            </button>
-                          )}
-
-                          <button type="button" onClick={() => editarDelivery(item)}>
-                            Editar
-                          </button>
-
-                          <button type="button" onClick={() => excluirDelivery(item)} className="danger">
-                            Excluir
-                          </button>
-                        </div>
-                      </details>
+                      <button
+                        type="button"
+                        onClick={() => excluirDelivery(item)}
+                        className="delivery-acao delivery-acao-excluir"
+                      >
+                        Excluir
+                      </button>
                     </div>
                   </td>
                 </tr>

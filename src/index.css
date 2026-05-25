@@ -10874,89 +10874,143 @@
   }
 }
 
-/* FASE 91 - DELIVERY DESKTOP: ações em linha única, sem quebra */
-@media (min-width: 768px) {
-  .delivery-table-refino {
-    width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: visible !important;
-  }
 
+/* FASE 92.1 CORREÇÃO REAL DELIVERY DESKTOP, ações em uma única linha */
+@media (min-width: 768px) {
   .delivery-table-refino-final {
     table-layout: fixed !important;
+    min-width: 1360px !important;
     width: 100% !important;
-    min-width: 1420px !important;
   }
 
-  .delivery-table-refino-final .col-pedido {
-    width: 8% !important;
-  }
+  .delivery-table-refino-final .col-pedido { width: 8% !important; }
+  .delivery-table-refino-final .col-entrega { width: 8% !important; }
+  .delivery-table-refino-final .col-cliente { width: 10% !important; }
+  .delivery-table-refino-final .col-referencia { width: 10% !important; }
+  .delivery-table-refino-final .col-itens { width: 24% !important; }
+  .delivery-table-refino-final .col-valor { width: 8% !important; }
+  .delivery-table-refino-final .col-status { width: 9% !important; }
+  .delivery-table-refino-final .col-acoes { width: 300px !important; }
 
-  .delivery-table-refino-final .col-entrega {
-    width: 8% !important;
-  }
-
-  .delivery-table-refino-final .col-cliente {
-    width: 11% !important;
-  }
-
-  .delivery-table-refino-final .col-referencia {
-    width: 10% !important;
-  }
-
-  .delivery-table-refino-final .col-itens {
-    width: 24% !important;
-  }
-
-  .delivery-table-refino-final .col-valor {
-    width: 8% !important;
-  }
-
-  .delivery-table-refino-final .col-status {
-    width: 9% !important;
-  }
-
-  .delivery-table-refino-final .col-acoes {
-    width: 22% !important;
-    min-width: 300px !important;
-  }
-
-  .delivery-table-refino-final th:last-child,
-  .delivery-table-refino-final td:last-child,
-  .delivery-actions-td {
-    min-width: 300px !important;
+  .delivery-table-refino-final th:nth-child(8),
+  .delivery-table-refino-final td:nth-child(8),
+  .mini-delivery-table-desktop th:nth-child(8),
+  .mini-delivery-table-desktop td:nth-child(8) {
     width: 300px !important;
-    max-width: none !important;
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-    overflow: visible !important;
-    white-space: nowrap !important;
-    text-align: right !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
   }
 
-  .mini-delivery-acoes-inline.delivery-actions-inline-final,
-  .delivery-actions-inline-final {
+  .delivery-actions-td {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    padding: 12px 10px !important;
+    overflow: visible !important;
+  }
+
+  .delivery-actions-row-hard {
+    display: grid !important;
+    grid-template-columns: 100px 126px 38px !important;
+    align-items: center !important;
+    justify-content: end !important;
+    column-gap: 8px !important;
+    width: 272px !important;
+    min-width: 272px !important;
+    max-width: 272px !important;
+    margin-left: auto !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-row-hard .delivery-acao {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+    flex: none !important;
+  }
+
+  .delivery-actions-row-hard .delivery-acao-alerta {
+    width: 100px !important;
+  }
+
+  .delivery-actions-row-hard .delivery-acao-sucesso {
+    width: 126px !important;
+  }
+
+  .delivery-actions-row-hard .delivery-menu-final {
+    display: block !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    grid-column: auto !important;
+    justify-self: end !important;
+  }
+
+  .delivery-actions-row-hard .delivery-menu-final summary {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* FASE 93 DEFINITIVA, Delivery desktop: menu de três pontos fixo na mesma linha */
+@media (min-width: 768px) {
+  .delivery-table-refino-final th:nth-child(8),
+  .delivery-table-refino-final td:nth-child(8),
+  .mini-delivery-table-desktop th:nth-child(8),
+  .mini-delivery-table-desktop td:nth-child(8) {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+  }
+
+  .delivery-actions-absolute-cell,
+  .delivery-actions-td {
+    position: relative !important;
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    padding: 12px 56px 12px 10px !important;
+    overflow: visible !important;
+    vertical-align: middle !important;
+  }
+
+  .delivery-actions-buttons-only {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
     justify-content: flex-end !important;
-    flex-wrap: nowrap !important;
     gap: 8px !important;
+    flex-wrap: nowrap !important;
     width: 100% !important;
-    min-width: 276px !important;
+    min-width: 0 !important;
     white-space: nowrap !important;
   }
 
-  .delivery-actions-inline-final .delivery-acao {
-    flex: 0 0 auto !important;
+  .delivery-actions-buttons-only .delivery-acao {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: auto !important;
-    min-width: 86px !important;
-    height: 32px !important;
-    min-height: 32px !important;
-    padding: 0 11px !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    height: 34px !important;
+    min-height: 34px !important;
     border-radius: 10px !important;
     font-size: 11px !important;
     line-height: 1 !important;
@@ -10964,55 +11018,1189 @@
     white-space: nowrap !important;
   }
 
-  .delivery-actions-inline-final .delivery-acao-sucesso {
-    min-width: 112px !important;
+  .delivery-actions-buttons-only .delivery-acao-alerta {
+    width: 100px !important;
+    min-width: 100px !important;
+    max-width: 100px !important;
   }
 
-  .mini-delivery-acoes-menu.delivery-menu-final,
-  .delivery-actions-inline-final .delivery-menu-final {
-    flex: 0 0 32px !important;
+  .delivery-actions-buttons-only .delivery-acao-sucesso {
+    width: 126px !important;
+    min-width: 126px !important;
+    max-width: 126px !important;
+  }
+
+  .delivery-menu-absolute {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    display: block !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 50 !important;
+  }
+
+  .delivery-menu-absolute summary {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 32px !important;
-    min-width: 32px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid rgba(82, 82, 91, 0.9) !important;
+    border-radius: 10px !important;
+    background: #18181b !important;
+    color: #ffffff !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    list-style: none !important;
+  }
+
+  .delivery-menu-absolute summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  .delivery-menu-absolute .mini-delivery-acoes-menu-list {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    right: 0 !important;
+    z-index: 120 !important;
+  }
+}
+
+
+/* FASE 95, Delivery desktop: ações em grid fixo, sem quebra e sem sobreposição */
+@media (min-width: 768px) {
+  .delivery-table-refino-final th:nth-child(8),
+  .delivery-table-refino-final td:nth-child(8),
+  .mini-delivery-table-desktop th:nth-child(8),
+  .mini-delivery-table-desktop td:nth-child(8) {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+  }
+
+  .delivery-actions-grid-cell,
+  .delivery-actions-td {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    padding: 12px 14px !important;
+    overflow: visible !important;
+    vertical-align: middle !important;
+  }
+
+  .delivery-actions-grid-final {
+    display: grid !important;
+    grid-template-columns: 94px 122px 36px !important;
+    align-items: center !important;
+    justify-content: end !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-acao,
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .delivery-menu-grid-final {
+    position: relative !important;
+    display: block !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 70 !important;
+  }
+
+  .delivery-menu-grid-final summary {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid rgba(82, 82, 91, 0.9) !important;
+    border-radius: 10px !important;
+    background: #18181b !important;
+    color: #ffffff !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    list-style: none !important;
+  }
+
+  .delivery-menu-grid-final summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  .delivery-menu-grid-final .mini-delivery-acoes-menu-list {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    right: 0 !important;
+    z-index: 150 !important;
+  }
+}
+
+/* FASE 96, Delivery desktop: mantém layout atual, revela menu e empurra três pontinhos para a direita */
+@media (min-width: 768px) {
+  .delivery-table-refino-final,
+  .mini-delivery-table-desktop {
+    overflow: visible !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(8),
+  .delivery-table-refino-final td:nth-child(8),
+  .mini-delivery-table-desktop th:nth-child(8),
+  .mini-delivery-table-desktop td:nth-child(8) {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    overflow: visible !important;
+  }
+
+  .delivery-actions-grid-cell,
+  .delivery-actions-td {
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    padding: 12px 10px 12px 14px !important;
+    overflow: visible !important;
+    vertical-align: middle !important;
+  }
+
+  .delivery-actions-grid-final {
+    display: grid !important;
+    grid-template-columns: 94px 122px 36px !important;
+    align-items: center !important;
+    justify-content: end !important;
+    justify-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-acao,
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    width: 100% !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .delivery-menu-grid-final,
+  .delivery-actions-grid-final details.delivery-menu-grid-final,
+  .delivery-actions-grid-final .mini-delivery-acoes-menu.delivery-menu-grid-final {
+    position: relative !important;
+    display: block !important;
+    justify-self: end !important;
+    align-self: center !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    z-index: 120 !important;
+  }
+
+  .delivery-menu-grid-final summary,
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid rgba(82, 82, 91, 0.95) !important;
+    border-radius: 10px !important;
+    background: #18181b !important;
+    color: #ffffff !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    list-style: none !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28) !important;
+  }
+
+  .delivery-menu-grid-final summary::-webkit-details-marker,
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  .delivery-menu-grid-final .mini-delivery-acoes-menu-list,
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    right: 0 !important;
+    min-width: 170px !important;
+    z-index: 999 !important;
+    overflow: visible !important;
+  }
+
+  .delivery-actions-grid-final,
+  .delivery-actions-grid-cell,
+  .delivery-actions-td,
+  .delivery-table-refino-final tr,
+  .delivery-table-refino-final tbody,
+  .delivery-table-refino-final,
+  .mini-delivery-table-desktop tr,
+  .mini-delivery-table-desktop tbody,
+  .mini-delivery-table-desktop {
+    overflow: visible !important;
+  }
+}
+
+/* FASE 97 - Delivery: menu de três pontinhos flutuante sem quebrar a tabela */
+@media (min-width: 768px) {
+  .mini-delivery-table-desktop,
+  .mini-delivery-table-desktop table,
+  .mini-delivery-table-desktop thead,
+  .mini-delivery-table-desktop tbody,
+  .mini-delivery-table-desktop tr,
+  .mini-delivery-table-desktop td,
+  .mini-delivery-table-desktop th,
+  .delivery-table-refino-final,
+  .delivery-table-refino-final thead,
+  .delivery-table-refino-final tbody,
+  .delivery-table-refino-final tr,
+  .delivery-table-refino-final td,
+  .delivery-table-refino-final th {
+    overflow: visible !important;
+  }
+
+  .delivery-actions-grid-cell,
+  .delivery-actions-td {
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    padding: 12px 8px 12px 14px !important;
+    overflow: visible !important;
+  }
+
+  .delivery-actions-grid-final {
+    display: grid !important;
+    grid-template-columns: 104px 130px 38px !important;
+    align-items: center !important;
+    justify-content: end !important;
+    gap: 8px !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .delivery-actions-grid-final .delivery-acao,
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    width: 100% !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 9px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final,
+  .delivery-actions-grid-final .mini-delivery-acoes-menu.delivery-menu-grid-final {
+    position: relative !important;
+    justify-self: end !important;
+    align-self: center !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    z-index: 300 !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid rgba(82, 82, 91, 0.95) !important;
+    border-radius: 10px !important;
+    background: #18181b !important;
+    color: #ffffff !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    list-style: none !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list {
+    position: absolute !important;
+    top: 40px !important;
+    right: 0 !important;
+    width: 156px !important;
+    min-width: 156px !important;
+    max-width: 156px !important;
+    z-index: 9999 !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    border: 1px solid rgba(82, 82, 91, 0.8) !important;
+    border-radius: 14px !important;
+    background: #050505 !important;
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.72) !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final[open] {
+    z-index: 9999 !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list button,
+  .delivery-actions-grid-final details.delivery-menu-grid-final .delivery-local-menu-info {
+    width: 100% !important;
+    margin: 0 0 6px 0 !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list button:last-child,
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list .delivery-local-menu-info:last-child {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* FASE 98 - Delivery: mantém layout atual, corrige menu oculto e empurra os três pontinhos para a direita */
+@media (min-width: 768px) {
+  .mini-delivery-table-desktop,
+  .mini-delivery-table-desktop table,
+  .mini-delivery-table-desktop thead,
+  .mini-delivery-table-desktop tbody,
+  .mini-delivery-table-desktop tr,
+  .mini-delivery-table-desktop td,
+  .mini-delivery-table-desktop th,
+  .delivery-table-refino-final,
+  .delivery-table-refino-final thead,
+  .delivery-table-refino-final tbody,
+  .delivery-table-refino-final tr,
+  .delivery-table-refino-final td,
+  .delivery-table-refino-final th {
+    overflow: visible !important;
+  }
+
+  .delivery-actions-grid-cell,
+  .delivery-actions-td {
+    position: relative !important;
+    width: 300px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    padding: 12px 54px 12px 10px !important;
+    overflow: visible !important;
+    vertical-align: middle !important;
+  }
+
+  .delivery-actions-grid-final {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-acao,
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 104px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-acao-sucesso {
+    min-width: 124px !important;
+  }
+
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final,
+  .delivery-actions-grid-final .mini-delivery-acoes-menu.delivery-menu-grid-final {
+    position: absolute !important;
+    right: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    z-index: 400 !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final[open],
+  .delivery-actions-grid-final .mini-delivery-acoes-menu.delivery-menu-grid-final[open] {
+    z-index: 99999 !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid rgba(82, 82, 91, 0.95) !important;
+    border-radius: 10px !important;
+    background: #18181b !important;
+    color: #ffffff !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    list-style: none !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34) !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list {
+    position: absolute !important;
+    top: 40px !important;
+    right: 0 !important;
+    width: 156px !important;
+    min-width: 156px !important;
+    max-width: 156px !important;
+    z-index: 99999 !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    display: grid !important;
+    gap: 6px !important;
+    border: 1px solid rgba(82, 82, 91, 0.86) !important;
+    border-radius: 14px !important;
+    background: #050505 !important;
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.72) !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list button,
+  .delivery-actions-grid-final details.delivery-menu-grid-final .delivery-local-menu-info {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+}
+
+/* FASE 99 - Delivery desktop: compacta Valor/Status e corrige Ações sem mudar o layout aprovado */
+@media (min-width: 768px) {
+  .mini-delivery-table-desktop,
+  .delivery-table-refino {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+
+  .delivery-table-refino-final {
+    table-layout: fixed !important;
+    width: 100% !important;
+    min-width: 1160px !important;
+  }
+
+  .delivery-table-refino-final .col-pedido {
+    width: 7.5% !important;
+  }
+
+  .delivery-table-refino-final .col-entrega {
+    width: 8% !important;
+  }
+
+  .delivery-table-refino-final .col-cliente {
+    width: 9% !important;
+  }
+
+  .delivery-table-refino-final .col-referencia {
+    width: 9.5% !important;
+  }
+
+  .delivery-table-refino-final .col-itens {
+    width: auto !important;
+  }
+
+  .delivery-table-refino-final .col-valor {
+    width: 105px !important;
+  }
+
+  .delivery-table-refino-final .col-status {
+    width: 140px !important;
+  }
+
+  .delivery-table-refino-final .col-acoes {
+    width: 270px !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(6),
+  .delivery-table-refino-final td:nth-child(6) {
+    width: 105px !important;
+    min-width: 105px !important;
+    max-width: 105px !important;
+    text-align: left !important;
+    padding-left: 10px !important;
+    padding-right: 8px !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(7),
+  .delivery-table-refino-final td:nth-child(7) {
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+    text-align: center !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(8),
+  .delivery-table-refino-final td:nth-child(8),
+  .mini-delivery-table-desktop th:nth-child(8),
+  .mini-delivery-table-desktop td:nth-child(8),
+  .delivery-actions-grid-cell,
+  .delivery-actions-td {
+    width: 270px !important;
+    min-width: 270px !important;
+    max-width: 270px !important;
+  }
+
+  .delivery-actions-grid-cell,
+  .delivery-actions-td {
+    position: relative !important;
+    padding: 10px 10px !important;
+    overflow: visible !important;
+    vertical-align: middle !important;
+  }
+
+  .delivery-actions-grid-final {
+    display: grid !important;
+    grid-template-columns: 96px 120px 34px !important;
+    align-items: center !important;
+    justify-content: end !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-acao,
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     height: 32px !important;
     min-height: 32px !important;
     margin: 0 !important;
-    position: relative !important;
-  }
-
-  .mini-delivery-acoes-menu.delivery-menu-final summary,
-  .delivery-actions-inline-final .delivery-menu-final summary {
-    flex: 0 0 32px !important;
+    padding: 0 9px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 32px !important;
-    min-width: 32px !important;
+    border-radius: 10px !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final,
+  .delivery-actions-grid-final .mini-delivery-acoes-menu.delivery-menu-grid-final {
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    transform: none !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
     height: 32px !important;
     min-height: 32px !important;
     margin: 0 !important;
     padding: 0 !important;
-    border-radius: 10px !important;
-    white-space: nowrap !important;
+    overflow: visible !important;
+    z-index: 50 !important;
+    justify-self: end !important;
   }
 
-  .mini-delivery-acoes-menu.delivery-menu-final summary::-webkit-details-marker {
+  .delivery-actions-grid-final details.delivery-menu-grid-final[open],
+  .delivery-actions-grid-final .mini-delivery-acoes-menu.delivery-menu-grid-final[open] {
+    z-index: 99999 !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary {
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid rgba(82, 82, 91, 0.95) !important;
+    border-radius: 10px !important;
+    background: #18181b !important;
+    color: #ffffff !important;
+    font-size: 21px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    list-style: none !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34) !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary::-webkit-details-marker {
     display: none !important;
   }
 
-  .delivery-status-td {
-    text-align: center !important;
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list {
+    position: absolute !important;
+    top: 38px !important;
+    right: 0 !important;
+    width: 152px !important;
+    min-width: 152px !important;
+    max-width: 152px !important;
+    z-index: 99999 !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    display: grid !important;
+    gap: 6px !important;
+    border: 1px solid rgba(82, 82, 91, 0.86) !important;
+    border-radius: 14px !important;
+    background: #050505 !important;
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.72) !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list button,
+  .delivery-actions-grid-final details.delivery-menu-grid-final .delivery-local-menu-info {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+}
+
+
+/* FASE 100 - Delivery: teste final, menu enxuto sem LOCAL */
+@media (min-width: 768px) {
+  .delivery-table-refino-final,
+  .mini-delivery-table-desktop {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  .delivery-table-refino-final th,
+  .delivery-table-refino-final td,
+  .mini-delivery-table-desktop th,
+  .mini-delivery-table-desktop td {
+    white-space: normal !important;
+    vertical-align: middle !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(1),
+  .delivery-table-refino-final td:nth-child(1),
+  .mini-delivery-table-desktop th:nth-child(1),
+  .mini-delivery-table-desktop td:nth-child(1) {
+    width: 8% !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(2),
+  .delivery-table-refino-final td:nth-child(2),
+  .mini-delivery-table-desktop th:nth-child(2),
+  .mini-delivery-table-desktop td:nth-child(2) {
+    width: 8% !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(3),
+  .delivery-table-refino-final td:nth-child(3),
+  .mini-delivery-table-desktop th:nth-child(3),
+  .mini-delivery-table-desktop td:nth-child(3) {
+    width: 10% !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(4),
+  .delivery-table-refino-final td:nth-child(4),
+  .mini-delivery-table-desktop th:nth-child(4),
+  .mini-delivery-table-desktop td:nth-child(4) {
+    width: 10% !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(5),
+  .delivery-table-refino-final td:nth-child(5),
+  .mini-delivery-table-desktop th:nth-child(5),
+  .mini-delivery-table-desktop td:nth-child(5) {
+    width: 24% !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(6),
+  .delivery-table-refino-final td:nth-child(6),
+  .mini-delivery-table-desktop th:nth-child(6),
+  .mini-delivery-table-desktop td:nth-child(6) {
+    width: 8% !important;
+    text-align: left !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(7),
+  .delivery-table-refino-final td:nth-child(7),
+  .mini-delivery-table-desktop th:nth-child(7),
+  .mini-delivery-table-desktop td:nth-child(7) {
+    width: 10% !important;
+    text-align: left !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(8),
+  .delivery-table-refino-final td:nth-child(8),
+  .mini-delivery-table-desktop th:nth-child(8),
+  .mini-delivery-table-desktop td:nth-child(8),
+  .delivery-actions-grid-cell,
+  .delivery-actions-td {
+    width: 22% !important;
+    min-width: 260px !important;
+    max-width: none !important;
+  }
+
+  .delivery-actions-grid-cell,
+  .delivery-actions-td {
+    position: relative !important;
+    padding: 9px 8px !important;
+    overflow: visible !important;
+    vertical-align: middle !important;
+  }
+
+  .delivery-actions-grid-final {
+    display: grid !important;
+    grid-template-columns: minmax(84px, 96px) minmax(112px, 128px) 36px !important;
+    align-items: center !important;
+    justify-content: end !important;
+    gap: 7px !important;
+    width: 100% !important;
     overflow: visible !important;
     white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-acao,
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    width: 100% !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-final .delivery-action-placeholder {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final {
+    position: relative !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    z-index: 80 !important;
+    justify-self: end !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final[open] {
+    z-index: 99999 !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid rgba(82, 82, 91, 0.95) !important;
+    border-radius: 10px !important;
+    background: #18181b !important;
+    color: #ffffff !important;
+    font-size: 21px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    list-style: none !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34) !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final > summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list {
+    position: absolute !important;
+    top: 38px !important;
+    right: 0 !important;
+    width: 122px !important;
+    min-width: 122px !important;
+    max-width: 122px !important;
+    z-index: 99999 !important;
+    margin: 0 !important;
+    padding: 7px !important;
+    display: grid !important;
+    gap: 6px !important;
+    border: 1px solid rgba(82, 82, 91, 0.86) !important;
+    border-radius: 13px !important;
+    background: #050505 !important;
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.72) !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .mini-delivery-acoes-menu-list button {
+    width: 100% !important;
+    min-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 9px !important;
+    border-radius: 9px !important;
+    font-size: 10.5px !important;
+    font-weight: 900 !important;
+    text-align: left !important;
+  }
+
+  .delivery-actions-grid-final details.delivery-menu-grid-final .delivery-local-menu-info {
+    display: none !important;
+  }
+}
+
+
+/* FASE 101 - Delivery sem três pontinhos: ações em grade 2x2 */
+@media (min-width: 768px) {
+  .delivery-table-refino-final {
+    table-layout: fixed !important;
+    width: 100% !important;
+    min-width: 1120px !important;
+  }
+
+  .delivery-table-refino-final .col-pedido { width: 8% !important; }
+  .delivery-table-refino-final .col-entrega { width: 8% !important; }
+  .delivery-table-refino-final .col-cliente { width: 10% !important; }
+  .delivery-table-refino-final .col-referencia { width: 10% !important; }
+  .delivery-table-refino-final .col-itens { width: 26% !important; }
+  .delivery-table-refino-final .col-valor { width: 9% !important; }
+  .delivery-table-refino-final .col-status { width: 10% !important; }
+  .delivery-table-refino-final .col-acoes { width: 19% !important; }
+
+  .delivery-table-refino-final th,
+  .delivery-table-refino-final td {
+    vertical-align: middle !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(6),
+  .delivery-table-refino-final td:nth-child(6),
+  .delivery-table-refino-final th:nth-child(7),
+  .delivery-table-refino-final td:nth-child(7) {
+    text-align: center !important;
+  }
+
+  .delivery-actions-td,
+  .delivery-actions-grid-cell {
+    min-width: 230px !important;
+    width: 230px !important;
+    overflow: visible !important;
+  }
+
+  .delivery-actions-grid-final.delivery-actions-grid-simple {
+    display: grid !important;
+    grid-template-columns: minmax(88px, 1fr) minmax(112px, 1fr) !important;
+    grid-template-rows: 32px 32px !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    gap: 7px !important;
+    width: 100% !important;
+    max-width: 230px !important;
+    margin-left: auto !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-simple .delivery-acao,
+  .delivery-actions-grid-simple .delivery-action-placeholder {
+    width: 100% !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-grid-simple .delivery-action-placeholder {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .delivery-actions-grid-simple .delivery-acao-editar {
+    background: #27272a !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(82, 82, 91, 0.82) !important;
+  }
+
+  .delivery-actions-grid-simple .delivery-acao-excluir {
+    background: #7f1d1d !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(127, 29, 29, 0.92) !important;
+  }
+}
+
+/* FASE 102 - Delivery: refinamento fino de UI desktop */
+@media (min-width: 768px) {
+  .mini-delivery-table-desktop.delivery-table-refino {
+    overflow-x: auto !important;
+  }
+
+  .delivery-table-refino-final {
+    width: 100% !important;
+    min-width: 1040px !important;
+    table-layout: fixed !important;
+  }
+
+  .delivery-table-refino-final .col-pedido { width: 7% !important; }
+  .delivery-table-refino-final .col-entrega { width: 8% !important; }
+  .delivery-table-refino-final .col-cliente { width: 9% !important; }
+  .delivery-table-refino-final .col-referencia { width: 10% !important; }
+  .delivery-table-refino-final .col-itens { width: 31% !important; }
+  .delivery-table-refino-final .col-valor { width: 8% !important; }
+  .delivery-table-refino-final .col-status { width: 8% !important; }
+  .delivery-table-refino-final .col-acoes { width: 19% !important; }
+
+  .delivery-table-refino-final th,
+  .delivery-table-refino-final td {
+    padding: 11px 12px !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+  }
+
+  .delivery-table-refino-final thead th {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    color: #a1a1aa !important;
+    font-size: 11px !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .delivery-table-refino-final tbody tr {
+    min-height: 66px !important;
+  }
+
+  .delivery-table-refino-final td:nth-child(1),
+  .delivery-table-refino-final td:nth-child(2),
+  .delivery-table-refino-final td:nth-child(3),
+  .delivery-table-refino-final td:nth-child(4) {
+    font-size: 12px !important;
+  }
+
+  .delivery-table-refino-final td:nth-child(5) {
+    padding-right: 18px !important;
+    font-size: 12px !important;
+    line-height: 1.28 !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(6),
+  .delivery-table-refino-final td:nth-child(6) {
+    text-align: left !important;
+    padding-left: 10px !important;
+    padding-right: 8px !important;
+    color: #4ade80 !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(7),
+  .delivery-table-refino-final td:nth-child(7) {
+    text-align: left !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .delivery-table-refino-final th:nth-child(8),
+  .delivery-table-refino-final td:nth-child(8),
+  .delivery-actions-td,
+  .delivery-actions-grid-cell {
+    width: auto !important;
+    min-width: 214px !important;
+    padding-left: 8px !important;
+    padding-right: 10px !important;
+    text-align: left !important;
   }
 
   .delivery-status-chip {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-width: 88px !important;
+    min-width: 82px !important;
+    min-height: 24px !important;
+    padding: 5px 10px !important;
+    border-radius: 999px !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+  }
+
+  .delivery-actions-grid-final.delivery-actions-grid-simple {
+    display: grid !important;
+    grid-template-columns: 94px 112px !important;
+    grid-template-rows: 30px 30px !important;
+    align-items: center !important;
+    justify-content: start !important;
+    gap: 6px !important;
+    width: 212px !important;
+    max-width: 212px !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    overflow: visible !important;
+  }
+
+  .delivery-actions-grid-simple .delivery-acao,
+  .delivery-actions-grid-simple .delivery-action-placeholder {
+    width: 100% !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 7px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 9px !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
     white-space: nowrap !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 7px 16px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  .delivery-actions-grid-simple .delivery-acao-editar {
+    background: linear-gradient(180deg, #27272a 0%, #18181b 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(82, 82, 91, 0.82) !important;
+  }
+
+  .delivery-actions-grid-simple .delivery-acao-excluir {
+    background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(127, 29, 29, 0.92) !important;
   }
 }
