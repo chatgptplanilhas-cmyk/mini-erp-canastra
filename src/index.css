@@ -13565,3 +13565,169 @@ span[class*="rounded-full"] {
     display: none !important;
   }
 }
+
+
+/* FASE 106, Delivery: card PEÇAS ENTREGUES.
+   Card de leitura simples, aparece apenas no filtro Entregues.
+   Não altera pagamento, status, WhatsApp ou Supabase. */
+.mini-pecas-entregues-card {
+  margin: 0 0 14px;
+  border: 1px solid rgba(124, 45, 18, 0.72);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(12, 12, 12, 0.98), rgba(3, 3, 3, 0.98));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.mini-pecas-entregues-card summary {
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.mini-pecas-entregues-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.mini-pecas-entregues-card summary p {
+  margin: 0;
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.mini-pecas-entregues-card summary span {
+  display: block;
+  margin-top: 4px;
+  color: #a1a1aa;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.mini-pecas-entregues-card summary strong {
+  color: #86efac;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.mini-pecas-entregues-card summary em {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(124, 45, 18, 0.9);
+  border-radius: 999px;
+  background: rgba(124, 45, 18, 0.28);
+  color: #fdba74;
+  font-size: 12px;
+  line-height: 1;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.mini-pecas-entregues-card[open] summary em {
+  color: #ffffff;
+  background: rgba(124, 45, 18, 0.72);
+}
+
+.mini-pecas-entregues-lista {
+  display: grid;
+  gap: 7px;
+  padding: 0 16px 14px;
+  border-top: 1px solid rgba(39, 39, 42, 0.72);
+}
+
+.mini-pecas-entregues-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(39, 39, 42, 0.78);
+  border-radius: 13px;
+  background: rgba(5, 5, 5, 0.84);
+}
+
+.mini-pecas-entregues-item span {
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.mini-pecas-entregues-item strong {
+  color: #86efac;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.mini-pecas-entregues-vazio {
+  margin: 12px 0 0;
+  color: #a1a1aa;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 767px) {
+  .mini-pecas-entregues-card {
+    margin: 0 0 10px !important;
+    border-radius: 17px !important;
+  }
+
+  .mini-pecas-entregues-card summary {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  .mini-pecas-entregues-card summary p {
+    font-size: 14px !important;
+  }
+
+  .mini-pecas-entregues-card summary span {
+    font-size: 10.5px !important;
+  }
+
+  .mini-pecas-entregues-card summary strong {
+    font-size: 17px !important;
+  }
+
+  .mini-pecas-entregues-card summary em {
+    grid-column: 1 / -1 !important;
+    min-height: 34px !important;
+    width: 100% !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+  }
+
+  .mini-pecas-entregues-lista {
+    gap: 7px !important;
+    padding: 0 12px 12px !important;
+  }
+
+  .mini-pecas-entregues-item {
+    padding: 9px 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .mini-pecas-entregues-item span {
+    font-size: 12px !important;
+  }
+
+  .mini-pecas-entregues-item strong {
+    font-size: 13px !important;
+  }
+}

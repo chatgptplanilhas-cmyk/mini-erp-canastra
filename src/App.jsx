@@ -7010,6 +7010,39 @@ Delber Vilaça`
       .filter((item) => item.status === 'Programado')
       .reduce((acc, item) => acc + Number(item.valor_total || 0), 0)
 
+    const resumoPecasEntregues = Array.from(
+      deliveriesFiltrados
+        .filter((item) => item.status === 'Entregue')
+        .reduce((mapa, item) => {
+          const linhas = String(item.descricao || '')
+            .split(/\n|(?=\b\d{1,3}\s)/g)
+            .map((linha) => linha.trim())
+            .filter(Boolean)
+
+          linhas.forEach((linha) => {
+            const partes = linha.match(/^(\d{1,3})\s+(.+)$/)
+            const quantidade = partes ? Number(partes[1]) : 1
+            const produto = (partes ? partes[2] : linha).trim()
+            const chave = normalizarTexto(produto)
+
+            if (!chave) return
+
+            const atual = mapa.get(chave) || {
+              produto,
+              quantidade: 0,
+            }
+
+            atual.quantidade += Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 1
+            mapa.set(chave, atual)
+          })
+
+          return mapa
+        }, new Map())
+        .values()
+    ).sort((a, b) => a.produto.localeCompare(b.produto))
+
+    const totalPecasEntregues = resumoPecasEntregues.reduce((acc, item) => acc + item.quantidade, 0)
+
     return (
       <section className="mobile-panel-card delivery-refino-final bg-black border border-orange-950 rounded-[28px] p-5">
         <div className="mini-delivery-head flex items-center justify-between gap-4 mb-3">
@@ -7165,6 +7198,33 @@ Delber Vilaça`
             </button>
           ))}
         </div>
+
+        {filtroDelivery === 'Entregue' && (
+          <details className="mini-pecas-entregues-card">
+            <summary>
+              <div>
+                <p>PEÇAS ENTREGUES</p>
+                <span>Resumo dos itens entregues no filtro atual</span>
+              </div>
+
+              <strong>{totalPecasEntregues} un.</strong>
+              <em>Ver lista</em>
+            </summary>
+
+            <div className="mini-pecas-entregues-lista">
+              {resumoPecasEntregues.length === 0 ? (
+                <p className="mini-pecas-entregues-vazio">Nenhuma peça entregue encontrada.</p>
+              ) : (
+                resumoPecasEntregues.map((item) => (
+                  <div key={item.produto} className="mini-pecas-entregues-item">
+                    <span>{item.produto}</span>
+                    <strong>{item.quantidade} un.</strong>
+                  </div>
+                ))
+              )}
+            </div>
+          </details>
+        )}
 
         <div className="mini-delivery-list-header" aria-hidden="true">
           <span>Cliente</span>
