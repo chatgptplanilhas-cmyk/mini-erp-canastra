@@ -12948,3 +12948,345 @@ span[class*="rounded-full"] {
     border-color: rgba(248, 113, 113, 0.42) !important;
   }
 }
+
+
+/* FASE 101, Delivery mobile cirúrgico.
+   Mantém desktop intacto. No celular, o card fechado mostra apenas:
+   cliente, referência, valor, data e seta. Os itens ficam somente ao expandir. */
+@media (max-width: 767px) {
+  .delivery-refino-final .mini-delivery-mobile-cards {
+    display: grid !important;
+    gap: 10px !important;
+    margin-top: 12px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-card,
+  .delivery-refino-final .mini-delivery-card-compact {
+    width: 100% !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(82, 82, 91, 0.78) !important;
+    background: linear-gradient(180deg, #060606 0%, #010101 100%) !important;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28) !important;
+    overflow: hidden !important;
+  }
+
+  .delivery-refino-final .mini-delivery-card-open {
+    border-color: rgba(124, 45, 18, 0.88) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-button {
+    width: 100% !important;
+    min-height: 76px !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 104px 34px !important;
+    grid-template-areas: "main meta arrow" !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 12px 10px 12px 12px !important;
+    border: 0 !important;
+    border-radius: 18px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-align: left !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main {
+    grid-area: main !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    gap: 5px !important;
+    justify-items: start !important;
+    text-align: left !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main p {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #ffffff !important;
+    font-size: 17px !important;
+    line-height: 1.08 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.02em !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main span {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #a1a1aa !important;
+    font-size: 14px !important;
+    line-height: 1.08 !important;
+    font-weight: 850 !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-desc {
+    display: none !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta {
+    grid-area: meta !important;
+    width: 104px !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta span {
+    margin: 0 !important;
+    color: #86efac !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    font-weight: 950 !important;
+    letter-spacing: -0.03em !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta strong {
+    margin: 0 !important;
+    color: #d4d4d8 !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.02em !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-button .mini-delivery-status {
+    display: none !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-arrow {
+    grid-area: arrow !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    justify-self: end !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    border: 1px solid rgba(124, 45, 18, 0.92) !important;
+    border-radius: 999px !important;
+    background: rgba(124, 45, 18, 0.34) !important;
+    color: #fdba74 !important;
+    font-size: 27px !important;
+    line-height: 0.8 !important;
+    font-weight: 900 !important;
+  }
+
+  .delivery-refino-final .mini-delivery-expanded {
+    padding: 0 12px 12px !important;
+    border-top: 1px solid rgba(39, 39, 42, 0.82) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-expanded .mini-delivery-card-grid {
+    margin-top: 10px !important;
+    gap: 7px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-card-grid > div,
+  .delivery-refino-final .mini-delivery-card-line {
+    padding: 9px 10px !important;
+    border-radius: 13px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-card-line p:last-child,
+  .delivery-refino-final .mini-delivery-description p:last-child {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  .delivery-refino-final .mini-delivery-actions {
+    gap: 7px !important;
+    margin-top: 9px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-action {
+    min-height: 38px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .delivery-refino-final .mini-delivery-compact-button {
+    grid-template-columns: minmax(0, 1fr) 92px 32px !important;
+    gap: 7px !important;
+    padding: 11px 9px 11px 11px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main p {
+    font-size: 16px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main span {
+    font-size: 12.5px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta {
+    width: 92px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta span {
+    font-size: 17px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta strong {
+    font-size: 13px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-arrow {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    font-size: 25px !important;
+  }
+}
+
+
+/* FASE 102, Delivery mobile limpo.
+   Remove itens/produtos do card fechado no celular.
+   O card fechado passa a exibir somente cliente, referência, valor, data e seta.
+   Os itens continuam visíveis ao expandir pela seta. */
+@media (max-width: 767px) {
+  .mini-delivery-compact-desc {
+    display: none !important;
+  }
+
+  .mini-delivery-compact-button {
+    grid-template-columns: minmax(0, 1fr) 112px 38px !important;
+    grid-template-areas: "main meta arrow" !important;
+    min-height: 78px !important;
+    padding: 13px 12px !important;
+    gap: 10px !important;
+  }
+
+  .mini-delivery-compact-main {
+    grid-area: main !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 7px !important;
+    align-items: center !important;
+    text-align: left !important;
+  }
+
+  .mini-delivery-compact-main p {
+    width: 100% !important;
+    margin: 0 !important;
+    color: #ffffff !important;
+    font-size: 22px !important;
+    line-height: 1.05 !important;
+    font-weight: 950 !important;
+    letter-spacing: -0.03em !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .mini-delivery-compact-main span {
+    width: 100% !important;
+    margin: 0 !important;
+    color: #a1a1aa !important;
+    font-size: 18px !important;
+    line-height: 1.05 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.02em !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .mini-delivery-compact-meta {
+    grid-area: meta !important;
+    width: 112px !important;
+    min-width: 112px !important;
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  .mini-delivery-compact-meta span {
+    color: #86efac !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    font-weight: 950 !important;
+    letter-spacing: -0.03em !important;
+    white-space: nowrap !important;
+  }
+
+  .mini-delivery-compact-meta strong {
+    color: #d4d4d8 !important;
+    font-size: 17px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.02em !important;
+    white-space: nowrap !important;
+  }
+
+  .mini-delivery-compact-arrow {
+    grid-area: arrow !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    justify-self: end !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .mini-delivery-compact-button {
+    grid-template-columns: minmax(0, 1fr) 100px 34px !important;
+    min-height: 74px !important;
+    padding: 12px 10px 12px 12px !important;
+    gap: 8px !important;
+  }
+
+  .mini-delivery-compact-main p {
+    font-size: 20px !important;
+  }
+
+  .mini-delivery-compact-main span {
+    font-size: 16px !important;
+  }
+
+  .mini-delivery-compact-meta {
+    width: 100px !important;
+    min-width: 100px !important;
+  }
+
+  .mini-delivery-compact-meta span {
+    font-size: 20px !important;
+  }
+
+  .mini-delivery-compact-meta strong {
+    font-size: 15px !important;
+  }
+
+  .mini-delivery-compact-arrow {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+  }
+}
