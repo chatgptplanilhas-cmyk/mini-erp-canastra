@@ -7168,6 +7168,15 @@ Delber Vilaça`
           ))}
         </div>
 
+        <div className="mini-delivery-list-header" aria-hidden="true">
+          <span>Cliente</span>
+          <span>Referência</span>
+          <span>Itens</span>
+          <span>Entrega</span>
+          <span>Valor</span>
+          <span>Status</span>
+        </div>
+
         <div className="mini-delivery-mobile-cards">
           {deliveriesFiltrados.length === 0 && (
             <div className="mini-delivery-empty-card">
@@ -7178,11 +7187,23 @@ Delber Vilaça`
           {deliveriesFiltrados.map((item) => {
             const deliveryAberto = deliveryExpandidoId === item.id
             const referenciaDelivery = item.referencia || item.clientes?.referencia || 'Sem referência'
-            const statusClasse = item.status === 'Entregue'
+            const descricaoDelivery = item.descricao || 'Sem descrição'
+            const itensDelivery = descricaoDelivery
+              .split(/\n|(?=\b\d{1,2}\s)/g)
+              .map((linha) => linha.trim())
+              .filter(Boolean)
+            const hojeComparacao = new Date()
+            hojeComparacao.setHours(0, 0, 0, 0)
+            const dataEntregaComparacao = item.data_entrega ? new Date(`${item.data_entrega}T00:00:00`) : null
+            const estaAtrasado = item.status !== 'Entregue' && item.status !== 'Cancelado' && dataEntregaComparacao && dataEntregaComparacao < hojeComparacao
+            const statusVisual = estaAtrasado ? 'Atrasado' : item.status
+            const statusClasse = statusVisual === 'Entregue'
               ? 'mini-delivery-status-entregue'
-              : item.status === 'Cancelado'
+              : statusVisual === 'Cancelado'
                 ? 'mini-delivery-status-cancelado'
-                : 'mini-delivery-status-programado'
+                : statusVisual === 'Atrasado'
+                  ? 'mini-delivery-status-atrasado'
+                  : 'mini-delivery-status-programado'
 
             return (
               <article key={item.id} className={`mini-delivery-card mini-delivery-card-compact ${deliveryAberto ? 'mini-delivery-card-open' : ''}`}>
@@ -7196,13 +7217,19 @@ Delber Vilaça`
                     <span>{referenciaDelivery}</span>
                   </div>
 
+                  <div className="mini-delivery-compact-desc">
+                    {itensDelivery.map((linha, index) => (
+                      <span key={`${item.id}-item-${index}`}>{linha}</span>
+                    ))}
+                  </div>
+
                   <div className="mini-delivery-compact-meta">
                     <strong>{dataBR(item.data_entrega)}</strong>
                     <span>{moeda(item.valor_total)}</span>
                   </div>
 
                   <span className={`mini-delivery-status ${statusClasse}`}>
-                    {item.status}
+                    {statusVisual}
                   </span>
 
                   <span className="mini-delivery-compact-arrow">

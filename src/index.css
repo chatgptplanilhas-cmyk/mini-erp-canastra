@@ -12204,3 +12204,747 @@
     border: 1px solid rgba(127, 29, 29, 0.92) !important;
   }
 }
+
+/* FASE 103, LAPIDAÇÃO VISUAL PREMIUM
+   Ajuste somente visual. Não altera lógica, banco, funções ou estrutura operacional. */
+:root {
+  --mini-bg-premium: #12100f;
+  --mini-bg-deep: #0c0b0a;
+  --mini-surface-1: #171412;
+  --mini-surface-2: #1b1714;
+  --mini-surface-3: #221b16;
+  --mini-border-soft: rgba(120, 82, 53, 0.26);
+  --mini-border-medium: rgba(154, 103, 63, 0.34);
+  --mini-copper-soft: #9a5b2f;
+  --mini-copper-warm: #b8733f;
+  --mini-gold-muted: #d2a15f;
+  --mini-text-main: #f4f1ec;
+  --mini-text-soft: #c8bdb2;
+  --mini-text-muted: #8d8178;
+  --mini-green-soft: #7fcf98;
+  --mini-red-soft: #d47a72;
+}
+
+html,
+body,
+#root {
+  background: radial-gradient(circle at top left, rgba(120, 66, 32, 0.16), transparent 34%), var(--mini-bg-premium) !important;
+  color: var(--mini-text-main) !important;
+}
+
+body {
+  color: var(--mini-text-main) !important;
+}
+
+/* Base premium, menos preto absoluto e mais profundidade */
+.bg-black,
+.bg-zinc-950,
+.bg-zinc-900 {
+  background-color: var(--mini-surface-1) !important;
+}
+
+.bg-zinc-800 {
+  background-color: var(--mini-surface-3) !important;
+}
+
+.border-zinc-900,
+.border-zinc-800,
+.border-orange-950 {
+  border-color: var(--mini-border-soft) !important;
+}
+
+.text-zinc-500,
+.text-zinc-400,
+.text-zinc-300 {
+  color: var(--mini-text-soft) !important;
+}
+
+.text-orange-400,
+.text-orange-300,
+.text-yellow-300 {
+  color: var(--mini-gold-muted) !important;
+}
+
+.text-green-400,
+.text-green-300 {
+  color: var(--mini-green-soft) !important;
+}
+
+.text-red-400,
+.text-red-300 {
+  color: var(--mini-red-soft) !important;
+}
+
+/* Sidebar mais clássica */
+aside {
+  background: linear-gradient(180deg, #100d0b 0%, #0a0908 100%) !important;
+  border-right-color: var(--mini-border-soft) !important;
+}
+
+aside button {
+  border-color: transparent !important;
+  color: var(--mini-text-soft) !important;
+}
+
+aside button:hover {
+  background: rgba(154, 91, 47, 0.14) !important;
+  color: var(--mini-text-main) !important;
+}
+
+aside button.bg-orange-950,
+aside button[class*="bg-orange"] {
+  background: linear-gradient(180deg, rgba(122, 68, 35, 0.88), rgba(76, 39, 20, 0.92)) !important;
+  color: #fff8ef !important;
+  border-color: rgba(210, 161, 95, 0.24) !important;
+}
+
+/* Cards e painéis com acabamento mais boutique */
+section,
+.mobile-panel-card,
+.relatorio-card,
+.relatorio-bloco,
+.mini-venda-rapida,
+.mini-delivery-card,
+.mini-delivery-card-compact,
+.mini-pendencia-card-clean,
+.mini-cobranca-card,
+.mini-cliente-card,
+.mini-venda-list-card {
+  background: linear-gradient(180deg, rgba(28, 23, 19, 0.98), rgba(14, 12, 10, 0.98)) !important;
+  border-color: var(--mini-border-soft) !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.26) !important;
+}
+
+/* Inputs com leitura melhor */
+input,
+select,
+textarea {
+  background-color: #14110f !important;
+  border-color: rgba(154, 103, 63, 0.28) !important;
+  color: var(--mini-text-main) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(200, 189, 178, 0.55) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(210, 161, 95, 0.55) !important;
+  box-shadow: 0 0 0 2px rgba(154, 91, 47, 0.14) !important;
+  outline: none !important;
+}
+
+/* Botões menos pesados, mais executivos */
+button.bg-orange-950,
+button.bg-orange-900,
+button[class*="bg-orange"] {
+  background: linear-gradient(180deg, #7a4323 0%, #4e2b17 100%) !important;
+  border-color: rgba(210, 161, 95, 0.22) !important;
+  color: #fff8ef !important;
+  box-shadow: none !important;
+}
+
+button.bg-green-900,
+button.bg-green-800,
+button[class*="bg-green"] {
+  background: linear-gradient(180deg, #1f5b36 0%, #173d27 100%) !important;
+  border-color: rgba(127, 207, 152, 0.25) !important;
+  color: #e8fff0 !important;
+  box-shadow: none !important;
+}
+
+button.bg-red-900,
+button.bg-red-800,
+button[class*="bg-red"] {
+  background: linear-gradient(180deg, #73302b 0%, #4e1f1b 100%) !important;
+  border-color: rgba(212, 122, 114, 0.25) !important;
+  color: #fff2f0 !important;
+  box-shadow: none !important;
+}
+
+button.bg-zinc-800,
+button.bg-zinc-700,
+button[class*="bg-zinc"] {
+  background: linear-gradient(180deg, #2a2420 0%, #1b1714 100%) !important;
+  border-color: rgba(154, 103, 63, 0.20) !important;
+  color: var(--mini-text-main) !important;
+  box-shadow: none !important;
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+/* Tabelas com menos peso e melhor leitura */
+table {
+  background: transparent !important;
+}
+
+thead,
+table thead,
+.mini-data-table thead {
+  background: #15110f !important;
+}
+
+th {
+  color: var(--mini-text-muted) !important;
+  border-color: rgba(154, 103, 63, 0.18) !important;
+  letter-spacing: 0.06em !important;
+}
+
+td {
+  border-color: rgba(154, 103, 63, 0.14) !important;
+  color: var(--mini-text-main) !important;
+}
+
+tbody tr {
+  background: rgba(20, 17, 15, 0.72) !important;
+}
+
+tbody tr:hover {
+  background: rgba(34, 27, 22, 0.84) !important;
+}
+
+/* Delivery desktop, lapidação fina sem mudar fluxo */
+@media (min-width: 768px) {
+  .mini-delivery-table-desktop table,
+  table.mini-delivery-table,
+  .mini-delivery-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  .mini-delivery-table-desktop th,
+  .mini-delivery-table-desktop td {
+    padding-top: 13px !important;
+    padding-bottom: 13px !important;
+    vertical-align: middle !important;
+  }
+
+  .mini-delivery-table-desktop th:nth-child(1),
+  .mini-delivery-table-desktop td:nth-child(1) {
+    width: 11% !important;
+  }
+
+  .mini-delivery-table-desktop th:nth-child(2),
+  .mini-delivery-table-desktop td:nth-child(2) {
+    width: 17% !important;
+  }
+
+  .mini-delivery-table-desktop th:nth-child(3),
+  .mini-delivery-table-desktop td:nth-child(3) {
+    width: 17% !important;
+  }
+
+  .mini-delivery-table-desktop th:nth-child(4),
+  .mini-delivery-table-desktop td:nth-child(4) {
+    width: 22% !important;
+  }
+
+  .mini-delivery-table-desktop th:nth-child(5),
+  .mini-delivery-table-desktop td:nth-child(5) {
+    width: 9% !important;
+    text-align: right !important;
+  }
+
+  .mini-delivery-table-desktop th:nth-child(6),
+  .mini-delivery-table-desktop td:nth-child(6) {
+    width: 10% !important;
+    text-align: center !important;
+  }
+
+  .mini-delivery-table-desktop th:nth-child(7),
+  .mini-delivery-table-desktop td:nth-child(7),
+  .delivery-actions-cell {
+    width: 14% !important;
+    min-width: 178px !important;
+  }
+
+  .delivery-actions-final,
+  .delivery-actions-inline,
+  .delivery-actions-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 7px !important;
+    align-items: center !important;
+    justify-content: end !important;
+  }
+
+  .delivery-actions-final button,
+  .delivery-actions-inline button,
+  .delivery-actions-grid button,
+  .delivery-actions-cell button {
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 0 10px !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-actions-cell .menu-btn,
+  .menu-btn {
+    display: none !important;
+  }
+}
+
+/* Status com aparência mais limpa */
+.inline-flex,
+span[class*="rounded-full"] {
+  box-shadow: none !important;
+}
+
+/* Mobile mantém proporção, mas com cores menos pesadas */
+@media (max-width: 767px) {
+  .mini-mobile-topbar,
+  .mini-bottom-nav {
+    background: rgba(14, 12, 10, 0.98) !important;
+    border-color: var(--mini-border-soft) !important;
+  }
+
+  .mini-bottom-nav button.mini-bottom-active {
+    background: linear-gradient(180deg, #7a4323 0%, #4e2b17 100%) !important;
+  }
+
+  .mini-app-main {
+    background: transparent !important;
+  }
+
+  .mobile-summary-grid > div,
+  .mini-mobile-kpi-grid > div,
+  .mini-delivery-kpis > div,
+  .mini-pagamentos-resumo > div,
+  .mini-cobrancas-resumo > div {
+    background: linear-gradient(180deg, rgba(30, 24, 20, 0.98), rgba(15, 13, 11, 0.98)) !important;
+    border-color: var(--mini-border-soft) !important;
+  }
+
+  .mini-delivery-card,
+  .mini-delivery-card-compact,
+  .mini-venda-list-card,
+  .mini-cliente-card,
+  .mini-pendencia-card-clean {
+    border-radius: 20px !important;
+  }
+}
+
+/* FASE 104, Delivery premium em cards expansíveis no desktop */
+@media (min-width: 768px) {
+  .delivery-refino-final {
+    background: linear-gradient(180deg, rgba(12, 10, 9, 0.98), rgba(5, 5, 5, 0.98)) !important;
+    border-color: rgba(120, 53, 15, 0.42) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-table-desktop {
+    display: none !important;
+  }
+
+  .delivery-refino-final .mini-delivery-mobile-cards {
+    display: grid !important;
+    gap: 12px !important;
+    margin-top: 12px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-empty-card,
+  .delivery-refino-final .mini-delivery-card,
+  .delivery-refino-final .mini-delivery-card-compact {
+    width: 100% !important;
+    overflow: visible !important;
+    border: 1px solid rgba(63, 63, 70, 0.72) !important;
+    border-radius: 22px !important;
+    background: linear-gradient(180deg, rgba(15, 15, 16, 0.98), rgba(8, 8, 9, 0.98)) !important;
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-card-open {
+    border-color: rgba(146, 64, 14, 0.78) !important;
+    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-button {
+    width: 100% !important;
+    min-height: 82px !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(210px, 1.1fr) minmax(260px, 1.7fr) 150px 120px 46px !important;
+    grid-template-areas: "main desc meta status arrow" !important;
+    align-items: center !important;
+    gap: 18px !important;
+    padding: 17px 18px !important;
+    border: 0 !important;
+    border-radius: 22px !important;
+    background: transparent !important;
+    color: #ffffff !important;
+    text-align: left !important;
+    box-shadow: none !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main {
+    grid-area: main !important;
+    min-width: 0 !important;
+    display: grid !important;
+    gap: 5px !important;
+    text-align: left !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main p {
+    margin: 0 !important;
+    color: #ffffff !important;
+    font-size: 16px !important;
+    line-height: 1.16 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.01em !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main span {
+    display: block !important;
+    color: #a1a1aa !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    font-weight: 750 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-button::after {
+    content: attr(data-descricao);
+    grid-area: desc;
+    display: block;
+    min-width: 0;
+    color: #d4d4d8;
+    font-size: 13px;
+    line-height: 1.28;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta {
+    grid-area: meta !important;
+    min-width: 0 !important;
+    display: grid !important;
+    justify-items: end !important;
+    gap: 6px !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta strong {
+    color: #a1a1aa !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    font-weight: 850 !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta span {
+    color: #86efac !important;
+    font-size: 17px !important;
+    line-height: 1 !important;
+    font-weight: 950 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .delivery-refino-final .mini-delivery-status {
+    grid-area: status !important;
+    justify-self: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 96px !important;
+    max-width: 116px !important;
+    min-height: 28px !important;
+    padding: 7px 11px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-arrow {
+    grid-area: arrow !important;
+    justify-self: end !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    border: 1px solid rgba(146, 64, 14, 0.75) !important;
+    border-radius: 999px !important;
+    background: rgba(67, 20, 7, 0.34) !important;
+    color: #fdba74 !important;
+    font-size: 28px !important;
+    line-height: 0.82 !important;
+    font-weight: 900 !important;
+  }
+
+  .delivery-refino-final .mini-delivery-expanded {
+    padding: 0 18px 18px !important;
+    border-top: 1px solid rgba(63, 63, 70, 0.68) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-expanded .mini-delivery-card-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    margin: 14px 0 10px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-card-grid > div,
+  .delivery-refino-final .mini-delivery-card-line {
+    padding: 11px 12px !important;
+    border: 1px solid rgba(39, 39, 42, 0.86) !important;
+    border-radius: 15px !important;
+    background: rgba(3, 3, 3, 0.74) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-label {
+    margin: 0 0 6px !important;
+    color: #71717a !important;
+    font-size: 9px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.16em !important;
+    text-transform: uppercase !important;
+  }
+
+  .delivery-refino-final .mini-delivery-card-grid strong,
+  .delivery-refino-final .mini-delivery-card-line p:last-child {
+    color: #f4f4f5 !important;
+    font-size: 13px !important;
+    line-height: 1.28 !important;
+    font-weight: 800 !important;
+  }
+
+  .delivery-refino-final .mini-delivery-money {
+    color: #86efac !important;
+    font-size: 15px !important;
+    font-weight: 950 !important;
+  }
+
+  .delivery-refino-final .mini-delivery-card-line {
+    margin-bottom: 9px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-description p:last-child {
+    white-space: pre-line !important;
+  }
+
+  .delivery-refino-final .mini-delivery-actions {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(110px, 1fr)) !important;
+    gap: 8px !important;
+    margin-top: 11px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-action {
+    width: 100% !important;
+    min-height: 38px !important;
+    padding: 8px 11px !important;
+    border-radius: 13px !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    border: 1px solid rgba(63, 63, 70, 0.55) !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .delivery-refino-final .mini-delivery-action-green {
+    background: linear-gradient(180deg, #166534, #14532d) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-action-red {
+    background: linear-gradient(180deg, #7f1d1d, #641818) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-action-orange {
+    background: linear-gradient(180deg, #7c2d12, #5b2110) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-action-dark {
+    background: linear-gradient(180deg, #27272a, #18181b) !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .delivery-refino-final .mini-delivery-compact-button {
+    grid-template-columns: minmax(180px, 1fr) minmax(210px, 1.2fr) 130px 108px 40px !important;
+    gap: 12px !important;
+    padding: 15px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-actions {
+    grid-template-columns: repeat(3, minmax(110px, 1fr)) !important;
+  }
+}
+
+/* FASE 105, Delivery cards com cabeçalho, itens em linhas e status inteligente */
+@media (min-width: 768px) {
+  .delivery-refino-final .mini-delivery-list-header {
+    display: grid !important;
+    grid-template-columns: minmax(170px, 1fr) minmax(120px, .7fr) minmax(280px, 1.7fr) 118px 105px 120px 44px !important;
+    gap: 16px !important;
+    align-items: center !important;
+    padding: 0 18px 9px !important;
+    margin: 4px 0 2px !important;
+    color: #9ca3af !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    border-bottom: 1px solid rgba(120, 53, 15, 0.28) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-list-header span:nth-child(4),
+  .delivery-refino-final .mini-delivery-list-header span:nth-child(5),
+  .delivery-refino-final .mini-delivery-list-header span:nth-child(6) {
+    text-align: right !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-button {
+    grid-template-columns: minmax(170px, 1fr) minmax(120px, .7fr) minmax(280px, 1.7fr) 118px 105px 120px 44px !important;
+    grid-template-areas: "main ref desc date value status arrow" !important;
+    gap: 16px !important;
+    min-height: 78px !important;
+    padding: 16px 18px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main {
+    grid-area: main !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-main span {
+    grid-area: ref !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-desc {
+    grid-area: desc !important;
+    display: grid !important;
+    gap: 3px !important;
+    min-width: 0 !important;
+    color: #e4e4e7 !important;
+    font-size: 13px !important;
+    line-height: 1.22 !important;
+    font-weight: 750 !important;
+    text-align: left !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-desc span {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-button::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta {
+    display: contents !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta strong {
+    grid-area: date !important;
+    justify-self: end !important;
+    color: #cbd5e1 !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-meta span {
+    grid-area: value !important;
+    justify-self: end !important;
+    color: #4ade80 !important;
+    font-size: 16px !important;
+    font-weight: 950 !important;
+    white-space: nowrap !important;
+  }
+
+  .delivery-refino-final .mini-delivery-status {
+    grid-area: status !important;
+    justify-self: end !important;
+    min-width: 104px !important;
+    max-width: 118px !important;
+    min-height: 28px !important;
+    border-width: 1px !important;
+  }
+
+  .delivery-refino-final .mini-delivery-status-programado {
+    color: #fde68a !important;
+    background: rgba(120, 53, 15, 0.42) !important;
+    border-color: rgba(245, 158, 11, 0.38) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-status-atrasado {
+    color: #fecaca !important;
+    background: rgba(127, 29, 29, 0.52) !important;
+    border-color: rgba(248, 113, 113, 0.42) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-status-entregue {
+    color: #bbf7d0 !important;
+    background: rgba(20, 83, 45, 0.46) !important;
+    border-color: rgba(74, 222, 128, 0.34) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-status-cancelado {
+    color: #d4d4d8 !important;
+    background: rgba(39, 39, 42, 0.68) !important;
+    border-color: rgba(113, 113, 122, 0.45) !important;
+  }
+
+  .delivery-refino-final .mini-delivery-compact-arrow {
+    grid-area: arrow !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .delivery-refino-final .mini-delivery-list-header,
+  .delivery-refino-final .mini-delivery-compact-button {
+    grid-template-columns: minmax(150px, 1fr) minmax(210px, 1.3fr) 112px 100px 106px 40px !important;
+    grid-template-areas: "main desc date value status arrow" !important;
+  }
+
+  .delivery-refino-final .mini-delivery-list-header span:nth-child(2) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .mini-delivery-list-header {
+    display: none !important;
+  }
+
+  .mini-delivery-compact-desc {
+    display: grid !important;
+    gap: 3px !important;
+    margin-top: 6px !important;
+    color: #d4d4d8 !important;
+    font-size: 12px !important;
+    line-height: 1.22 !important;
+    font-weight: 800 !important;
+  }
+
+  .mini-delivery-status-atrasado {
+    color: #fecaca !important;
+    background: rgba(127, 29, 29, 0.55) !important;
+    border-color: rgba(248, 113, 113, 0.42) !important;
+  }
+}
