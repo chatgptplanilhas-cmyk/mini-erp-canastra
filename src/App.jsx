@@ -3898,19 +3898,27 @@ Delber Vilaça`
                       {cliente.ativo === false ? 'Inativo' : 'Ativo'}
                     </span>
                   </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button onClick={() => editarCliente(cliente)} className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl">
+                  <td className="p-4 mini-clientes-acoes-td">
+                    <div className="mini-clientes-acoes-inline">
+                      <button
+                        type="button"
+                        onClick={() => editarCliente(cliente)}
+                        className="mini-clientes-btn mini-clientes-btn-primary"
+                      >
                         Editar
                       </button>
 
-                      <button onClick={() => alternarStatusCliente(cliente)} className="bg-orange-950 hover:bg-orange-900 px-4 py-2 rounded-xl">
-                        {cliente.ativo === false ? 'Reativar' : 'Inativar'}
-                      </button>
-
-                      <button onClick={() => excluirCliente(cliente)} className="bg-red-900 hover:bg-red-800 px-4 py-2 rounded-xl">
-                        Excluir
-                      </button>
+                      <details className="mini-clientes-menu">
+                        <summary aria-label="Mais ações">⋮</summary>
+                        <div className="mini-clientes-menu-list">
+                          <button type="button" onClick={() => alternarStatusCliente(cliente)}>
+                            {cliente.ativo === false ? 'Reativar' : 'Inativar'}
+                          </button>
+                          <button type="button" onClick={() => excluirCliente(cliente)} className="danger">
+                            Excluir
+                          </button>
+                        </div>
+                      </details>
                     </div>
                   </td>
                 </tr>
@@ -4126,8 +4134,8 @@ Delber Vilaça`
                 </div>
               </div>
 
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full min-w-[760px]">
+              <div className="hidden lg:block overflow-hidden mini-cobrancas-desktop-wrap">
+                <table className="w-full mini-cobrancas-desktop-table">
                   <thead className="bg-black text-left text-xs uppercase text-zinc-500">
                     <tr>
                       <th className="p-4">Cliente</th>
@@ -4158,12 +4166,27 @@ Delber Vilaça`
                           <td className="p-4 font-black text-green-300">{moeda(valorAtualLinha)}</td>
                           <td className="p-4 font-black text-yellow-300">{moeda(valorAnteriorLinha)}</td>
                           <td className="p-4 font-black text-orange-300">{moeda(valorLinha)}</td>
-                          <td className="p-4">
-                            <div className="grid grid-cols-2 gap-2 min-w-[220px]">
-                              <button onClick={() => cobrarWhatsAppConsolidado(clientePendencia, itensCliente, true)} className="bg-green-800 hover:bg-green-700 px-3 py-2 rounded-xl font-bold text-xs">Cobrar cliente</button>
-                              <button onClick={() => cobrarWhatsApp(pendencia)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-xl font-bold text-xs">Só este item</button>
-                              <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-xl font-bold text-xs">Confirmar</button>
-                              <button onClick={() => editarPendenciaFinanceira(pendencia)} className="bg-orange-950 hover:bg-orange-900 px-3 py-2 rounded-xl font-bold text-xs">Editar</button>
+                          <td className="p-4 mini-cobrancas-acoes-td">
+                            <div className="mini-cobrancas-acoes-inline">
+                              <button
+                                onClick={() => cobrarWhatsAppConsolidado(clientePendencia, itensCliente, true)}
+                                className="mini-cobrancas-btn mini-cobrancas-btn-primary"
+                              >
+                                Cobrar
+                              </button>
+                              <button
+                                onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)}
+                                className="mini-cobrancas-btn mini-cobrancas-btn-secondary"
+                              >
+                                Confirmar
+                              </button>
+                              <details className="mini-cobrancas-menu">
+                                <summary aria-label="Mais ações">⋮</summary>
+                                <div className="mini-cobrancas-menu-list">
+                                  <button onClick={() => cobrarWhatsApp(pendencia)}>Só este item</button>
+                                  <button onClick={() => editarPendenciaFinanceira(pendencia)}>Editar</button>
+                                </div>
+                              </details>
                             </div>
                           </td>
                         </tr>
@@ -4756,82 +4779,171 @@ Delber Vilaça`
           })()}
         </div>
 
-        <div className="hidden lg:block mini-table-wrap overflow-x-auto rounded-2xl border border-zinc-900">
-          <table className="mini-data-table mini-mobile-card-table mini-pendencias-card-table w-full min-w-[880px]">
-            <thead className="bg-zinc-950">
-              <tr className="text-left text-zinc-500 uppercase text-xs">
-                <th className="p-4">Cliente</th>
-                <th className="p-4">Referência</th>
-                <th className="p-4">Data venda</th>
-                <th className="p-4">Vencimento</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Saldo</th>
-                <th className="p-4">Ações</th>
-              </tr>
-            </thead>
+        <div className="hidden lg:block mini-pendencias-desktop-premium">
+          {listaPendencias.length === 0 ? (
+            <div className="mini-pend-desktop-empty">
+              Nenhuma pendência encontrada.
+            </div>
+          ) : (() => {
+            const hoje = dataHoje()
+            const gruposClientes = listaPendencias.reduce((acc, pendencia) => {
+              const cliente = clienteDaPendencia(pendencia)
+              const chave = String(pendencia.cliente_id || pendencia.vendas?.cliente_id || `${cliente.nome}-${cliente.referencia}` || pendencia.id)
+              const valor = Number(pendencia.saldo_restante || 0)
+              const vencida = !pendencia.vencimento || pendencia.vencimento <= hoje
 
-            <tbody>
-              {listaPendencias.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="p-5 text-zinc-500">
-                    Nenhuma pendência encontrada.
-                  </td>
-                </tr>
-              )}
+              if (!acc[chave]) {
+                acc[chave] = {
+                  key: chave,
+                  cliente,
+                  itens: [],
+                  total: 0,
+                  totalVencido: 0,
+                  totalSaldoAnterior: 0,
+                  proximoVencimento: '',
+                  atrasadas: 0,
+                }
+              }
 
-              {listaPendencias.map((pendencia) => {
-                const clientePendencia = clienteDaPendencia(pendencia)
-                const ehHerdada = pendenciaEhHerdada(pendencia)
-                return (
-                <tr key={pendencia.id} className="border-t border-zinc-900">
-                  <td className="p-4 font-semibold">{clientePendencia.nome || 'Cliente não informado'}</td>
-                  <td className="p-4 text-zinc-400">{clientePendencia.referencia || 'Sem referência'}</td>
-                  <td className="p-4 text-zinc-300 font-semibold">{ehHerdada ? 'Saldo anterior' : dataBR(pendencia.vendas?.data_venda)}</td>
-                  <td className="p-4">{dataBR(pendencia.vencimento)}</td>
-                  <td className="p-4">
-                    <span className="bg-orange-950 text-orange-300 px-3 py-1 rounded-xl text-xs">
-                      {normalizarStatus(pendencia.status)}
-                    </span>
-                  </td>
-                  <td className="p-4 text-orange-300 font-bold">{moeda(pendencia.saldo_restante)}</td>
-                  <td className="p-4">
-                    <div className="grid grid-cols-2 gap-2 min-w-[260px]">
-                      <button onClick={() => cobrarWhatsApp(pendencia)} className="bg-emerald-700 hover:bg-emerald-600 px-3 py-2 rounded-xl text-sm">
-                        Cobrar
+              acc[chave].itens.push(pendencia)
+              acc[chave].total += valor
+
+              if (vencida) {
+                acc[chave].totalVencido += valor
+                acc[chave].atrasadas += 1
+              }
+
+              if (pendenciaContaComoSaldoAnterior(pendencia)) {
+                acc[chave].totalSaldoAnterior += valor
+              }
+
+              if (pendencia.vencimento && (!acc[chave].proximoVencimento || pendencia.vencimento < acc[chave].proximoVencimento)) {
+                acc[chave].proximoVencimento = pendencia.vencimento
+              }
+
+              return acc
+            }, {})
+
+            const listaClientesAgrupados = Object.values(gruposClientes).sort((a, b) => {
+              if (b.totalVencido !== a.totalVencido) return b.totalVencido - a.totalVencido
+              if (String(a.proximoVencimento || '') !== String(b.proximoVencimento || '')) {
+                return String(a.proximoVencimento || '9999-12-31').localeCompare(String(b.proximoVencimento || '9999-12-31'))
+              }
+              return (a.cliente.nome || '').localeCompare(b.cliente.nome || '')
+            })
+
+            return (
+              <div className="mini-pend-desktop-lista">
+                {listaClientesAgrupados.map((grupoCliente) => {
+                  const aberto = pendenciaClienteAberto === grupoCliente.key
+                  const itensOrdenados = [...grupoCliente.itens].sort((a, b) => String(a.vencimento || '').localeCompare(String(b.vencimento || '')))
+                  const statusGeral = grupoCliente.atrasadas > 0 ? 'Atrasado' : 'Em dia'
+
+                  return (
+                    <article key={grupoCliente.key} className={`mini-pend-desktop-card ${aberto ? 'aberto' : ''}`}>
+                      <button
+                        type="button"
+                        className="mini-pend-desktop-head"
+                        onClick={() => setPendenciaClienteAberto(aberto ? null : grupoCliente.key)}
+                      >
+                        <div className="mini-pend-avatar" aria-hidden="true">
+                          {(grupoCliente.cliente.nome || '?').slice(0, 1).toUpperCase()}
+                        </div>
+
+                        <div className="mini-pend-desktop-cliente">
+                          <strong>{grupoCliente.cliente.nome || 'Cliente não informado'}</strong>
+                          <span>{grupoCliente.cliente.referencia || 'Sem referência'}</span>
+                        </div>
+
+                        <div className="mini-pend-desktop-status-wrap">
+                          <span className={statusGeral === 'Atrasado' ? 'mini-pend-badge atrasado' : 'mini-pend-badge em-dia'}>
+                            {statusGeral}
+                          </span>
+                        </div>
+
+                        <div className="mini-pend-desktop-meta">
+                          <strong>{grupoCliente.itens.length} pendência{grupoCliente.itens.length === 1 ? '' : 's'}</strong>
+                          <span>Próximo venc.: {dataBR(grupoCliente.proximoVencimento)}</span>
+                        </div>
+
+                        <div className="mini-pend-desktop-total">
+                          <span>Total em aberto</span>
+                          <strong>{moeda(grupoCliente.total)}</strong>
+                          {grupoCliente.totalSaldoAnterior > 0 && <small>Saldo anterior: {moeda(grupoCliente.totalSaldoAnterior)}</small>}
+                        </div>
+
+                        <span className="mini-pend-desktop-seta">{aberto ? '⌃' : '⌄'}</span>
                       </button>
 
-                      <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-green-700 hover:bg-green-600 px-3 py-2 rounded-xl text-sm">
-                        Registrar
-                      </button>
+                      {aberto && (
+                        <div className="mini-pend-desktop-detalhes">
+                          <div className="mini-pend-desktop-table-head">
+                            <span>Tipo / referência</span>
+                            <span>Data venda</span>
+                            <span>Vencimento</span>
+                            <span>Status</span>
+                            <span>Saldo</span>
+                            <span>Ações</span>
+                          </div>
 
-                      <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-zinc-700 hover:bg-zinc-600 px-3 py-2 rounded-xl text-sm col-span-2">
-                        Confirmar pagamento
-                      </button>
+                          {itensOrdenados.map((pendencia) => {
+                            const ehHerdada = pendenciaEhHerdada(pendencia)
+                            const vencida = !pendencia.vencimento || pendencia.vencimento <= hoje
+                            const statusLinha = vencida ? 'Atrasado' : 'Em dia'
 
-                      <button onClick={() => editarPendenciaFinanceira(pendencia)} className="bg-orange-950 hover:bg-orange-900 px-3 py-2 rounded-xl text-sm col-span-2">
-                        Editar pendência
-                      </button>
+                            return (
+                              <div key={pendencia.id} className="mini-pend-desktop-row">
+                                <div className="mini-pend-tipo">
+                                  <span className={ehHerdada ? 'mini-pend-icone saldo' : 'mini-pend-icone venda'}>{ehHerdada ? '◷' : '▣'}</span>
+                                  <div>
+                                    <strong>{ehHerdada ? 'Saldo anterior' : `Venda #${pendencia.vendas?.numero_venda || ''}`}</strong>
+                                    <small>{pendencia.observacao_manual || (ehHerdada ? 'Saldo herdado de planilha antiga' : 'Venda realizada')}</small>
+                                  </div>
+                                </div>
 
-                      {!ehHerdada && (
-                        <button
-                          onClick={() =>
-                            excluirVenda({
-                              id: pendencia.venda_id,
-                              numero_venda: pendencia.vendas?.numero_venda,
-                            })
-                          }
-                          className="bg-red-900 hover:bg-red-800 px-3 py-2 rounded-xl text-sm col-span-2"
-                        >
-                          Excluir venda
-                        </button>
+                                <div className="mini-pend-cell">{ehHerdada ? '—' : dataBR(pendencia.vendas?.data_venda)}</div>
+                                <div className={vencida ? 'mini-pend-cell vencido' : 'mini-pend-cell em-dia'}>{dataBR(pendencia.vencimento)}</div>
+                                <div><span className={vencida ? 'mini-pend-badge atrasado' : 'mini-pend-badge em-dia'}>{statusLinha}</span></div>
+                                <div className="mini-pend-saldo">{moeda(pendencia.saldo_restante)}</div>
+
+                                <div className="mini-pend-acoes-desktop">
+                                  <button type="button" onClick={() => cobrarWhatsApp(pendencia)} className="acao-cobrar">Cobrar</button>
+                                  <button type="button" onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="acao-confirmar">Confirmar</button>
+                                  <button type="button" onClick={() => editarPendenciaFinanceira(pendencia)} className="acao-mais">Editar</button>
+                                  {ehHerdada ? (
+                                    <button type="button" onClick={() => excluirSaldoAnterior(pendencia)} className="acao-excluir">Excluir</button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        excluirVenda({
+                                          id: pendencia.venda_id,
+                                          numero_venda: pendencia.vendas?.numero_venda,
+                                        })
+                                      }
+                                      className="acao-excluir"
+                                    >
+                                      Excluir venda
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+
+                          {grupoCliente.totalSaldoAnterior > 0 && (
+                            <div className="mini-pend-desktop-nota">
+                              Saldo anterior identificado no grupo. Confira origem e vencimento antes de confirmar baixa definitiva.
+                            </div>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  </td>
-                </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                    </article>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
       </section>
     )
@@ -5965,28 +6077,33 @@ Delber Vilaça`
                       {indicadores.markup > 0 ? indicadores.markup.toFixed(2).replace('.', ',') : '0,00'}
                     </td>
                     <td className="p-3 align-middle">
-                      <div className="produto-acoes-vertical produto-acoes-compactas">
-                        <button type="button" onClick={() => editarProduto(produto)} className="bg-zinc-800 hover:bg-zinc-700">
+                      <div className="produto-acoes-inline">
+                        <button type="button" onClick={() => editarProduto(produto)} className="produto-acao produto-acao-secundaria">
                           Editar
                         </button>
 
                         <button
                           type="button"
                           onClick={() => alternarStatusProduto(produto)}
-                          className={produto.ativo ? 'bg-orange-950 hover:bg-orange-900' : 'bg-green-900 hover:bg-green-800'}
+                          className={produto.ativo ? 'produto-acao produto-acao-alerta' : 'produto-acao produto-acao-sucesso'}
                         >
                           {produto.ativo ? 'Inativar' : 'Ativar'}
                         </button>
 
-                        {produto.ativo && (
-                          <button type="button" onClick={() => arquivarProduto(produto)} className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700">
-                            Arquivar
-                          </button>
-                        )}
+                        <details className="produto-acoes-menu">
+                          <summary aria-label="Mais ações">⋮</summary>
+                          <div className="produto-acoes-menu-list">
+                            {produto.ativo && (
+                              <button type="button" onClick={() => arquivarProduto(produto)}>
+                                Arquivar
+                              </button>
+                            )}
 
-                        <button type="button" onClick={() => excluirProduto(produto)} className="bg-red-950 hover:bg-red-900 border border-red-900">
-                          Excluir
-                        </button>
+                            <button type="button" onClick={() => excluirProduto(produto)} className="danger">
+                              Excluir
+                            </button>
+                          </div>
+                        </details>
                       </div>
                     </td>
                   </tr>
@@ -6896,33 +7013,33 @@ Delber Vilaça`
       .reduce((acc, item) => acc + Number(item.valor_total || 0), 0)
 
     return (
-      <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-8">
-        <div className="mini-delivery-head flex items-center justify-between gap-4 mb-6">
+      <section className="mobile-panel-card delivery-refino-final bg-black border border-orange-950 rounded-[28px] p-5">
+        <div className="mini-delivery-head flex items-center justify-between gap-4 mb-3">
           <div>
             <h2 className="mini-section-title mini-delivery-title mini-mobile-card-section text-3xl font-bold">Delivery</h2>
-            <p className="text-zinc-500 mt-2">Bloco operacional para programar entregas. Depois de entregar, use Entregar + venda.</p>
+            <p className="text-zinc-400 mt-1 delivery-subtitle">Bloco operacional para programar entregas. Depois de entregar, use Entregar + venda.</p>
           </div>
 
           <input
             value={buscaDelivery}
             onChange={(e) => setBuscaDelivery(e.target.value)}
             placeholder="Buscar cliente, venda, local ou status"
-            className="mini-delivery-search w-full lg:w-[440px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+            className="mini-delivery-search w-full lg:w-[440px] bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
           />
         </div>
 
-        <section className="mini-delivery-kpis grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <section className="mini-delivery-kpis delivery-kpis-compact grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
           <CardResumo titulo="Programadas" valor={totalProgramadas} classe="text-orange-300" />
           <CardResumo titulo="Entregues" valor={totalEntregues} classe="text-green-300" />
           <CardResumo titulo="Canceladas" valor={totalCanceladas} classe="text-red-300" />
           <CardResumo titulo="Valor programado" valor={moeda(totalValorProgramado)} classe="text-green-300" />
         </section>
 
-        <form onSubmit={salvarDelivery} className="mini-delivery-form grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <form onSubmit={salvarDelivery} className="mini-delivery-form delivery-form-compact grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
           <select
             value={formDelivery.venda_id}
             onChange={(e) => preencherDeliveryPorVenda(e.target.value)}
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
           >
             <option value="">Vincular venda, opcional</option>
             {vendas.map((venda) => (
@@ -6942,7 +7059,7 @@ Delber Vilaça`
                 referencia: cliente?.referencia || formDelivery.referencia,
               })
             }}
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
           >
             <option value="">Selecionar cliente</option>
             {clientes
@@ -6965,7 +7082,7 @@ Delber Vilaça`
               onFocus={abrirCalendario}
               value={formDelivery.data_pedido}
               onChange={(e) => setFormDelivery({ ...formDelivery, data_pedido: e.target.value })}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
             />
           </div>
 
@@ -6980,7 +7097,7 @@ Delber Vilaça`
               onFocus={abrirCalendario}
               value={formDelivery.data_entrega}
               onChange={(e) => setFormDelivery({ ...formDelivery, data_entrega: e.target.value })}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
             />
           </div>
 
@@ -6988,32 +7105,32 @@ Delber Vilaça`
             value={formDelivery.referencia}
             onChange={(e) => setFormDelivery({ ...formDelivery, referencia: e.target.value })}
             placeholder="Referência"
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
           />
 
           <input
             value={formDelivery.local_entrega}
             onChange={(e) => setFormDelivery({ ...formDelivery, local_entrega: e.target.value })}
             placeholder="Local de entrega"
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
           />
 
           <textarea
             value={formDelivery.descricao}
             onChange={(e) => setFormDelivery({ ...formDelivery, descricao: e.target.value })}
             placeholder="Itens do pedido" 
-            rows={5}
-            className="lg:col-span-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-y min-h-[140px] leading-relaxed"
+            rows={3}
+            className="lg:col-span-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-y min-h-[74px] leading-relaxed"
           />
 
           <input
             value={formDelivery.valor_total}
             onChange={(e) => setFormDelivery({ ...formDelivery, valor_total: e.target.value })}
             placeholder="Valor total"
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
           />
 
-          <button className="lg:col-span-4 bg-orange-950 hover:bg-orange-900 rounded-2xl p-4 font-semibold">
+          <button className="lg:col-span-4 bg-orange-950 hover:bg-orange-900 rounded-2xl p-3 font-semibold">
             {editandoDeliveryId ? 'Salvar edição' : 'Cadastrar entrega'}
           </button>
 
@@ -7021,7 +7138,7 @@ Delber Vilaça`
             <button
               type="button"
               onClick={limparDelivery}
-              className="lg:col-span-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl p-4 font-semibold"
+              className="lg:col-span-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl p-3 font-semibold"
             >
               Cancelar edição
             </button>
@@ -7181,16 +7298,24 @@ Delber Vilaça`
           })}
         </div>
 
-        <div className="mini-delivery-table-desktop overflow-auto rounded-2xl border border-zinc-900">
-          <table className="w-full min-w-[1250px]">
+        <div className="mini-delivery-table-desktop delivery-table-refino overflow-auto rounded-2xl border border-zinc-900">
+          <table className="w-full min-w-[1120px] delivery-table-refino-final">
+            <colgroup>
+              <col className="col-pedido" />
+              <col className="col-entrega" />
+              <col className="col-cliente" />
+              <col className="col-referencia" />
+              <col className="col-itens" />
+              <col className="col-valor" />
+              <col className="col-status" />
+              <col className="col-acoes" />
+            </colgroup>
             <thead className="bg-zinc-950">
               <tr className="text-left text-zinc-500 uppercase text-xs">
                 <th className="p-4">Pedido</th>
                 <th className="p-4">Entrega</th>
-                <th className="p-4">Venda</th>
                 <th className="p-4">Cliente</th>
                 <th className="p-4">Referência</th>
-                <th className="p-4">Local</th>
                 <th className="p-4">Itens / descrição</th>
                 <th className="p-4">Valor</th>
                 <th className="p-4">Status</th>
@@ -7201,7 +7326,7 @@ Delber Vilaça`
             <tbody>
               {deliveriesFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan="10" className="p-5 text-zinc-500">
+                  <td colSpan="8" className="p-5 text-zinc-500">
                     Nenhuma entrega encontrada.
                   </td>
                 </tr>
@@ -7211,15 +7336,13 @@ Delber Vilaça`
                 <tr key={item.id} className="border-t border-zinc-900">
                   <td className="p-4 text-zinc-400">{dataBR(item.data_pedido)}</td>
                   <td className="p-4 text-white font-semibold">{dataBR(item.data_entrega)}</td>
-                  <td className="p-4">{item.vendas?.numero_venda ? `#${item.vendas.numero_venda}` : 'Avulsa'}</td>
                   <td className="p-4 font-semibold">{item.clientes?.nome}</td>
                   <td className="p-4 text-zinc-400">{item.referencia || item.clientes?.referencia || 'Sem referência'}</td>
-                  <td className="p-4 text-zinc-300">{item.local_entrega || 'Sem local'}</td>
                   <td className="p-4 text-zinc-300 max-w-[320px] whitespace-pre-line leading-relaxed">{item.descricao || 'Sem descrição'}</td>
                   <td className="p-4 text-green-300">{moeda(item.valor_total)}</td>
-                  <td className="p-4">
+                  <td className="p-4 delivery-status-td">
                     <span
-                      className={`px-3 py-1 rounded-xl text-xs font-semibold ${
+                      className={`delivery-status-chip px-3 py-1 rounded-xl text-xs font-semibold ${
                         item.status === 'Entregue'
                           ? 'bg-green-950 text-green-300'
                           : item.status === 'Cancelado'
@@ -7230,42 +7353,49 @@ Delber Vilaça`
                       {item.status}
                     </span>
                   </td>
-                  <td className="p-4">
-                    <div className="flex flex-wrap gap-2">
+                  <td className="p-4 delivery-actions-td">
+                    <div className="mini-delivery-acoes-inline delivery-actions-inline-final">
                       {item.status !== 'Cancelado' && (
                         <button
                           onClick={() => alterarStatusDelivery(item, 'Cancelado')}
-                          className="bg-red-800 hover:bg-red-700 px-4 py-2 rounded-xl font-semibold"
+                          className="delivery-acao delivery-acao-alerta"
                         >
                           Cancelar
-                        </button>
-                      )}
-
-                      {item.status !== 'Programado' && (
-                        <button
-                          onClick={() => alterarStatusDelivery(item, 'Programado')}
-                          className="bg-orange-950 hover:bg-orange-900 px-4 py-2 rounded-xl font-semibold"
-                        >
-                          Programar
                         </button>
                       )}
 
                       {!item.venda_id && item.status !== 'Cancelado' && (
                         <button
                           onClick={() => abrirModalDeliveryVenda(item)}
-                          className="bg-green-800 hover:bg-green-700 px-4 py-2 rounded-xl font-semibold"
+                          className="delivery-acao delivery-acao-sucesso"
                         >
                           Entregar + venda
                         </button>
                       )}
 
-                      <button onClick={() => editarDelivery(item)} className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl">
-                        Editar
-                      </button>
+                      <details className="mini-delivery-acoes-menu delivery-menu-final">
+                        <summary aria-label="Mais ações">⋮</summary>
+                        <div className="mini-delivery-acoes-menu-list">
+                          <div className="delivery-local-menu-info">
+                            <span>Local</span>
+                            <strong>{item.local_entrega || 'Sem local'}</strong>
+                          </div>
 
-                      <button onClick={() => excluirDelivery(item)} className="bg-red-900 hover:bg-red-800 px-4 py-2 rounded-xl">
-                        Excluir
-                      </button>
+                          {item.status !== 'Programado' && (
+                            <button type="button" onClick={() => alterarStatusDelivery(item, 'Programado')}>
+                              Programar
+                            </button>
+                          )}
+
+                          <button type="button" onClick={() => editarDelivery(item)}>
+                            Editar
+                          </button>
+
+                          <button type="button" onClick={() => excluirDelivery(item)} className="danger">
+                            Excluir
+                          </button>
+                        </div>
+                      </details>
                     </div>
                   </td>
                 </tr>
@@ -8323,15 +8453,13 @@ Delber Vilaça`
         </div>
       )}
 
-      <div className="w-full max-w-full overflow-x-hidden flex flex-col lg:grid lg:grid-cols-[280px_1fr]">
-        <aside className="bg-black border-b lg:border-b-0 lg:border-r border-orange-950 p-4 lg:p-6 lg:min-h-screen lg:max-h-screen lg:overflow-y-auto">
+      <div className="mini-shell w-full max-w-full overflow-x-hidden flex flex-col lg:grid lg:grid-cols-[240px_1fr]">
+        <aside className="mini-desktop-sidebar bg-black border-b lg:border-b-0 lg:border-r border-orange-950 p-4 lg:p-6 lg:min-h-screen lg:max-h-screen lg:overflow-y-auto">
           <div className="mb-10">
             <p className="text-orange-400 uppercase tracking-[6px] text-xs mb-4">Sistema</p>
 
-            <h1 className="text-4xl font-bold leading-tight">
-              Queijos
-              <br />
-              Serra
+            <h1 className="mini-sidebar-brand-title text-4xl font-bold leading-tight">
+              Queijos Serra
               <br />
               da Canastra
             </h1>
