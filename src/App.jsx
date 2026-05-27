@@ -43,15 +43,18 @@ export default function App() {
   const [cobrancaExpandidaId, setCobrancaExpandidaId] = useState(null)
   const [pendenciaLocalAberto, setPendenciaLocalAberto] = useState('')
   const [pendenciaClienteAberto, setPendenciaClienteAberto] = useState(null)
-  const [filtroDelivery, setFiltroDelivery] = useState('Todos')
+  const [filtroDelivery, setFiltroDelivery] = useState('Programado')
+  const [listaPecasEntreguesAberta, setListaPecasEntreguesAberta] = useState(false)
+  const [dataPecasEntregues, setDataPecasEntregues] = useState(dataHoje())
   const [buscaPedidosFornecedor, setBuscaPedidosFornecedor] = useState('')
   const [buscaRoteiroVendas, setBuscaRoteiroVendas] = useState('')
   const [listaPedidosFornecedorAberta, setListaPedidosFornecedorAberta] = useState(false)
+  const pagamentoDeliveryInicial = { forma_pagamento: 'Pix', valor: '' }
+
   const [modalDeliveryVenda, setModalDeliveryVenda] = useState({
     aberto: false,
     item: null,
-    status: 'PAGO',
-    valorPago: '',
+    pagamentos: [pagamentoDeliveryInicial],
     vencimento: '',
   })
 
@@ -194,7 +197,16 @@ export default function App() {
   }
 
   function numero(valor) {
-    return Number(String(valor || 0).replace(',', '.')) || 0
+    const texto = String(valor ?? '').trim()
+
+    if (!texto) return 0
+
+    const limpo = texto
+      .replace(/[^0-9,.-]/g, '')
+      .replace(/\.(?=\d{3}(\D|$))/g, '')
+      .replace(',', '.')
+
+    return Number(limpo) || 0
   }
 
   function dataHoje() {
@@ -400,8 +412,136 @@ export default function App() {
     })
   }
 
+  function moedaInput(valor) {
+    const numeroValor = numero(valor)
+
+    if (!numeroValor) return ''
+
+    return moeda(numeroValor)
+  }
+
   function percentual(valor) {
     return `${Number(valor || 0).toFixed(2).replace('.', ',')}%`
+  }
+
+
+  function chaveFormaPagamento(valor) {
+    return normalizarTexto(valor).replace(/[^a-z0-9]/g, '')
+  }
+
+  function formasPagamentoDelivery() {
+    const formasBase = [
+      'Pix',
+      'Dinheiro',
+      'Débito Master | Visa',
+      'Débito American | Cielo',
+      'Crédito Master | Visa',
+      'Crédito American | Elo',
+      'Link de pagamento',
+      'Em aberto / Fiado',
+    ]
+
+    const formasTaxas = (taxas || [])
+      .map((taxa) => taxa.forma_pagamento)
+      .filter(Boolean)
+      .filter((forma) => !chaveFormaPagamento(forma).includes('fiado') && !chaveFormaPagamento(forma).includes('emaberto'))
+
+    return [...formasBase, ...formasTaxas].filter((forma, index, lista) =>
+      lista.findIndex((item) => chaveFormaPagamento(item) === chaveFormaPagamento(forma)) === index
+    )
+  }
+
+  function buscarTaxaPorFormaPagamento(formaPagamento) {
+    const chaveSelecionada = chaveFormaPagamento(formaPagamento)
+
+    return (taxas || []).find((taxa) => chaveFormaPagamento(taxa.forma_pagamento) === chaveSelecionada)
+      || (taxas || []).find((taxa) => chaveSelecionada.includes(chaveFormaPagamento(taxa.forma_pagamento)) || chaveFormaPagamento(taxa.forma_pagamento).includes(chaveSelecionada))
+      || null
+  }
+
+  function calcularResumoPagamentosDelivery(pagamentosModal = [], valorTotal = 0) {
+    const existePagamentoEmAberto = (pagamentosModal || []).some((pagamento) => {
+      const chave = chaveFormaPagamento(pagamento.forma_pagamento || '')
+      return chave.includes('emaberto') || chave.includes('fiado')
+    })
+
+    const pagamentosValidos = existePagamentoEmAberto
+      ? []
+      : (pagamentosModal || [])
+        .map((pagamento) => {
+          const forma = pagamento.forma_pagamento || 'Pix'
+          const valor = numero(pagamento.valor)
+          const taxa = buscarTaxaPorFormaPagamento(forma)
+          const percentualTaxa = Number(taxa?.taxa_percentual || 0)
+          const valorTaxa = valor * (percentualTaxa / 100)
+
+          return {
+            forma_pagamento: forma,
+            valor_pago: valor,
+            taxa_percentual: percentualTaxa,
+            valor_taxa: valorTaxa,
+            valor_liquido: valor - valorTaxa,
+          }
+        })
+        .filter((pagamento) => pagamento.valor_pago > 0)
+
+    const totalRecebido = existePagamentoEmAberto ? 0 : pagamentosValidos.reduce((soma, pagamento) => soma + pagamento.valor_pago, 0)
+    const taxaTotal = pagamentosValidos.reduce((soma, pagamento) => soma + pagamento.valor_taxa, 0)
+    const liquidoRecebido = Math.max(totalRecebido - taxaTotal, 0)
+    const saldoRestante = Math.max(Number(valorTotal || 0) - totalRecebido, 0)
+    const percentualEfetivoTaxa = Number(valorTotal || 0) > 0 ? (taxaTotal / Number(valorTotal || 0)) * 100 : 0
+    const statusFinal = totalRecebido <= 0 ? 'EM ABERTO' : saldoRestante <= 0.005 ? 'PAGO' : 'PARCIAL'
+    const formas = pagamentosValidos.map((pagamento) => pagamento.forma_pagamento)
+    const formaResumo = pagamentosValidos.length === 0
+      ? 'Fiado / Em aberto'
+      : pagamentosValidos.length === 1
+        ? pagamentosValidos[0].forma_pagamento
+        : `Múltiplo: ${formas.join(' + ')}`
+
+    return {
+      pagamentosValidos,
+      totalRecebido,
+      taxaTotal,
+      liquidoRecebido,
+      saldoRestante,
+      percentualEfetivoTaxa,
+      statusFinal,
+      formaResumo,
+    }
+  }
+
+
+  function destinoFinanceiroDelivery(item) {
+    if (!item || item.status !== 'Entregue' || !item.venda_id) return null
+
+    const statusVenda = normalizarStatus(item.vendas?.status || '')
+    const numeroVenda = item.vendas?.numero_venda ? `#${item.vendas.numero_venda}` : 'venda registrada'
+    const forma = item.vendas?.forma_pagamento || 'Forma não informada'
+
+    if (statusVenda === 'PAGO') {
+      return {
+        titulo: 'Financeiro',
+        texto: `Pago, lançado em Vendas ${numeroVenda}`,
+        detalhe: forma,
+        classe: 'mini-destino-pago',
+      }
+    }
+
+    if (statusVenda === 'PARCIAL') {
+      return {
+        titulo: 'Financeiro',
+        texto: `Parcial, venda ${numeroVenda}`,
+        detalhe: 'Saldo enviado para Pendências e Cobranças',
+        classe: 'mini-destino-parcial',
+      }
+    }
+
+    return {
+      titulo: 'Financeiro',
+      texto: `Em aberto, venda ${numeroVenda}`,
+      detalhe: 'Valor enviado para Pendências e Cobranças',
+      classe: 'mini-destino-aberto',
+    }
   }
 
   function calcularIndicadoresProduto(produto) {
@@ -695,7 +835,11 @@ export default function App() {
         vendas (
           numero_venda,
           data_venda,
-          valor_total
+          valor_total,
+          valor_liquido,
+          valor_taxa,
+          forma_pagamento,
+          status
         )
       `)
       .order('data_entrega', { ascending: true })
@@ -1582,26 +1726,24 @@ Queijos Serra da Canastra`
     return Boolean(dataVenda && dataVenda < inicioMesAtual())
   }
 
-  function montarMensagemCobranca({ cliente, valor, detalhe = '', titulo = 'da sua compra', mostrarValorFinal = true }) {
+  function montarMensagemCobranca({ cliente, valor }) {
     const nomeCliente = cliente.nome || 'cliente'
-    const detalheTexto = detalhe ? `
-${detalhe}
-` : ''
-    const valorTexto = mostrarValorFinal ? `
-Valor: ${valor}
-` : ''
 
     return `Olá, ${nomeCliente}. Tudo bem?
 
-Conforme combinado, seguem os dados para o pagamento via Pix ${titulo}:${detalheTexto}
-Chave Pix:
+Conforme combinado, seguem os dados para o pagamento.
+
+Valor: ${valor}
+
+Chave Pix (e-mail):
+
 queijosserradacanastra@hotmail.com
 
 Dados para conferência:
 Delber Juliano Vilaça
 Stone Pagamentos S.A.
-${valorTexto}
-Assim que realizar a transferência, peço a gentileza de enviar o comprovante para registro.
+
+Após a transferência, enviar o comprovante para registro.
 
 Atenciosamente,
 Delber Vilaça | Queijos Serra da Canastra`
@@ -2550,9 +2692,14 @@ Delber Vilaça`
 
     if (!confirmar) return
 
+    const dadosAtualizacaoDelivery = {
+      status: novoStatus,
+      data_confirmacao_entrega: novoStatus === 'Entregue' ? dataHoje() : null,
+    }
+
     const { error } = await supabase
       .from('delivery')
-      .update({ status: novoStatus })
+      .update(dadosAtualizacaoDelivery)
       .eq('id', item.id)
 
     if (error) {
@@ -2607,8 +2754,7 @@ Delber Vilaça`
     setModalDeliveryVenda({
       aberto: true,
       item,
-      status: 'PAGO',
-      valorPago: '',
+      pagamentos: [{ forma_pagamento: 'Pix', valor: moeda(valorTotalDelivery) }],
       vencimento: '',
     })
   }
@@ -2617,8 +2763,7 @@ Delber Vilaça`
     setModalDeliveryVenda({
       aberto: false,
       item: null,
-      status: 'PAGO',
-      valorPago: '',
+      pagamentos: [pagamentoDeliveryInicial],
       vencimento: '',
     })
   }
@@ -2629,13 +2774,11 @@ Delber Vilaça`
     if (!item) return
 
     const valorTotalDelivery = Number(item.valor_total || 0)
-    let statusFinal = normalizarStatus(modalDeliveryVenda.status)
-    let valorRecebidoAgora = 0
-    let saldoPendencia = valorTotalDelivery
-    let vencimentoPendencia = String(modalDeliveryVenda.vencimento || '').trim() || null
+    const vencimentoPendencia = String(modalDeliveryVenda.vencimento || '').trim() || null
+    const resumo = calcularResumoPagamentosDelivery(modalDeliveryVenda.pagamentos, valorTotalDelivery)
 
-    if (!['PAGO', 'PARCIAL', 'EM ABERTO'].includes(statusFinal)) {
-      alert('Selecione uma opção válida.')
+    if (resumo.totalRecebido > valorTotalDelivery + 0.005) {
+      alert('O valor recebido ficou maior que o valor total da entrega. Ajuste os pagamentos antes de confirmar.')
       return
     }
 
@@ -2644,37 +2787,8 @@ Delber Vilaça`
       return
     }
 
-    if (statusFinal === 'PARCIAL') {
-      valorRecebidoAgora = numero(modalDeliveryVenda.valorPago)
-
-      if (valorRecebidoAgora <= 0) {
-        alert('Informe o valor pago agora.')
-        return
-      }
-
-      if (valorRecebidoAgora >= valorTotalDelivery) {
-        statusFinal = 'PAGO'
-        valorRecebidoAgora = valorTotalDelivery
-        saldoPendencia = 0
-        vencimentoPendencia = null
-      } else {
-        saldoPendencia = valorTotalDelivery - valorRecebidoAgora
-      }
-    }
-
-    if (statusFinal === 'PAGO') {
-      valorRecebidoAgora = valorTotalDelivery
-      saldoPendencia = 0
-      vencimentoPendencia = null
-    }
-
-    if (statusFinal === 'EM ABERTO') {
-      valorRecebidoAgora = 0
-      saldoPendencia = valorTotalDelivery
-    }
-
     const confirmar = window.confirm(
-      `Confirmar entrega e criar venda ${statusFinal} para ${item.clientes?.nome || 'cliente'}?`
+      `Confirmar entrega e criar venda ${resumo.statusFinal} para ${item.clientes?.nome || 'cliente'}?`
     )
 
     if (!confirmar) return
@@ -2690,26 +2804,21 @@ Delber Vilaça`
         ? Number(ultimaVenda[0].numero_venda || 0) + 1
         : 1
 
-    const taxaPix = taxas.find((taxa) => String(taxa.forma_pagamento || '').toLowerCase().includes('pix'))
-    const taxaFiado = taxas.find((taxa) => taxa.forma_pagamento === 'Fiado / Em aberto')
-    const taxaUsada = statusFinal === 'EM ABERTO' ? taxaFiado || taxaPix : taxaPix || taxaFiado
-
-    const percentualTaxaVenda = Number(taxaUsada?.taxa_percentual || 0)
-    const valorTaxaVenda = valorTotalDelivery * (percentualTaxaVenda / 100)
-    const valorLiquidoVenda = valorTotalDelivery - valorTaxaVenda
+    const valorLiquidoVenda = valorTotalDelivery - resumo.taxaTotal
+    const dataConfirmacaoEntrega = dataHoje()
 
     const { data: vendaCriada, error: erroVenda } = await supabase
       .from('vendas')
       .insert({
         numero_venda: proximoNumero,
         cliente_id: item.cliente_id,
-        data_venda: item.data_entrega || dataHoje(),
+        data_venda: dataConfirmacaoEntrega,
         valor_total: valorTotalDelivery,
         valor_liquido: valorLiquidoVenda,
-        forma_pagamento: taxaUsada?.forma_pagamento || (statusFinal === 'EM ABERTO' ? 'Fiado / Em aberto' : 'Pix'),
-        taxa_percentual: percentualTaxaVenda,
-        valor_taxa: valorTaxaVenda,
-        status: statusFinal,
+        forma_pagamento: resumo.formaResumo,
+        taxa_percentual: resumo.percentualEfetivoTaxa,
+        valor_taxa: resumo.taxaTotal,
+        status: resumo.statusFinal,
       })
       .select()
       .single()
@@ -2720,15 +2829,19 @@ Delber Vilaça`
       return
     }
 
-    if (valorRecebidoAgora > 0) {
-      const { error: erroPagamento } = await supabase.from('pagamentos').insert({
+    if (resumo.pagamentosValidos.length > 0) {
+      const pagamentosParaInserir = resumo.pagamentosValidos.map((pagamento) => ({
         venda_id: vendaCriada.id,
         status: 'CONFIRMADO',
-        data_pagamento: item.data_entrega || dataHoje(),
-        valor_pago: valorRecebidoAgora,
-        forma_pagamento: 'Pix',
-        observacao: 'Pagamento registrado a partir do Delivery',
-      })
+        data_pagamento: dataConfirmacaoEntrega,
+        valor_pago: pagamento.valor_pago,
+        forma_pagamento: pagamento.forma_pagamento,
+        observacao: resumo.statusFinal === 'PARCIAL'
+          ? `Pagamento parcial registrado a partir do Delivery. Taxa: ${percentual(pagamento.taxa_percentual)}.`
+          : `Pagamento integral registrado a partir do Delivery. Taxa: ${percentual(pagamento.taxa_percentual)}.`,
+      }))
+
+      const { error: erroPagamento } = await supabase.from('pagamentos').insert(pagamentosParaInserir)
 
       if (erroPagamento) {
         alert('Venda criada, mas houve erro ao registrar o pagamento.')
@@ -2736,12 +2849,12 @@ Delber Vilaça`
       }
     }
 
-    if ((statusFinal === 'EM ABERTO' || statusFinal === 'PARCIAL') && saldoPendencia > 0) {
+    if ((resumo.statusFinal === 'EM ABERTO' || resumo.statusFinal === 'PARCIAL') && resumo.saldoRestante > 0) {
       const { error: erroPendencia } = await supabase.from('pendencias').insert({
         venda_id: vendaCriada.id,
         vencimento: vencimentoPendencia,
-        saldo_restante: saldoPendencia,
-        status: statusFinal,
+        saldo_restante: resumo.saldoRestante,
+        status: resumo.statusFinal,
         dias_atraso: 0,
       })
 
@@ -2756,6 +2869,7 @@ Delber Vilaça`
       .update({
         venda_id: vendaCriada.id,
         status: 'Entregue',
+        data_confirmacao_entrega: dataConfirmacaoEntrega,
       })
       .eq('id', item.id)
 
@@ -2764,6 +2878,8 @@ Delber Vilaça`
       console.error(erroDelivery)
     }
 
+    setFiltroDelivery('Programado')
+    setDeliveryExpandidoId(null)
     fecharModalDeliveryVenda()
     await buscarTudo()
     alert(`Entrega concluída e venda #${proximoNumero} criada com sucesso.`)
@@ -7001,10 +7117,7 @@ Delber Vilaça`
       `)
 
       const passaBusca = texto.includes(termo)
-      const passaFiltro =
-        filtroDelivery === 'Todos'
-          ? true
-          : item.status === filtroDelivery
+      const passaFiltro = item.status === filtroDelivery
 
       return passaBusca && passaFiltro
     })
@@ -7015,6 +7128,32 @@ Delber Vilaça`
     const totalValorProgramado = deliveries
       .filter((item) => item.status === 'Programado')
       .reduce((acc, item) => acc + Number(item.valor_total || 0), 0)
+
+    const itensEntreguesConsolidados = Object.values(
+      deliveries
+        .filter((item) => String(item.data_confirmacao_entrega || '').slice(0, 10) === dataPecasEntregues)
+        .flatMap((item) => String(item.descricao || '')
+          .split(/\n+/g)
+          .map((linha) => linha.trim())
+          .filter(Boolean))
+        .reduce((acc, linha) => {
+          const encontrado = linha.match(/^(\d+(?:[,.]\d+)?)\s+(.+)$/)
+          const quantidade = encontrado ? numero(encontrado[1]) : 1
+          const nome = (encontrado ? encontrado[2] : linha).trim()
+          const chave = normalizarTexto(nome)
+
+          if (!chave) return acc
+
+          if (!acc[chave]) {
+            acc[chave] = { nome, quantidade: 0 }
+          }
+
+          acc[chave].quantidade += quantidade
+          return acc
+        }, {})
+    ).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+
+    const totalPecasEntregues = itensEntreguesConsolidados.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
 
     return (
       <section className="mobile-panel-card delivery-refino-final bg-black border border-orange-950 rounded-[28px] p-5">
@@ -7152,8 +7291,7 @@ Delber Vilaça`
 
         <div className="mini-delivery-filters flex flex-wrap gap-2 mb-4">
           {[
-            { label: 'Todos', value: 'Todos', classe: 'bg-orange-950 text-orange-200' },
-            { label: 'Programados', value: 'Programado', classe: 'bg-orange-950 text-orange-200' },
+            { label: 'Pendentes', value: 'Programado', classe: 'bg-orange-950 text-orange-200' },
             { label: 'Entregues', value: 'Entregue', classe: 'bg-green-950 text-green-200' },
             { label: 'Cancelados', value: 'Cancelado', classe: 'bg-red-950 text-red-200' },
           ].map((filtro) => (
@@ -7170,7 +7308,60 @@ Delber Vilaça`
               {filtro.label}
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setListaPecasEntreguesAberta(!listaPecasEntreguesAberta)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${
+              listaPecasEntreguesAberta
+                ? 'bg-green-950 text-green-200'
+                : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+            }`}
+          >
+            Peças Entregues: {totalPecasEntregues}
+          </button>
         </div>
+
+        {listaPecasEntreguesAberta && (
+          <div className="mb-4 max-w-2xl rounded-2xl border border-zinc-800 bg-black p-4 shadow-xl">
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-orange-300">Conferência</p>
+                <h3 className="mt-1 text-lg font-bold text-white">Itens entregues do dia</h3>
+              </div>
+
+              <div className="w-full sm:w-48">
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">Data</label>
+                <input
+                  type="date"
+                  value={dataPecasEntregues}
+                  onChange={(e) => setDataPecasEntregues(e.target.value)}
+                  onClick={abrirCalendario}
+                  onFocus={abrirCalendario}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+                />
+              </div>
+            </div>
+
+            {itensEntreguesConsolidados.length === 0 ? (
+              <p className="rounded-xl border border-zinc-900 bg-zinc-950 px-4 py-3 text-sm text-zinc-500">
+                Nenhum item entregue nesta data.
+              </p>
+            ) : (
+              <div className="grid gap-2">
+                {itensEntreguesConsolidados.map((item) => (
+                  <div
+                    key={normalizarTexto(item.nome)}
+                    className="flex items-center justify-between gap-4 rounded-xl border border-zinc-900 bg-zinc-950 px-4 py-3"
+                  >
+                    <span className="text-sm font-semibold text-white">{item.nome}</span>
+                    <span className="text-sm font-bold text-green-300">{item.quantidade} unidades</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mini-delivery-list-header" aria-hidden="true">
           <span>Cliente</span>
@@ -7208,6 +7399,7 @@ Delber Vilaça`
                 : statusVisual === 'Atrasado'
                   ? 'mini-delivery-status-atrasado'
                   : 'mini-delivery-status-programado'
+            const destinoFinanceiro = destinoFinanceiroDelivery(item)
 
             return (
               <article key={item.id} className={`mini-delivery-card mini-delivery-card-compact ${deliveryAberto ? 'mini-delivery-card-open' : ''}`}>
@@ -7235,6 +7427,12 @@ Delber Vilaça`
                   <span className={`mini-delivery-status ${statusClasse}`}>
                     {statusVisual}
                   </span>
+
+                  {destinoFinanceiro && (
+                    <span className={`mini-delivery-finance-chip ${destinoFinanceiro.classe}`}>
+                      {normalizarStatus(item.vendas?.status || '') === 'PAGO' ? 'Vendas' : 'Pendências'}
+                    </span>
+                  )}
 
                   <span className="mini-delivery-compact-arrow">
                     {deliveryAberto ? '⌄' : '›'}
@@ -7264,6 +7462,14 @@ Delber Vilaça`
                         <strong className="mini-delivery-money">{moeda(item.valor_total)}</strong>
                       </div>
                     </div>
+
+                    {destinoFinanceiro && (
+                      <div className={`mini-delivery-card-line mini-delivery-finance-destination ${destinoFinanceiro.classe}`}>
+                        <p className="mini-delivery-label">Destino financeiro</p>
+                        <strong>{destinoFinanceiro.texto}</strong>
+                        <span>{destinoFinanceiro.detalhe}</span>
+                      </div>
+                    )}
 
                     <div className="mini-delivery-card-line">
                       <p className="mini-delivery-label">Local</p>
@@ -7383,6 +7589,11 @@ Delber Vilaça`
                     >
                       {item.status}
                     </span>
+                    {destinoFinanceiroDelivery(item) && (
+                      <div className={`delivery-finance-destino mt-2 ${destinoFinanceiroDelivery(item).classe}`}>
+                        {destinoFinanceiroDelivery(item).texto}
+                      </div>
+                    )}
                   </td>
                   <td className="p-4 delivery-actions-td delivery-actions-grid-cell">
                     <div className="delivery-actions-grid-final delivery-actions-grid-simple">
@@ -8375,112 +8586,240 @@ Delber Vilaça`
         </div>
       )}
 
-      {modalDeliveryVenda.aberto && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-[520px] rounded-[28px] border border-orange-950 bg-[#120f0d] p-6 shadow-2xl">
-            <div className="mb-5">
-              <p className="text-xs uppercase tracking-[4px] text-orange-400 mb-2">Delivery</p>
-              <h2 className="text-2xl font-bold">Entregar e lançar venda</h2>
-              <p className="text-sm text-zinc-500 mt-2">
-                Cliente: {modalDeliveryVenda.item?.clientes?.nome || 'Cliente não informado'}
-              </p>
-              <p className="text-sm text-green-300 mt-1">
-                Valor: {moeda(modalDeliveryVenda.item?.valor_total || 0)}
-              </p>
-            </div>
+      {modalDeliveryVenda.aberto && (() => {
+        const valorTotalModal = Number(modalDeliveryVenda.item?.valor_total || 0)
+        const resumoModal = calcularResumoPagamentosDelivery(modalDeliveryVenda.pagamentos, valorTotalModal)
+        const saldoEmAberto = resumoModal.saldoRestante > 0.005
 
-            <div className="grid grid-cols-1 gap-3 mb-5">
-              {[
-                { value: 'PAGO', label: 'Pago', desc: 'Venda quitada no ato' },
-                { value: 'PARCIAL', label: 'Parcial', desc: 'Cliente pagou uma parte' },
-                { value: 'EM ABERTO', label: 'Em aberto', desc: 'Cliente pagará depois' },
-              ].map((opcao) => (
-                <button
-                  key={opcao.value}
-                  type="button"
-                  onClick={() =>
-                    setModalDeliveryVenda({
-                      ...modalDeliveryVenda,
-                      status: opcao.value,
-                      valorPago: opcao.value === 'PARCIAL' ? modalDeliveryVenda.valorPago : '',
-                      vencimento: opcao.value === 'PAGO' ? '' : modalDeliveryVenda.vencimento,
-                    })
-                  }
-                  className={`rounded-2xl border p-4 text-left transition ${
-                    modalDeliveryVenda.status === opcao.value
-                      ? 'border-orange-500 bg-orange-950 text-white'
-                      : 'border-zinc-800 bg-black text-zinc-300 hover:bg-zinc-900'
-                  }`}
-                >
-                  <strong className="block text-lg">{opcao.label}</strong>
-                  <span className="text-sm text-zinc-500">{opcao.desc}</span>
-                </button>
-              ))}
-            </div>
-
-            {modalDeliveryVenda.status === 'PARCIAL' && (
-              <div className="mb-4">
-                <label className="block text-xs uppercase text-zinc-500 mb-2">
-                  Valor pago agora
-                </label>
-
-                <input
-                  type="text"
-                  value={modalDeliveryVenda.valorPago}
-                  onChange={(e) =>
-                    setModalDeliveryVenda({
-                      ...modalDeliveryVenda,
-                      valorPago: e.target.value,
-                    })
-                  }
-                  placeholder="0,00"
-                  className="w-full rounded-2xl border border-zinc-800 bg-black p-4"
-                />
-              </div>
-            )}
-
-            {modalDeliveryVenda.status !== 'PAGO' && (
+        return (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4">
+            <div className="delivery-finance-modal w-full max-w-[680px] rounded-[28px] border border-orange-950 bg-[#120f0d] p-6 shadow-2xl">
               <div className="mb-5">
-                <label className="block text-xs uppercase text-zinc-500 mb-2">
-                  Data de cobrança, opcional
-                </label>
-
-                <input
-                  type="date"
-                  onClick={abrirCalendario}
-                  onFocus={abrirCalendario}
-                  value={modalDeliveryVenda.vencimento}
-                  onChange={(e) =>
-                    setModalDeliveryVenda({
-                      ...modalDeliveryVenda,
-                      vencimento: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-2xl border border-zinc-800 bg-black p-4"
-                />
+                <p className="text-xs uppercase tracking-[4px] text-orange-400 mb-2">Delivery</p>
+                <h2 className="text-2xl font-bold">Entregar e fechar venda</h2>
+                <p className="text-sm text-zinc-500 mt-2">
+                  Cliente: {modalDeliveryVenda.item?.clientes?.nome || 'Cliente não informado'}
+                </p>
+                <p className="text-sm text-green-300 mt-1">
+                  Valor da entrega: {moeda(valorTotalModal)}
+                </p>
               </div>
-            )}
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={converterDeliveryEmVenda}
-                className="flex-1 rounded-2xl bg-green-800 p-4 font-semibold hover:bg-green-700"
-              >
-                Confirmar e criar venda
-              </button>
+              <div className="delivery-finance-summary grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
+                <div>
+                  <span>Recebido</span>
+                  <strong className="text-green-300">{moeda(resumoModal.totalRecebido)}</strong>
+                </div>
+                <div>
+                  <span>Saldo</span>
+                  <strong className={resumoModal.saldoRestante > 0.005 ? 'text-orange-300' : 'text-green-300'}>
+                    {moeda(resumoModal.saldoRestante)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Taxas</span>
+                  <strong className="text-red-300">{moeda(resumoModal.taxaTotal)}</strong>
+                </div>
+                <div>
+                  <span>Líquido</span>
+                  <strong className="text-green-300">{moeda(valorTotalModal - resumoModal.taxaTotal)}</strong>
+                </div>
+                <div>
+                  <span>Resultado</span>
+                  <strong className={resumoModal.statusFinal === 'PAGO' ? 'text-green-300' : resumoModal.statusFinal === 'PARCIAL' ? 'text-orange-300' : 'text-red-300'}>
+                    {resumoModal.statusFinal}
+                  </strong>
+                </div>
+              </div>
 
-              <button
-                type="button"
-                onClick={fecharModalDeliveryVenda}
-                className="flex-1 rounded-2xl bg-zinc-800 p-4 font-semibold hover:bg-zinc-700"
-              >
-                Cancelar
-              </button>
+              <div className="delivery-payments-box mb-5">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="text-lg font-bold">Pagamentos recebidos</h3>
+                    <p className="text-xs text-zinc-500 mt-1">Deixe zerado para lançar tudo como Em aberto.</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setModalDeliveryVenda({
+                        ...modalDeliveryVenda,
+                        pagamentos: [
+                          ...(modalDeliveryVenda.pagamentos || []),
+                          { forma_pagamento: 'Pix', valor: '' },
+                        ],
+                      })
+                    }
+                    className="delivery-add-payment-button rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold hover:bg-zinc-700"
+                  >
+                    + Pagamento
+                  </button>
+                </div>
+
+                <div className="grid gap-3">
+                  {(modalDeliveryVenda.pagamentos || []).map((pagamento, index) => {
+                    const taxaPagamento = buscarTaxaPorFormaPagamento(pagamento.forma_pagamento)
+                    const valorPagamento = numero(pagamento.valor)
+                    const percentualPagamento = Number(taxaPagamento?.taxa_percentual || 0)
+                    const valorTaxaPagamento = valorPagamento * (percentualPagamento / 100)
+                    const pagamentoEmAberto = chaveFormaPagamento(pagamento.forma_pagamento || '').includes('emaberto') || chaveFormaPagamento(pagamento.forma_pagamento || '').includes('fiado')
+
+                    return (
+                      <div key={`pagamento-delivery-${index}`} className="delivery-payment-row grid grid-cols-1 lg:grid-cols-[1.25fr_0.85fr_auto] gap-3">
+                        <select
+                          value={pagamento.forma_pagamento}
+                          onChange={(e) => {
+                            const proximosPagamentos = [...(modalDeliveryVenda.pagamentos || [])]
+                            const chaveNovaForma = chaveFormaPagamento(e.target.value)
+                            proximosPagamentos[index] = {
+                              ...proximosPagamentos[index],
+                              forma_pagamento: e.target.value,
+                              valor: chaveNovaForma.includes('emaberto') || chaveNovaForma.includes('fiado') ? '' : proximosPagamentos[index].valor,
+                            }
+                            setModalDeliveryVenda({
+                              ...modalDeliveryVenda,
+                              pagamentos: chaveNovaForma.includes('emaberto') || chaveNovaForma.includes('fiado')
+                                ? [proximosPagamentos[index]]
+                                : proximosPagamentos,
+                            })
+                          }}
+                          className="rounded-2xl border border-zinc-800 bg-black p-4"
+                        >
+                          {formasPagamentoDelivery().map((forma) => (
+                            <option key={forma} value={forma}>{forma}</option>
+                          ))}
+                        </select>
+
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={pagamentoEmAberto ? 'R$ 0,00' : pagamento.valor}
+                          disabled={pagamentoEmAberto}
+                          onChange={(e) => {
+                            const proximosPagamentos = [...(modalDeliveryVenda.pagamentos || [])]
+                            const valorDigitado = String(e.target.value || '')
+                              .replace(/R\$\s?/g, '')
+                              .replace(/[^0-9,]/g, '')
+                              .replace(/(,.*),/g, '$1')
+
+                            proximosPagamentos[index] = {
+                              ...proximosPagamentos[index],
+                              valor: valorDigitado,
+                            }
+                            setModalDeliveryVenda({ ...modalDeliveryVenda, pagamentos: proximosPagamentos })
+                          }}
+                          onBlur={(e) => {
+                            const proximosPagamentos = [...(modalDeliveryVenda.pagamentos || [])]
+                            proximosPagamentos[index] = {
+                              ...proximosPagamentos[index],
+                              valor: moedaInput(e.target.value),
+                            }
+                            setModalDeliveryVenda({ ...modalDeliveryVenda, pagamentos: proximosPagamentos })
+                          }}
+                          onFocus={(e) => {
+                            const proximosPagamentos = [...(modalDeliveryVenda.pagamentos || [])]
+                            const valorAtual = numero(proximosPagamentos[index]?.valor)
+
+                            proximosPagamentos[index] = {
+                              ...proximosPagamentos[index],
+                              valor: valorAtual > 0 ? valorAtual.toFixed(2).replace('.', ',') : '',
+                            }
+                            setModalDeliveryVenda({ ...modalDeliveryVenda, pagamentos: proximosPagamentos })
+                            setTimeout(() => e.target.select(), 0)
+                          }}
+                          placeholder="R$ 0,00"
+                          className="rounded-2xl border border-zinc-800 bg-black p-4 disabled:cursor-not-allowed disabled:opacity-70"
+                        />
+
+                        <div className="delivery-payment-actions flex items-center gap-2">
+                          <span className="delivery-payment-tax text-xs text-zinc-500">
+                            {pagamentoEmAberto ? (
+                              <>
+                                <small>Fiado</small>
+                                <strong>{moeda(0)}</strong>
+                              </>
+                            ) : (
+                              <>
+                                <small>Taxa {percentual(percentualPagamento)}</small>
+                                <strong>{moeda(valorTaxaPagamento)}</strong>
+                              </>
+                            )}
+                          </span>
+                          {(modalDeliveryVenda.pagamentos || []).length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const proximosPagamentos = (modalDeliveryVenda.pagamentos || []).filter((_, indice) => indice !== index)
+                                setModalDeliveryVenda({ ...modalDeliveryVenda, pagamentos: proximosPagamentos })
+                              }}
+                              className="rounded-xl bg-red-900 px-3 py-2 text-xs font-semibold hover:bg-red-800"
+                            >
+                              Remover
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {saldoEmAberto && (
+                <div className="mb-5 rounded-2xl border border-orange-950 bg-black p-4">
+                  <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs uppercase text-zinc-500 mb-2">
+                        Data de cobrança, opcional
+                      </label>
+
+                      <input
+                        type="date"
+                        onClick={abrirCalendario}
+                        onFocus={abrirCalendario}
+                        value={modalDeliveryVenda.vencimento}
+                        onChange={(e) =>
+                          setModalDeliveryVenda({
+                            ...modalDeliveryVenda,
+                            vencimento: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-2xl border border-zinc-800 bg-black p-4"
+                      />
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 lg:min-w-[190px]">
+                      <p className="text-xs uppercase text-zinc-500">Saldo para cobrança</p>
+                      <p className="mt-1 text-xl font-bold text-orange-300">{moeda(resumoModal.saldoRestante)}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-zinc-500">
+                    Este saldo será enviado automaticamente para Pendências e Cobranças.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={converterDeliveryEmVenda}
+                  className="flex-1 rounded-2xl bg-green-800 p-4 font-semibold hover:bg-green-700"
+                >
+                  Confirmar e criar venda
+                </button>
+
+                <button
+                  type="button"
+                  onClick={fecharModalDeliveryVenda}
+                  className="flex-1 rounded-2xl bg-zinc-800 p-4 font-semibold hover:bg-zinc-700"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
+
 
       <div className="mini-shell w-full max-w-full overflow-x-hidden flex flex-col lg:grid lg:grid-cols-[240px_1fr]">
         <aside className="mini-desktop-sidebar bg-black border-b lg:border-b-0 lg:border-r border-orange-950 p-4 lg:p-6 lg:min-h-screen lg:max-h-screen lg:overflow-y-auto">
