@@ -7673,7 +7673,7 @@ Delber Vilaça`
             </span>
           </div>
 
-          <div className="grid gap-3">
+          <div className="mini-roteiro-lista grid gap-3">
             {itens.length === 0 && (
               <div className="rounded-2xl border border-dashed border-zinc-800 bg-black p-5 text-zinc-500">
                 {vazio}
@@ -7683,21 +7683,21 @@ Delber Vilaça`
             {itens.map((item) => (
               <div
                 key={item.id}
-                className={`rounded-2xl border p-4 transition ${item.concluido ? 'border-green-900 bg-green-950/20' : 'border-zinc-800 bg-black'}`}
+                className={`mini-roteiro-item rounded-2xl border p-4 transition ${item.concluido ? 'mini-roteiro-item-ok border-green-900 bg-green-950/20' : 'border-zinc-800 bg-black'}`}
               >
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="mini-roteiro-row flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <button
                     type="button"
                     onClick={() => alternarConcluidoRoteiroVendas(item)}
-                    className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                    className="mini-roteiro-check-area flex min-w-0 flex-1 items-start gap-3 text-left"
                   >
-                    <span className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-sm font-black ${item.concluido ? 'border-green-500 bg-green-700 text-white' : 'border-zinc-600 bg-zinc-950 text-transparent'}`}>
+                    <span className={`mini-roteiro-check mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-sm font-black ${item.concluido ? 'border-green-500 bg-green-700 text-white' : 'border-zinc-600 bg-zinc-950 text-transparent'}`}>
                       ✓
                     </span>
 
-                    <span className="min-w-0">
-                      <span className={`block text-lg font-bold ${item.concluido ? 'text-zinc-400 line-through' : 'text-white'}`}>{item.local}</span>
-                      <span className="mt-1 flex flex-wrap gap-2 text-sm text-zinc-500">
+                    <span className="mini-roteiro-texto min-w-0">
+                      <span className={`mini-roteiro-nome block text-lg font-bold ${item.concluido ? 'text-zinc-400 line-through' : 'text-white'}`}>{item.local}</span>
+                      <span className="mini-roteiro-detalhes mt-1 flex flex-wrap gap-2 text-sm text-zinc-500">
                         {item.referencia && <span>{item.referencia}</span>}
                         {item.horario && <span>{item.horario}</span>}
                         {item.observacao && <span>{item.observacao}</span>}
@@ -7705,7 +7705,7 @@ Delber Vilaça`
                     </span>
                   </button>
 
-                  <div className="flex gap-2 md:justify-end">
+                  <div className="mini-roteiro-acoes flex gap-2 md:justify-end">
                     <button onClick={() => editarRoteiroVendas(item)} className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700">
                       Editar
                     </button>
@@ -8607,21 +8607,7 @@ Delber Vilaça`
             </div>
 
             <nav className="mini-mobile-nav">
-              {itensMenu
-                .filter((item) => item.id !== 'roteiro-vendas')
-                .flatMap((item) => {
-                  const botaoAtual = botaoMenuMobile(item)
-                  if (item.id !== 'delivery') return [botaoAtual]
-
-                  return [
-                    botaoAtual,
-                    botaoMenuMobile({
-                      id: 'roteiro-vendas',
-                      icone: '📍',
-                      texto: 'Locais e Clientes',
-                    }),
-                  ]
-                })}
+              {itensMenu.map((item) => botaoMenuMobile(item))}
             </nav>
           </aside>
         </div>
