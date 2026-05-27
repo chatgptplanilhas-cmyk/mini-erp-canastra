@@ -5393,6 +5393,29 @@ Delber Vilaça`
       return
     }
 
+    if (novaQuantidadeItem === 0) {
+      const confirmarExclusao = window.confirm(
+        `A quantidade final ficou zero. Deseja remover o último lançamento de ${produtoResumo.nome}?`
+      )
+
+      if (!confirmarExclusao) return
+
+      const { error } = await supabase
+        .from('itens_venda')
+        .delete()
+        .eq('id', itemBase.id)
+
+      if (error) {
+        alert('Erro ao remover o lançamento.')
+        console.error(error)
+        return
+      }
+
+      await buscarTudo()
+      alert('Lançamento removido com sucesso.')
+      return
+    }
+
     const produto = produtos.find((p) => String(p.id) === String(itemBase.produto_id))
 
     if (!produto) {
@@ -5478,8 +5501,36 @@ Delber Vilaça`
 
       const quantidade = Number(String(valor || '').replace(',', '.'))
 
-      if (!quantidade || quantidade <= 0) {
+      if (Number.isNaN(quantidade)) {
         alert('Quantidade inválida.')
+        return
+      }
+
+      if (quantidade < 0) {
+        alert('Quantidade inválida.')
+        return
+      }
+
+      if (quantidade === 0) {
+        const confirmarExclusao = window.confirm(
+          `Quantidade zero. Deseja remover este lançamento de ${item.produtos?.nome || 'este item'}?`
+        )
+
+        if (!confirmarExclusao) return
+
+        const { error } = await supabase
+          .from('itens_venda')
+          .delete()
+          .eq('id', item.id)
+
+        if (error) {
+          alert('Erro ao remover o lançamento.')
+          console.error(error)
+          return
+        }
+
+        await buscarTudo()
+        alert('Lançamento removido com sucesso.')
         return
       }
 
