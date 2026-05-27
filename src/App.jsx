@@ -166,10 +166,10 @@ export default function App() {
   })
 
   const [formRoteiroVendas, setFormRoteiroVendas] = useState({
+    categoria: 'LOCAL',
     local: '',
-    tipo: 'Escola',
-    data_visita: dataHoje(),
-    pecas_vendidas: '',
+    referencia: '',
+    horario: '',
     observacao: '',
   })
   const [editandoRoteiroVendasId, setEditandoRoteiroVendasId] = useState(null)
@@ -889,7 +889,8 @@ export default function App() {
     const { data, error } = await supabase
       .from('roteiro_vendas_v2')
       .select('*')
-      .order('data_visita', { ascending: true })
+      .order('categoria', { ascending: true })
+      .order('local', { ascending: true })
 
     if (error) {
       console.error(error)
@@ -897,16 +898,16 @@ export default function App() {
       return
     }
 
-    const listaOrdenada = (data || []).slice().sort((a, b) => {
-      const statusA = statusRoteiro(a.data_visita)
-      const statusB = statusRoteiro(b.data_visita)
-      const diasA = diasDesdeData(a.data_visita) || 0
-      const diasB = diasDesdeData(b.data_visita) || 0
-
-      if (statusA.prioridade !== statusB.prioridade) return statusB.prioridade - statusA.prioridade
-      if (diasA !== diasB) return diasB - diasA
-      return normalizarTexto(a.local).localeCompare(normalizarTexto(b.local), 'pt-BR')
-    })
+    const listaOrdenada = (data || [])
+      .filter((item) => item.ativo !== false)
+      .slice()
+      .sort((a, b) => {
+        const categoriaA = String(a.categoria || 'LOCAL')
+        const categoriaB = String(b.categoria || 'LOCAL')
+        if (categoriaA !== categoriaB) return categoriaA.localeCompare(categoriaB, 'pt-BR')
+        if (Boolean(a.concluido) !== Boolean(b.concluido)) return Number(a.concluido) - Number(b.concluido)
+        return normalizarTexto(a.local).localeCompare(normalizarTexto(b.local), 'pt-BR')
+      })
 
     setRoteirosVendas(listaOrdenada)
   }
@@ -1726,24 +1727,26 @@ Queijos Serra da Canastra`
     return Boolean(dataVenda && dataVenda < inicioMesAtual())
   }
 
-  function montarMensagemCobranca({ cliente, valor }) {
+  function montarMensagemCobranca({ cliente, valor, detalhe = '', titulo = 'da sua compra', mostrarValorFinal = true }) {
     const nomeCliente = cliente.nome || 'cliente'
+    const detalheTexto = detalhe ? `
+${detalhe}
+` : ''
+    const valorTexto = mostrarValorFinal ? `
+Valor: ${valor}
+` : ''
 
     return `Olá, ${nomeCliente}. Tudo bem?
 
-Conforme combinado, seguem os dados para o pagamento.
-
-Valor: ${valor}
-
-Chave Pix (e-mail):
-
+Conforme combinado, seguem os dados para o pagamento via Pix ${titulo}:${detalheTexto}
+Chave Pix:
 queijosserradacanastra@hotmail.com
 
 Dados para conferência:
 Delber Juliano Vilaça
 Stone Pagamentos S.A.
-
-Após a transferência, enviar o comprovante para registro.
+${valorTexto}
+Assim que realizar a transferência, peço a gentileza de enviar o comprovante para registro.
 
 Atenciosamente,
 Delber Vilaça | Queijos Serra da Canastra`
@@ -3064,44 +3067,42 @@ Delber Vilaça`
     e.preventDefault()
 
     if (!formRoteiroVendas.local.trim()) {
-      alert('Informe o local visitado.')
+      alert(formRoteiroVendas.categoria === 'CLIENTE' ? 'Informe o nome do cliente.' : 'Informe o local.')
       return
     }
 
-    if (!formRoteiroVendas.data_visita) {
-      alert('Informe a data da visita.')
-      return
-    }
-
-    const dados = {
+    const payload = {
+      categoria: formRoteiroVendas.categoria || 'LOCAL',
       local: formRoteiroVendas.local.trim(),
-      tipo: formRoteiroVendas.tipo || 'Escola',
-      data_visita: formRoteiroVendas.data_visita,
-      pecas_vendidas: Number(formRoteiroVendas.pecas_vendidas || 0),
+      referencia: formRoteiroVendas.referencia || '',
+      horario: formRoteiroVendas.horario || '',
       observacao: formRoteiroVendas.observacao || '',
+      tipo: formRoteiroVendas.categoria === 'CLIENTE' ? 'Cliente' : 'Local',
+      data_visita: dataHoje(),
+      pecas_vendidas: 0,
+      ativo: true,
+      updated_at: new Date().toISOString(),
     }
+
+    let error
 
     if (editandoRoteiroVendasId) {
-      const { error } = await supabase
+      const resposta = await supabase
         .from('roteiro_vendas_v2')
-        .update(dados)
+        .update(payload)
         .eq('id', editandoRoteiroVendasId)
-
-      if (error) {
-        alert('Erro ao editar roteiro de vendas.')
-        console.error(error)
-        return
-      }
+      error = resposta.error
     } else {
-      const { error } = await supabase
+      const resposta = await supabase
         .from('roteiro_vendas_v2')
-        .insert(dados)
+        .insert([{ ...payload, concluido: false }])
+      error = resposta.error
+    }
 
-      if (error) {
-        alert('Erro ao salvar roteiro de vendas.')
-        console.error(error)
-        return
-      }
+    if (error) {
+      alert('Erro ao salvar o controle operacional.')
+      console.error(error)
+      return
     }
 
     limparRoteiroVendas()
@@ -3111,38 +3112,34 @@ Delber Vilaça`
   function editarRoteiroVendas(item) {
     setEditandoRoteiroVendasId(item.id)
     setFormRoteiroVendas({
+      categoria: item.categoria || (item.tipo === 'Cliente' ? 'CLIENTE' : 'LOCAL'),
       local: item.local || '',
-      tipo: item.tipo || 'Escola',
-      data_visita: item.data_visita || dataHoje(),
-      pecas_vendidas: String(item.pecas_vendidas || ''),
+      referencia: item.referencia || '',
+      horario: item.horario || '',
       observacao: item.observacao || '',
     })
     subirParaTopoFormulario()
   }
 
-  async function registrarRetornoRoteiroVendas(item) {
-    const confirmar = window.confirm(`Registrar retorno em ${item.local} com a data de hoje?`)
-    if (!confirmar) return
+  function limparRoteiroVendas() {
+    setEditandoRoteiroVendasId(null)
+    setFormRoteiroVendas({
+      categoria: 'LOCAL',
+      local: '',
+      referencia: '',
+      horario: '',
+      observacao: '',
+    })
+  }
 
-    const pecasInformadas = window.prompt(
-      'Quantas peças foram vendidas nesta visita?',
-      String(item.pecas_vendidas || 0)
-    )
-
-    if (pecasInformadas === null) return
-
-    const pecas = Number(String(pecasInformadas || 0).replace(',', '.')) || 0
-
+  async function alternarConcluidoRoteiroVendas(item) {
     const { error } = await supabase
       .from('roteiro_vendas_v2')
-      .update({
-        data_visita: dataHoje(),
-        pecas_vendidas: pecas,
-      })
+      .update({ concluido: !item.concluido, updated_at: new Date().toISOString() })
       .eq('id', item.id)
 
     if (error) {
-      alert('Erro ao registrar retorno.')
+      alert('Erro ao atualizar o check.')
       console.error(error)
       return
     }
@@ -3150,19 +3147,26 @@ Delber Vilaça`
     buscarRoteiroVendas()
   }
 
-  function limparRoteiroVendas() {
-    setEditandoRoteiroVendasId(null)
-    setFormRoteiroVendas({
-      local: '',
-      tipo: 'Escola',
-      data_visita: dataHoje(),
-      pecas_vendidas: '',
-      observacao: '',
-    })
+  async function resetarChecksRoteiroVendas() {
+    const confirmar = window.confirm('Deseja limpar todos os checks para começar um novo mês?')
+    if (!confirmar) return
+
+    const { error } = await supabase
+      .from('roteiro_vendas_v2')
+      .update({ concluido: false, updated_at: new Date().toISOString() })
+      .eq('ativo', true)
+
+    if (error) {
+      alert('Erro ao resetar os checks.')
+      console.error(error)
+      return
+    }
+
+    buscarRoteiroVendas()
   }
 
   async function excluirRoteiroVendas(item) {
-    const confirmar = window.confirm(`Deseja remover o roteiro de ${item.local}?`)
+    const confirmar = window.confirm(`Deseja remover ${item.local}?`)
     if (!confirmar) return
 
     const { error } = await supabase
@@ -3171,7 +3175,7 @@ Delber Vilaça`
       .eq('id', item.id)
 
     if (error) {
-      alert('Erro ao remover roteiro de vendas.')
+      alert('Erro ao remover item do controle.')
       console.error(error)
       return
     }
@@ -3179,10 +3183,10 @@ Delber Vilaça`
     buscarRoteiroVendas()
   }
 
-  function roteirosVendasFiltrados() {
+  function roteirosVendasFiltrados(categoria = '') {
     return (roteirosVendas || []).filter((item) => {
-      const status = statusRoteiro(item.data_visita)
-      const texto = `${item.local || ''} ${item.tipo || ''} ${item.observacao || ''} ${status.texto || ''} ${dataBR(item.data_visita)}`
+      if (categoria && String(item.categoria || '').toUpperCase() !== categoria) return false
+      const texto = `${item.local || ''} ${item.referencia || ''} ${item.horario || ''} ${item.observacao || ''} ${item.tipo || ''} ${item.concluido ? 'marcado concluido' : 'pendente'}`
       return contemTermos(texto, buscaRoteiroVendas)
     })
   }
@@ -3210,6 +3214,7 @@ Delber Vilaça`
     { id: 'produtos', icone: '🧀', texto: 'Cadastro de Produtos' },
     { id: 'produtos-controle', icone: '📦', texto: 'Lançamentos de Produtos' },
     { id: 'delivery', icone: '🚚', texto: 'Delivery' },
+    { id: 'roteiro-vendas', icone: '📍', texto: 'Locais e Clientes' },
     { id: 'pendencias', icone: '💰', texto: 'Pendências' },
     { id: 'cobrancas', icone: '🧾', texto: 'Cobranças' },
     { id: 'pagamentos', icone: '💳', texto: 'Pagamentos' },
@@ -7649,100 +7654,164 @@ Delber Vilaça`
 
 
   function TelaRoteiroVendas() {
-    const lista = roteirosVendasFiltrados()
-    const locaisRetornar = lista.filter((item) => statusRoteiro(item.data_visita).texto === 'Retornar').length
-    const locaisEmDia = lista.filter((item) => statusRoteiro(item.data_visita).texto === 'Em dia').length
-    const totalPecas = lista.reduce((acc, item) => acc + Number(item.pecas_vendidas || 0), 0)
+    const locais = roteirosVendasFiltrados('LOCAL')
+    const clientesLembrar = roteirosVendasFiltrados('CLIENTE')
+    const totalItens = locais.length + clientesLembrar.length
+    const totalMarcados = [...locais, ...clientesLembrar].filter((item) => item.concluido).length
+    const totalPendentes = Math.max(totalItens - totalMarcados, 0)
+
+    function ListaControle({ titulo, subtitulo, itens, vazio }) {
+      return (
+        <div className="rounded-[28px] border border-zinc-900 bg-zinc-950 p-5">
+          <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-2xl font-bold text-white">{titulo}</h3>
+              <p className="text-sm text-zinc-500">{subtitulo}</p>
+            </div>
+            <span className="rounded-full border border-orange-950 bg-black px-4 py-2 text-sm font-bold text-orange-300">
+              {itens.filter((item) => item.concluido).length}/{itens.length} marcados
+            </span>
+          </div>
+
+          <div className="grid gap-3">
+            {itens.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-zinc-800 bg-black p-5 text-zinc-500">
+                {vazio}
+              </div>
+            )}
+
+            {itens.map((item) => (
+              <div
+                key={item.id}
+                className={`rounded-2xl border p-4 transition ${item.concluido ? 'border-green-900 bg-green-950/20' : 'border-zinc-800 bg-black'}`}
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <button
+                    type="button"
+                    onClick={() => alternarConcluidoRoteiroVendas(item)}
+                    className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                  >
+                    <span className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-sm font-black ${item.concluido ? 'border-green-500 bg-green-700 text-white' : 'border-zinc-600 bg-zinc-950 text-transparent'}`}>
+                      ✓
+                    </span>
+
+                    <span className="min-w-0">
+                      <span className={`block text-lg font-bold ${item.concluido ? 'text-zinc-400 line-through' : 'text-white'}`}>{item.local}</span>
+                      <span className="mt-1 flex flex-wrap gap-2 text-sm text-zinc-500">
+                        {item.referencia && <span>{item.referencia}</span>}
+                        {item.horario && <span>{item.horario}</span>}
+                        {item.observacao && <span>{item.observacao}</span>}
+                      </span>
+                    </span>
+                  </button>
+
+                  <div className="flex gap-2 md:justify-end">
+                    <button onClick={() => editarRoteiroVendas(item)} className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700">
+                      Editar
+                    </button>
+                    <button onClick={() => excluirRoteiroVendas(item)} className="rounded-xl bg-red-950 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-900">
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div className="space-y-6">
         <section className="rounded-[28px] border border-orange-950 bg-black p-8 shadow-xl">
-          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="mb-2 text-xs uppercase tracking-[0.4em] text-orange-400">Gestão comercial</p>
-              <h2 className="text-4xl font-bold">Roteiro de Vendas</h2>
-              <p className="mt-2 text-zinc-500">Controle de visitas por escola, delegacia, empresa ou local de venda.</p>
+              <p className="mb-2 text-xs uppercase tracking-[0.4em] text-orange-400">Controle mensal</p>
+              <h2 className="text-4xl font-bold">Locais e Clientes</h2>
+              <p className="mt-2 text-zinc-500">Lista simples para controlar locais de visita e clientes para lembrar durante o mês.</p>
             </div>
+            <button
+              type="button"
+              onClick={resetarChecksRoteiroVendas}
+              className="rounded-2xl bg-zinc-800 px-5 py-3 font-semibold text-white hover:bg-zinc-700"
+            >
+              Resetar checks do mês
+            </button>
           </div>
         </section>
 
-        <section className="mobile-summary-grid grid gap-4 md:grid-cols-4">
-          <CardResumo titulo="Locais cadastrados" valor={lista.length} classe="text-white" />
-          <CardResumo titulo="Retornar" valor={locaisRetornar} classe="text-red-300" />
-          <CardResumo titulo="Em dia" valor={locaisEmDia} classe="text-green-300" />
-          <CardResumo titulo="Peças registradas" valor={totalPecas} classe="text-orange-300" />
+        <section className="mobile-summary-grid grid gap-4 md:grid-cols-3">
+          <CardResumo titulo="Itens cadastrados" valor={totalItens} classe="text-white" />
+          <CardResumo titulo="Pendentes" valor={totalPendentes} classe="text-orange-300" />
+          <CardResumo titulo="Marcados" valor={totalMarcados} classe="text-green-300" />
         </section>
 
         <section className="mobile-panel-card rounded-[28px] border border-zinc-900 bg-black p-6">
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-2xl font-bold">{editandoRoteiroVendasId ? 'Editar visita' : 'Cadastrar visita'}</h3>
-              <p className="text-sm text-zinc-500">Registre o local visitado. O retorno mensal é calculado automaticamente em 30 dias.</p>
+              <h3 className="text-2xl font-bold">{editandoRoteiroVendasId ? 'Editar item' : 'Adicionar local ou cliente'}</h3>
+              <p className="text-sm text-zinc-500">Cadastre apenas o que precisa lembrar. O controle é manual e mensal.</p>
             </div>
           </div>
 
           <form onSubmit={salvarRoteiroVendas} className="grid gap-4 md:grid-cols-5">
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Local</label>
-              <input
-                value={formRoteiroVendas.local}
-                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, local: e.target.value })}
-                placeholder=""
-                className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700"
-              />
-            </div>
-
             <div>
               <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Tipo</label>
               <select
-                value={formRoteiroVendas.tipo}
-                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, tipo: e.target.value })}
+                value={formRoteiroVendas.categoria}
+                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, categoria: e.target.value })}
                 className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700"
               >
-                <option>Escola</option>
-                <option>Delegacia</option>
-                <option>Empresa</option>
-                <option>Condomínio</option>
-                <option>Outro</option>
+                <option value="LOCAL">Local de visita</option>
+                <option value="CLIENTE">Cliente para lembrar</option>
               </select>
             </div>
 
-            <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Data da visita</label>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">
+                {formRoteiroVendas.categoria === 'CLIENTE' ? 'Cliente' : 'Local'}
+              </label>
               <input
-                type="date"
-                value={formRoteiroVendas.data_visita}
-                onClick={abrirCalendario}
-                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, data_visita: e.target.value })}
+                value={formRoteiroVendas.local}
+                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, local: e.target.value })}
+                placeholder={formRoteiroVendas.categoria === 'CLIENTE' ? 'Ex: Jane Oliveira' : 'Ex: Parque 304 Norte'}
                 className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Peças</label>
+              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Referência</label>
               <input
-                type="number"
-                min="0"
-                value={formRoteiroVendas.pecas_vendidas}
-                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, pecas_vendidas: e.target.value })}
-                placeholder="0"
+                value={formRoteiroVendas.referencia}
+                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, referencia: e.target.value })}
+                placeholder="Ex: 314 Sul"
+                className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Horário</label>
+              <input
+                value={formRoteiroVendas.horario}
+                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, horario: e.target.value })}
+                placeholder="Ex: 9h40"
                 className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700"
               />
             </div>
 
             <div className="md:col-span-5">
               <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Observação</label>
-              <textarea
+              <input
                 value={formRoteiroVendas.observacao}
                 onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, observacao: e.target.value })}
-                placeholder=""
-                className="min-h-[90px] w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700"
+                placeholder="Opcional"
+                className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700"
               />
             </div>
 
-            <div className="flex gap-3 md:col-span-5">
+            <div className="flex flex-col gap-3 md:col-span-5 md:flex-row">
               <button type="submit" className="rounded-2xl bg-orange-950 px-6 py-3 font-semibold text-white hover:bg-orange-900">
-                {editandoRoteiroVendasId ? 'Salvar alterações' : 'Salvar visita'}
+                {editandoRoteiroVendasId ? 'Salvar alterações' : 'Adicionar'}
               </button>
               {editandoRoteiroVendasId && (
                 <button type="button" onClick={limparRoteiroVendas} className="rounded-2xl bg-zinc-800 px-6 py-3 font-semibold text-white hover:bg-zinc-700">
@@ -7756,72 +7825,30 @@ Delber Vilaça`
         <section className="mobile-panel-card rounded-[28px] border border-zinc-900 bg-black p-6">
           <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-2xl font-bold">Locais e prioridade de retorno</h3>
-              <p className="text-sm text-zinc-500">Ordenado automaticamente pelos locais que mais precisam de retorno.</p>
+              <h3 className="text-2xl font-bold">Conferência do mês</h3>
+              <p className="text-sm text-zinc-500">Marque quando já visitou o local, entrou em contato ou o cliente entrou em contato com você.</p>
             </div>
             <input
               value={buscaRoteiroVendas}
               onChange={(e) => setBuscaRoteiroVendas(e.target.value)}
-              placeholder="Buscar local, tipo, status ou observação"
+              placeholder="Buscar local, cliente, referência ou observação"
               className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700 md:max-w-md"
             />
           </div>
 
-          <div className="grid gap-3">
-            {lista.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950 p-6 text-center text-zinc-500">
-                Nenhum local cadastrado ainda.
-              </div>
-            )}
-
-            {lista.map((item) => {
-              const status = statusRoteiro(item.data_visita)
-              const dias = diasDesdeData(item.data_visita)
-
-              return (
-                <div key={item.id} className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-                  <div className="grid gap-4 md:grid-cols-[1.45fr_0.7fr_0.75fr_0.55fr_1.25fr] md:items-center">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="text-lg font-bold text-white">{item.local}</h4>
-                        <span className="rounded-full border border-zinc-800 bg-black px-3 py-1 text-xs text-zinc-400">{item.tipo || 'Local'}</span>
-                      </div>
-                      {item.observacao && <p className="mt-2 text-sm text-zinc-500">{item.observacao}</p>}
-                    </div>
-
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Última visita</p>
-                      <p className="font-semibold text-white">{dataBR(item.data_visita)}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Retorno</p>
-                      <p className="font-semibold text-orange-300">{textoRetornoRoteiro(item.data_visita)}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Peças</p>
-                      <p className="font-semibold text-white">{Number(item.pecas_vendidas || 0)}</p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
-                      <span className={`rounded-xl border px-3 py-2 text-center text-sm font-bold ${status.classe}`}>
-                        {status.texto}
-                      </span>
-                      <button onClick={() => registrarRetornoRoteiroVendas(item)} className="rounded-xl bg-green-950 px-3 py-2 text-sm font-semibold text-green-200 hover:bg-green-900">
-                        Retornei
-                      </button>
-                      <button onClick={() => editarRoteiroVendas(item)} className="rounded-xl bg-zinc-800 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-700">
-                        Editar
-                      </button>
-                      <button onClick={() => excluirRoteiroVendas(item)} className="rounded-xl bg-red-950 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-900">
-                        Remover
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="grid gap-5 lg:grid-cols-2">
+            <ListaControle
+              titulo="Locais de visita"
+              subtitulo="Para não esquecer onde precisa passar."
+              itens={locais}
+              vazio="Nenhum local cadastrado ainda."
+            />
+            <ListaControle
+              titulo="Clientes para lembrar"
+              subtitulo="Clientes antigos ou aposentados que você acompanha manualmente."
+              itens={clientesLembrar}
+              vazio="Nenhum cliente para lembrar cadastrado ainda."
+            />
           </div>
         </section>
       </div>
@@ -8580,7 +8607,21 @@ Delber Vilaça`
             </div>
 
             <nav className="mini-mobile-nav">
-              {itensMenu.map((item) => botaoMenuMobile(item))}
+              {itensMenu
+                .filter((item) => item.id !== 'roteiro-vendas')
+                .flatMap((item) => {
+                  const botaoAtual = botaoMenuMobile(item)
+                  if (item.id !== 'delivery') return [botaoAtual]
+
+                  return [
+                    botaoAtual,
+                    botaoMenuMobile({
+                      id: 'roteiro-vendas',
+                      icone: '📍',
+                      texto: 'Locais e Clientes',
+                    }),
+                  ]
+                })}
             </nav>
           </aside>
         </div>
