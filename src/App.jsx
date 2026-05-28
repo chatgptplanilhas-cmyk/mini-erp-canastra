@@ -28,6 +28,7 @@ export default function App() {
   const [buscaClientes, setBuscaClientes] = useState('')
   const [filtroClientes, setFiltroClientes] = useState('ativos')
   const [buscaVendas, setBuscaVendas] = useState('')
+  const [paginaVendas, setPaginaVendas] = useState(1)
   const [buscaClienteVenda, setBuscaClienteVenda] = useState('')
   const [buscaPendencias, setBuscaPendencias] = useState('')
   const [buscaPagamentos, setBuscaPagamentos] = useState('')
@@ -177,6 +178,10 @@ export default function App() {
   useEffect(() => {
     buscarTudo()
   }, [])
+
+  useEffect(() => {
+    setPaginaVendas(1)
+  }, [buscaVendas, filtroVendasInicio, filtroVendasFim])
 
   async function buscarTudo() {
     await Promise.all([
@@ -3480,6 +3485,16 @@ Delber Vilaça`
       return contemTermos(texto, termo) && dentroPeriodoFiltro(venda.data_venda, filtroVendasInicio, filtroVendasFim)
     })
 
+    const vendasPorPagina = 50
+    const totalPaginasVendas = Math.max(1, Math.ceil(vendasFiltradas.length / vendasPorPagina))
+    const paginaAtualVendas = Math.min(paginaVendas, totalPaginasVendas)
+    const indiceInicialVendas = (paginaAtualVendas - 1) * vendasPorPagina
+    const indiceFinalVendas = indiceInicialVendas + vendasPorPagina
+    const vendasPaginadas = vendasFiltradas.slice(indiceInicialVendas, indiceFinalVendas)
+    const textoResumoPaginacaoVendas = vendasFiltradas.length === 0
+      ? 'Nenhuma venda encontrada.'
+      : `Mostrando ${indiceInicialVendas + 1} a ${Math.min(indiceFinalVendas, vendasFiltradas.length)} de ${vendasFiltradas.length} vendas.`
+
     return (
       <>
         <section className="mini-venda-rapida sticky top-0 z-40 bg-[#15110f]/95 backdrop-blur border border-orange-950 rounded-[28px] p-5 mb-6 shadow-2xl">
@@ -3713,12 +3728,42 @@ Delber Vilaça`
             </div>
           </div>
 
+          <div className="mb-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 rounded-2xl border border-zinc-900 bg-zinc-950/60 px-4 py-3">
+            <p className="text-sm text-zinc-400">
+              {textoResumoPaginacaoVendas}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={paginaAtualVendas <= 1}
+                onClick={() => setPaginaVendas((paginaAtual) => Math.max(1, paginaAtual - 1))}
+                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-xs font-semibold"
+              >
+                Anterior
+              </button>
+
+              <span className="text-xs text-zinc-500 font-bold px-2">
+                Página {paginaAtualVendas} de {totalPaginasVendas}
+              </span>
+
+              <button
+                type="button"
+                disabled={paginaAtualVendas >= totalPaginasVendas}
+                onClick={() => setPaginaVendas((paginaAtual) => Math.min(totalPaginasVendas, paginaAtual + 1))}
+                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-xs font-semibold"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+
           <div className="mini-vendas-mobile-list">
             {vendasFiltradas.length === 0 && (
               <div className="mini-venda-list-card mini-venda-empty">Nenhuma venda encontrada.</div>
             )}
 
-            {vendasFiltradas.map((venda) => {
+            {vendasPaginadas.map((venda) => {
               const aberto = String(vendaExpandidaId) === String(venda.id)
               const statusVenda = normalizarStatus(venda.status)
 
@@ -3812,7 +3857,7 @@ Delber Vilaça`
                   </tr>
                 )}
 
-                {vendasFiltradas.map((venda) => (
+                {vendasPaginadas.map((venda) => (
                   <tr key={venda.id} className="border-t border-zinc-900">
                     <td className="p-5">#{venda.numero_venda}</td>
                     <td className="p-5 text-zinc-400">{dataBR(venda.data_venda)}</td>
