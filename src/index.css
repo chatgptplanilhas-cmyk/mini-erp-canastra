@@ -13995,3 +13995,232 @@ span[class*="rounded-full"] {
     font-size: 16px !important;
   }
 }
+
+
+/* FASE COBRANCAS DESKTOP SEGURO - apenas layout da aba Cobranças
+   Não altera regras, dados, Supabase, WhatsApp, confirmação ou mobile. */
+@media (min-width: 768px) {
+  .mini-cobrancas-refinada {
+    padding: 22px !important;
+    border-color: rgba(124, 45, 18, 0.55) !important;
+  }
+
+  .mini-cobrancas-refinada > .flex:first-child {
+    margin-bottom: 14px !important;
+    align-items: center !important;
+    gap: 14px !important;
+  }
+
+  .mini-cobrancas-refinada .mini-section-title {
+    font-size: 25px !important;
+    line-height: 1.05 !important;
+  }
+
+  .mini-cobrancas-refinada .mini-section-title + p {
+    margin-top: 4px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .mini-cobrancas-refinada > .flex:first-child input {
+    height: 42px !important;
+    max-width: 390px !important;
+    padding: 0 14px !important;
+    border-radius: 14px !important;
+    font-size: 13px !important;
+  }
+
+  .mini-cobrancas-resumo {
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .mini-cobrancas-resumo > div {
+    min-height: 72px !important;
+    padding: 12px 14px !important;
+    border-radius: 16px !important;
+    background: linear-gradient(180deg, rgba(12, 12, 13, 0.94), rgba(3, 3, 3, 0.98)) !important;
+  }
+
+  .mini-cobrancas-resumo p {
+    margin-bottom: 6px !important;
+    font-size: 10px !important;
+    line-height: 1.05 !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .mini-cobrancas-resumo h3 {
+    margin: 0 !important;
+    font-size: 20px !important;
+    line-height: 1.05 !important;
+  }
+
+  .mini-cobrancas-layout {
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) !important;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+
+  .mini-cobrancas-locais {
+    gap: 8px !important;
+    max-height: calc(100vh - 340px) !important;
+    overflow-y: auto !important;
+    padding-right: 4px !important;
+    scrollbar-width: thin !important;
+  }
+
+  .mini-cobrancas-local-card {
+    padding: 11px 12px !important;
+    border-radius: 15px !important;
+    min-height: 72px !important;
+    background: rgba(18, 18, 20, 0.72) !important;
+  }
+
+  .mini-cobrancas-local-card.border-orange-900,
+  .mini-cobrancas-local-card.bg-orange-950\/25 {
+    background: linear-gradient(180deg, rgba(124, 45, 18, 0.58), rgba(67, 20, 7, 0.52)) !important;
+    border-color: rgba(251, 146, 60, 0.48) !important;
+    box-shadow: inset 3px 0 0 rgba(251, 146, 60, 0.78) !important;
+  }
+
+  .mini-cobrancas-local-card p.text-lg {
+    font-size: 14.5px !important;
+    line-height: 1.08 !important;
+  }
+
+  .mini-cobrancas-local-card p.text-xs {
+    margin-top: 3px !important;
+    font-size: 10px !important;
+    line-height: 1.18 !important;
+  }
+
+  .mini-cobrancas-local-card .text-right p:first-child {
+    font-size: 13.5px !important;
+    line-height: 1.05 !important;
+  }
+
+  .mini-cobrancas-local-card .text-right p,
+  .mini-cobrancas-local-card .text-right span {
+    line-height: 1.1 !important;
+  }
+
+  .mini-cobrancas-local-detalhe {
+    border-radius: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .mini-cobrancas-local-detalhe > .flex:first-child {
+    padding: 15px 16px !important;
+    align-items: center !important;
+  }
+
+  .mini-cobrancas-local-detalhe h3 {
+    font-size: 22px !important;
+    line-height: 1.05 !important;
+  }
+
+  .mini-cobrancas-local-detalhe h3 + p {
+    margin-top: 5px !important;
+    font-size: 12px !important;
+  }
+
+  .mini-cobrancas-local-detalhe .lg\:text-right p:first-child {
+    font-size: 10px !important;
+    letter-spacing: 0.16em !important;
+  }
+
+  .mini-cobrancas-local-detalhe .lg\:text-right p.text-2xl {
+    margin-top: 4px !important;
+    font-size: 22px !important;
+    line-height: 1.05 !important;
+  }
+
+  .mini-cobrancas-desktop-wrap {
+    max-height: calc(100vh - 405px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
+  }
+
+  .mini-cobrancas-desktop-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  .mini-cobrancas-desktop-table thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 8 !important;
+    background: #050505 !important;
+    box-shadow: 0 1px 0 rgba(124, 45, 18, 0.65) !important;
+  }
+
+  .mini-cobrancas-desktop-table th,
+  .mini-cobrancas-desktop-table td {
+    padding: 10px 9px !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+  }
+
+  .mini-cobrancas-desktop-table tbody tr {
+    min-height: 48px !important;
+  }
+
+  .mini-cobrancas-desktop-table th:nth-child(1),
+  .mini-cobrancas-desktop-table td:nth-child(1) { width: 15% !important; }
+
+  .mini-cobrancas-desktop-table th:nth-child(2),
+  .mini-cobrancas-desktop-table td:nth-child(2),
+  .mini-cobrancas-desktop-table th:nth-child(3),
+  .mini-cobrancas-desktop-table td:nth-child(3) { width: 10% !important; }
+
+  .mini-cobrancas-desktop-table th:nth-child(4),
+  .mini-cobrancas-desktop-table td:nth-child(4) { width: 9% !important; }
+
+  .mini-cobrancas-desktop-table th:nth-child(5),
+  .mini-cobrancas-desktop-table td:nth-child(5),
+  .mini-cobrancas-desktop-table th:nth-child(6),
+  .mini-cobrancas-desktop-table td:nth-child(6),
+  .mini-cobrancas-desktop-table th:nth-child(7),
+  .mini-cobrancas-desktop-table td:nth-child(7) { width: 10% !important; }
+
+  .mini-cobrancas-desktop-table th:nth-child(8),
+  .mini-cobrancas-desktop-table td:nth-child(8) { width: 26% !important; }
+
+  .mini-cobrancas-acoes-inline {
+    display: grid !important;
+    grid-template-columns: 64px 74px 30px !important;
+    gap: 6px !important;
+    justify-content: end !important;
+    align-items: center !important;
+  }
+
+  .mini-cobrancas-btn,
+  .mini-cobrancas-menu summary {
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 8px !important;
+    border-radius: 10px !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    font-weight: 850 !important;
+  }
+
+  .mini-cobrancas-btn-secondary {
+    background: linear-gradient(180deg, #27272a 0%, #171717 100%) !important;
+    color: #e4e4e7 !important;
+    border-color: rgba(82, 82, 91, 0.78) !important;
+  }
+
+  .mini-cobrancas-menu,
+  .mini-cobrancas-menu summary {
+    width: 30px !important;
+  }
+
+  .mini-cobrancas-menu-list {
+    right: 0 !important;
+    min-width: 170px !important;
+  }
+}
