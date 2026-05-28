@@ -55,6 +55,30 @@ export default function App() {
   const [listaPedidosFornecedorAberta, setListaPedidosFornecedorAberta] = useState(false)
   const pagamentoDeliveryInicial = { forma_pagamento: 'Pix', valor: '' }
 
+  const [caixaAtual, setCaixaAtual] = useState(() => {
+    try {
+      const salvo = window.localStorage.getItem('miniErpCaixaAtual')
+      return salvo !== null ? Number(salvo) || 0 : 1439.81
+    } catch (erro) {
+      return 1439.81
+    }
+  })
+
+  const [formCaixa, setFormCaixa] = useState({
+    tipo: 'Entrada',
+    valor: '',
+    observacao: '',
+  })
+
+  const [historicoCaixa, setHistoricoCaixa] = useState(() => {
+    try {
+      const salvo = window.localStorage.getItem('miniErpHistoricoCaixa')
+      return salvo ? JSON.parse(salvo) : []
+    } catch (erro) {
+      return []
+    }
+  })
+
   const [modalDeliveryVenda, setModalDeliveryVenda] = useState({
     aberto: false,
     item: null,
@@ -183,6 +207,22 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem('miniErpCaixaAtual', String(caixaAtual))
+    } catch (erro) {
+      console.error(erro)
+    }
+  }, [caixaAtual])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('miniErpHistoricoCaixa', JSON.stringify(historicoCaixa))
+    } catch (erro) {
+      console.error(erro)
+    }
+  }, [historicoCaixa])
+
+  useEffect(() => {
     setPaginaVendas(1)
   }, [buscaVendas, filtroVendasInicio, filtroVendasFim])
 
@@ -224,6 +264,51 @@ export default function App() {
       .replace(',', '.')
 
     return Number(limpo) || 0
+  }
+
+  function salvarMovimentoCaixa() {
+    const campoValor = document.getElementById('campo-ajuste-caixa-valor')
+    const campoObservacao = document.getElementById('campo-ajuste-caixa-observacao')
+    const valorDigitado = campoValor?.value ?? ''
+    const observacaoDigitada = campoObservacao?.value ?? ''
+    const valor = numero(valorDigitado)
+
+    if (valor <= 0) {
+      alert('Informe um valor válido para atualizar o caixa.')
+      return
+    }
+
+    const tipo = formCaixa.tipo || 'Entrada'
+    const caixaAnterior = Number(caixaAtual || 0)
+    const caixaNovo = tipo === 'Saída'
+      ? caixaAnterior - valor
+      : tipo === 'Ajuste'
+        ? valor
+        : caixaAnterior + valor
+
+    const movimento = {
+      id: Date.now(),
+      data: new Date().toISOString(),
+      tipo,
+      valor,
+      caixaAnterior,
+      caixaNovo,
+      observacao: observacaoDigitada || '',
+    }
+
+    setCaixaAtual(caixaNovo)
+    setHistoricoCaixa((lista) => [movimento, ...(lista || [])].slice(0, 20))
+    setFormCaixa({ tipo: 'Entrada', valor: '', observacao: '' })
+
+    if (campoValor) campoValor.value = ''
+    if (campoObservacao) campoObservacao.value = ''
+  }
+
+  function removerMovimentoCaixa(id) {
+    const confirmar = window.confirm('Deseja remover este lançamento do histórico? O caixa atual não será recalculado automaticamente.')
+    if (!confirmar) return
+
+    setHistoricoCaixa((lista) => (lista || []).filter((item) => item.id !== id))
   }
 
   function dataHoje() {
@@ -3272,6 +3357,8 @@ Delber Vilaça`
 
   function TelaPainel() {
     const inicioMesPainel = inicioMesAtual()
+    const saldoCaixaAtualInformado = Number(caixaAtual || 0)
+    const periodoAnterior = periodoMesAnterior()
 
     function dataBasePainel(item, campoPrincipal = 'data_venda') {
       return String(item?.[campoPrincipal] || item?.vendas?.data_venda || item?.created_at || '').slice(0, 10)
@@ -3280,6 +3367,43 @@ Delber Vilaça`
     function pertenceAoMesAtualPainel(item, campoPrincipal = 'data_venda') {
       const data = dataBasePainel(item, campoPrincipal)
       return data && data >= inicioMesPainel
+    }
+
+    function pertenceAoPeriodoPainel(item, campoPrincipal, inicio, fim) {
+      const data = dataBasePainel(item, campoPrincipal)
+      return data && data >= inicio && data <= fim
+    }
+
+    function calcularPeriodoPainel({ inicio, fim }) {
+      const vendasPeriodo = vendas.filter((venda) => pertenceAoPeriodoPainel(venda, 'data_venda', inicio, fim))
+      const movimentacoesPeriodo = movimentacoesProdutos.filter((item) => pertenceAoPeriodoPainel(item, 'data_venda', inicio, fim))
+      const despesasPeriodo = despesas.filter((item) => pertenceAoPeriodoPainel(item, 'data_despesa', inicio, fim))
+      const pagamentosPeriodo = pagamentos.filter((pagamento) => pertenceAoPeriodoPainel(pagamento, 'data_pagamento', inicio, fim))
+
+      const bruto = vendasPeriodo.reduce((acc, venda) => acc + Number(venda.valor_total || 0), 0)
+      const taxas = vendasPeriodo.reduce((acc, venda) => acc + Number(venda.valor_taxa || 0), 0)
+      const custoProdutos = movimentacoesPeriodo.reduce((acc, item) => acc + Number(item.subtotal_custo || 0), 0)
+      const despesasTotal = despesasPeriodo.reduce((acc, item) => acc + Number(item.valor || 0), 0)
+      const resultadoProjetado = bruto - custoProdutos - taxas - despesasTotal
+      const pecas = movimentacoesPeriodo.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
+      const numeroVendasPeriodo = vendasPeriodo.length
+      const clientesPeriodo = new Set(vendasPeriodo.map((venda) => venda.cliente_id).filter(Boolean)).size
+      const recebido = pagamentosPeriodo.reduce((acc, pagamento) => acc + Number(pagamento.valor_pago || 0), 0)
+
+      return {
+        bruto,
+        taxas,
+        custoProdutos,
+        despesasTotal,
+        resultadoProjetado,
+        pecas,
+        numeroVendas: numeroVendasPeriodo,
+        clientes: clientesPeriodo,
+        recebido,
+        ticketMedio: numeroVendasPeriodo > 0 ? bruto / numeroVendasPeriodo : 0,
+        mediaLiquidaPorPeca: pecas > 0 ? resultadoProjetado / pecas : 0,
+        margemOperacional: bruto > 0 ? (resultadoProjetado / bruto) * 100 : 0,
+      }
     }
 
     const vendasMesPainel = vendas.filter((venda) => pertenceAoMesAtualPainel(venda, 'data_venda'))
@@ -3314,26 +3438,25 @@ Delber Vilaça`
       .filter((item) => item.status === 'Programado')
       .reduce((acc, item) => acc + Number(item.valor_total || 0), 0)
 
-    const totalLiquidoAtual = totalBruto - totalCustoProdutos - totalTaxas - totalDespesas - totalPendencias
-    const totalProjetadoFinal = totalLiquidoAtual + totalPendencias
-    const subtotalOperacional = totalProjetadoFinal
+    const lucroOperacionalProjetado = totalBruto - totalCustoProdutos - totalTaxas - totalDespesas
+    const totalProjetadoFinal = lucroOperacionalProjetado
+    const totalValoresAReceber = totalPendencias + totalEmDelivery + saldoAnteriorEmAberto
+    const recursosTotaisConservador = saldoCaixaAtualInformado + totalValoresAReceber
+    const percentualRecebidoSobreVendido = totalBruto > 0 ? (totalRecebido / totalBruto) * 100 : 0
+    const caixaLiquidoRealizado = saldoCaixaAtualInformado
 
     const pecasVendidas = movimentacoesMesPainel.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
     const numeroVendas = vendasMesPainel.length
     const clientesAtendidos = new Set(vendasMesPainel.map((venda) => venda.cliente_id).filter(Boolean)).size
 
-    const amostras = movimentacoesMesPainel.reduce((acc, item) => {
-      const observacao = normalizarTexto(item.observacao)
-      return observacao.includes('amostra') || observacao.includes('degust')
-        ? acc + Number(item.quantidade || 0)
-        : acc
-    }, 0)
-
     const ticketMedio = numeroVendas > 0 ? totalBruto / numeroVendas : 0
-    const mediaLiquidaPorPeca = pecasVendidas > 0 ? totalProjetadoFinal / pecasVendidas : 0
+    const mediaLiquidaPorPeca = pecasVendidas > 0 ? lucroOperacionalProjetado / pecasVendidas : 0
     const mediaPecasPorCliente = clientesAtendidos > 0 ? pecasVendidas / clientesAtendidos : 0
     const mediaPecasPorVenda = numeroVendas > 0 ? pecasVendidas / numeroVendas : 0
-    const margemOperacionalProjetada = totalBruto > 0 ? (totalProjetadoFinal / totalBruto) * 100 : 0
+    const margemOperacionalProjetada = totalBruto > 0 ? (lucroOperacionalProjetado / totalBruto) * 100 : 0
+
+    const mesAtualComparativo = calcularPeriodoPainel({ inicio: inicioMesPainel, fim: dataHoje() })
+    const mesAnteriorComparativo = calcularPeriodoPainel(periodoAnterior)
 
     const semanas = [1, 2, 3, 4, 5]
 
@@ -3358,6 +3481,33 @@ Delber Vilaça`
       return new Set(clientesSemana).size
     })
 
+    function diferencaPercentual(atual, anterior) {
+      const valorAtual = Number(atual || 0)
+      const valorAnterior = Number(anterior || 0)
+
+      if (valorAnterior === 0 && valorAtual === 0) return { percentual: 0, direcao: 'estavel', texto: '0,0%' }
+      if (valorAnterior === 0) return { percentual: 100, direcao: 'alta', texto: '+100,0%' }
+
+      const diferenca = ((valorAtual - valorAnterior) / Math.abs(valorAnterior)) * 100
+      return {
+        percentual: diferenca,
+        direcao: diferenca > 0.5 ? 'alta' : diferenca < -0.5 ? 'baixa' : 'estavel',
+        texto: `${diferenca >= 0 ? '+' : ''}${diferenca.toFixed(1).replace('.', ',')}%`,
+      }
+    }
+
+    function classeComparativo(direcao, positivoAlta = true) {
+      if (direcao === 'estavel') return 'text-zinc-300'
+      if (direcao === 'alta') return positivoAlta ? 'text-green-300' : 'text-red-300'
+      return positivoAlta ? 'text-red-300' : 'text-green-300'
+    }
+
+    function setaComparativo(direcao) {
+      if (direcao === 'alta') return '↑'
+      if (direcao === 'baixa') return '↓'
+      return '→'
+    }
+
     function LinhaRelatorio({ rotulo, valor, destaque }) {
       return (
         <div className="grid grid-cols-[1fr_auto] gap-4 border-t border-zinc-900 px-4 py-3 first:border-t-0">
@@ -3367,11 +3517,40 @@ Delber Vilaça`
       )
     }
 
-    function BlocoRelatorio({ titulo, children }) {
+    function LinhaComparativo({ rotulo, atual, anterior, formato = 'moeda', positivoAlta = true }) {
+      const variacao = diferencaPercentual(atual, anterior)
+      const classe = classeComparativo(variacao.direcao, positivoAlta)
+      const valorAtual = formato === 'percentual'
+        ? percentual(atual)
+        : formato === 'numero'
+          ? Number(atual || 0).toLocaleString('pt-BR')
+          : moeda(atual)
+      const valorAnterior = formato === 'percentual'
+        ? percentual(anterior)
+        : formato === 'numero'
+          ? Number(anterior || 0).toLocaleString('pt-BR')
+          : moeda(anterior)
+
+      return (
+        <div className="grid grid-cols-[1fr_auto] gap-4 border-t border-zinc-900 px-4 py-3 first:border-t-0">
+          <div>
+            <span className="block text-zinc-300 font-semibold">{rotulo}</span>
+            <span className="block text-[11px] text-zinc-600 mt-1">Mês anterior: {valorAnterior}</span>
+          </div>
+          <div className="text-right">
+            <span className="block text-white font-bold">{valorAtual}</span>
+            <span className={`block text-xs font-bold mt-1 ${classe}`}>{setaComparativo(variacao.direcao)} {variacao.texto}</span>
+          </div>
+        </div>
+      )
+    }
+
+    function BlocoRelatorio({ titulo, children, subtitulo }) {
       return (
         <div className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950/30">
           <div className="bg-[#111827] px-4 py-3 text-center font-bold text-white">
             {titulo}
+            {subtitulo ? <span className="block text-[11px] text-zinc-500 font-medium mt-1">{subtitulo}</span> : null}
           </div>
 
           <div className="text-sm">
@@ -3384,42 +3563,96 @@ Delber Vilaça`
     return (
       <>
         <section className="mobile-summary-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-8 gap-4 mb-6">
-          <CardResumo titulo="Total bruto vendido" valor={moeda(totalBruto)} classe="text-green-300" />
-          <CardResumo titulo="Pagamentos fornecedores" valor={moeda(totalCustoProdutos)} classe="text-red-300" />
-          <CardResumo titulo="Total despesas" valor={moeda(totalDespesas)} classe="text-red-300" />
-          <CardResumo titulo="Total taxas" valor={moeda(totalTaxas)} classe="text-red-300" />
-          <CardResumo titulo="Em aberto, mês atual" valor={moeda(totalPendencias)} classe="text-orange-300" />
-          <CardResumo titulo="Em Delivery" valor={moeda(totalEmDelivery)} classe="text-yellow-300" />
-          <CardResumo titulo="Saldo anterior em aberto" valor={moeda(saldoAnteriorEmAberto)} classe="text-yellow-300" />
-          <CardResumo titulo="Total projetado final" valor={moeda(totalProjetadoFinal)} classe={totalProjetadoFinal >= 0 ? 'text-green-400' : 'text-red-300'} />
+          <CardResumo titulo="Faturamento bruto" valor={moeda(totalBruto)} classe="text-green-300" />
+          <CardResumo titulo="Resultado previsto do mês" valor={moeda(lucroOperacionalProjetado)} classe={lucroOperacionalProjetado >= 0 ? 'text-green-400' : 'text-red-300'} />
+          <CardResumo titulo="Caixa atual" valor={moeda(caixaLiquidoRealizado)} classe="text-green-300" />
+          <CardResumo titulo="Valores a receber" valor={moeda(totalValoresAReceber)} classe="text-orange-300" />
+          <CardResumo titulo="Recebido sobre vendido" valor={percentual(percentualRecebidoSobreVendido)} classe={percentualRecebidoSobreVendido >= 60 ? 'text-green-300' : 'text-yellow-300'} />
+          <CardResumo titulo="Fornecedores pagos" valor={moeda(totalCustoProdutos)} classe="text-red-300" />
+          <CardResumo titulo="Despesas e taxas" valor={moeda(totalDespesas + totalTaxas)} classe="text-red-300" />
+          <CardResumo titulo="Caixa + recebíveis" valor={moeda(recursosTotaisConservador)} classe="text-yellow-300" />
         </section>
 
         <section className="mobile-panel-card bg-black border border-orange-950 rounded-[24px] lg:rounded-[28px] p-5 lg:p-8 mb-6">
           <div className="flex items-center justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-3xl font-bold">Resumo Geral</h2>
-              <p className="text-zinc-500 mt-2">Visão financeira operacional baseada no modelo de controle da planilha.</p>
+              <h2 className="text-3xl font-bold">Painel Executivo</h2>
+              <p className="text-zinc-500 mt-2">Visão operacional, caixa, carteira em aberto e evolução mensal.</p>
             </div>
 
             <span className="bg-green-950 text-green-300 px-4 py-2 rounded-2xl text-sm font-semibold">
-              Painel Executivo
+              Gestão Conservadora
             </span>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
-            <BlocoRelatorio titulo="Resumo financeiro">
-              <LinhaRelatorio rotulo="Total bruto vendas" valor={moeda(totalBruto)} destaque="text-green-300" />
-              <LinhaRelatorio rotulo="Total líquido cartões / Pix / dinheiro / link" valor={moeda(totalLiquidoVendas)} destaque="text-green-300" />
-              <LinhaRelatorio rotulo="Taxas cartões / link" valor={moeda(totalTaxas)} destaque="text-red-300" />
-              <LinhaRelatorio rotulo="Fiados em aberto, mês atual" valor={moeda(totalPendencias)} destaque="text-orange-300" />
-              <LinhaRelatorio rotulo="Saldo anterior em aberto" valor={moeda(saldoAnteriorEmAberto)} destaque="text-yellow-300" />
-              <LinhaRelatorio rotulo="Pagamentos fornecedores" valor={moeda(totalCustoProdutos)} destaque="text-red-300" />
-              <LinhaRelatorio rotulo="Total de despesas" valor={moeda(totalDespesas)} destaque="text-red-300" />
-              <LinhaRelatorio rotulo="Subtotal operacional" valor={moeda(subtotalOperacional)} destaque="text-orange-300" />
-              <LinhaRelatorio rotulo="Total projetado final" valor={moeda(totalProjetadoFinal)} destaque={totalProjetadoFinal >= 0 ? 'text-green-400' : 'text-red-300'} />
+            <BlocoRelatorio titulo="Operação do mês" subtitulo="Competência atual">
+              <LinhaRelatorio rotulo="Faturamento bruto" valor={moeda(totalBruto)} destaque="text-green-300" />
+              <LinhaRelatorio rotulo="Fornecedores pagos" valor={moeda(totalCustoProdutos)} destaque="text-red-300" />
+              <LinhaRelatorio rotulo="Taxas" valor={moeda(totalTaxas)} destaque="text-red-300" />
+              <LinhaRelatorio rotulo="Despesas" valor={moeda(totalDespesas)} destaque="text-red-300" />
+              <LinhaRelatorio rotulo="Resultado previsto do mês" valor={moeda(lucroOperacionalProjetado)} destaque={lucroOperacionalProjetado >= 0 ? 'text-green-400' : 'text-red-300'} />
+              <LinhaRelatorio rotulo="Margem operacional projetada" valor={percentual(margemOperacionalProjetada)} destaque={margemOperacionalProjetada >= 0 ? 'text-green-300' : 'text-red-300'} />
             </BlocoRelatorio>
 
-            <BlocoRelatorio titulo="Peças e atendimento">
+            <BlocoRelatorio titulo="Caixa realizado" subtitulo="Dinheiro disponível e entradas confirmadas">
+              <LinhaRelatorio rotulo="Caixa atual informado" valor={moeda(caixaLiquidoRealizado)} destaque="text-green-300" />
+              <LinhaRelatorio rotulo="Recebido no período" valor={moeda(totalRecebido)} destaque="text-green-300" />
+              <LinhaRelatorio rotulo="Total líquido lançado nas vendas" valor={moeda(totalLiquidoVendas)} destaque="text-green-300" />
+              <LinhaRelatorio rotulo="Recebido sobre vendido" valor={percentual(percentualRecebidoSobreVendido)} destaque={percentualRecebidoSobreVendido >= 60 ? 'text-green-300' : 'text-yellow-300'} />
+              <LinhaRelatorio rotulo="Despesas e taxas" valor={moeda(totalDespesas + totalTaxas)} destaque="text-red-300" />
+
+              <div className="border-t border-zinc-900 p-4 grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <select
+                    value={formCaixa?.tipo ?? 'Entrada'}
+                    onChange={(e) => setFormCaixa((atual) => ({ ...atual, tipo: e.target?.value ?? 'Entrada' }))}
+                    className="bg-black border border-zinc-800 rounded-xl px-3 py-2 text-sm"
+                  >
+                    <option>Entrada</option>
+                    <option>Saída</option>
+                    <option>Ajuste</option>
+                  </select>
+
+                  <input
+                    id="campo-ajuste-caixa-valor"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    placeholder={(formCaixa?.tipo ?? 'Entrada') === 'Ajuste' ? 'Novo saldo do caixa' : 'Valor'}
+                    className="bg-black border border-zinc-800 rounded-xl px-3 py-2 text-sm"
+                  />
+
+                  <button type="button" onClick={salvarMovimentoCaixa} className="bg-orange-950 hover:bg-orange-900 border border-orange-800 rounded-xl px-3 py-2 text-sm font-bold">
+                    Ajustar caixa
+                  </button>
+                </div>
+
+                <input
+                  id="campo-ajuste-caixa-observacao"
+                  placeholder="Observação, exemplo: venda em dinheiro, bonificação de cliente, retirada ou ajuste manual"
+                  className="bg-black border border-zinc-800 rounded-xl px-3 py-2 text-sm"
+                />
+
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  Entrada soma ao caixa, inclusive bonificações e vendas em dinheiro. Saída reduz o caixa. Ajuste define o saldo exato informado.
+                </p>
+              </div>
+            </BlocoRelatorio>
+
+            <BlocoRelatorio titulo="Carteira em aberto" subtitulo="Recebíveis ainda não convertidos em caixa">
+              <LinhaRelatorio rotulo="Fiados em aberto, mês atual" valor={moeda(totalPendencias)} destaque="text-orange-300" />
+              <LinhaRelatorio rotulo="Delivery programado" valor={moeda(totalEmDelivery)} destaque="text-yellow-300" />
+              <LinhaRelatorio rotulo="Saldo anterior em aberto" valor={moeda(saldoAnteriorEmAberto)} destaque="text-yellow-300" />
+              <LinhaRelatorio rotulo="Total de valores a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
+              <LinhaRelatorio rotulo="Caixa + recebíveis" valor={moeda(recursosTotaisConservador)} destaque="text-yellow-300" />
+            </BlocoRelatorio>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
+            <BlocoRelatorio titulo="Indicadores comerciais" subtitulo="Qualidade da venda">
+              <LinhaRelatorio rotulo="Ticket médio" valor={moeda(ticketMedio)} destaque="text-green-300" />
+              <LinhaRelatorio rotulo="Média líquida por peça" valor={moeda(mediaLiquidaPorPeca)} destaque="text-green-400" />
               <LinhaRelatorio rotulo="Peças vendidas" valor={pecasVendidas} destaque="text-green-300" />
               <LinhaRelatorio rotulo="Clientes atendidos" valor={clientesAtendidos} destaque="text-white" />
               <LinhaRelatorio rotulo="Vendas lançadas" valor={numeroVendas} destaque="text-white" />
@@ -3427,11 +3660,39 @@ Delber Vilaça`
               <LinhaRelatorio rotulo="Média peças por cliente" valor={mediaPecasPorCliente.toFixed(1).replace('.', ',')} destaque="text-white" />
             </BlocoRelatorio>
 
-            <BlocoRelatorio titulo="Indicadores">
-              <LinhaRelatorio rotulo="Ticket médio" valor={moeda(ticketMedio)} destaque="text-green-300" />
-              <LinhaRelatorio rotulo="Média líquida por peça" valor={moeda(mediaLiquidaPorPeca)} destaque="text-green-400" />
-              <LinhaRelatorio rotulo="Margem operacional projetada" valor={percentual(margemOperacionalProjetada)} destaque={margemOperacionalProjetada >= 0 ? 'text-green-300' : 'text-red-300'} />
-              <LinhaRelatorio rotulo="Total projetado final" valor={moeda(totalProjetadoFinal)} destaque={totalProjetadoFinal >= 0 ? 'text-green-400' : 'text-red-300'} />
+            <BlocoRelatorio titulo="Comparativo mensal" subtitulo="Mês atual contra mês anterior">
+              <LinhaComparativo rotulo="Faturamento bruto" atual={mesAtualComparativo.bruto} anterior={mesAnteriorComparativo.bruto} />
+              <LinhaComparativo rotulo="Resultado do mês" atual={mesAtualComparativo.resultadoProjetado} anterior={mesAnteriorComparativo.resultadoProjetado} />
+              <LinhaComparativo rotulo="Ticket médio" atual={mesAtualComparativo.ticketMedio} anterior={mesAnteriorComparativo.ticketMedio} />
+              <LinhaComparativo rotulo="Margem operacional" atual={mesAtualComparativo.margemOperacional} anterior={mesAnteriorComparativo.margemOperacional} formato="percentual" />
+              <LinhaComparativo rotulo="Peças vendidas" atual={mesAtualComparativo.pecas} anterior={mesAnteriorComparativo.pecas} formato="numero" />
+              <LinhaComparativo rotulo="Clientes atendidos" atual={mesAtualComparativo.clientes} anterior={mesAnteriorComparativo.clientes} formato="numero" />
+            </BlocoRelatorio>
+
+            <BlocoRelatorio titulo="Controle conservador" subtitulo="Leitura de segurança">
+              <LinhaComparativo rotulo="Recebido no período" atual={mesAtualComparativo.recebido} anterior={mesAnteriorComparativo.recebido} />
+              <LinhaComparativo rotulo="Taxas" atual={mesAtualComparativo.taxas} anterior={mesAnteriorComparativo.taxas} positivoAlta={false} />
+              <LinhaComparativo rotulo="Despesas" atual={mesAtualComparativo.despesasTotal} anterior={mesAnteriorComparativo.despesasTotal} positivoAlta={false} />
+              <LinhaRelatorio rotulo="Caixa atual" valor={moeda(caixaLiquidoRealizado)} destaque="text-green-300" />
+              <LinhaRelatorio rotulo="Valores a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
+
+              <div className="border-t border-zinc-900 p-4">
+                <p className="text-xs font-bold text-zinc-300 mb-3">Últimos movimentos de caixa</p>
+                <div className="grid gap-2">
+                  {(historicoCaixa || []).slice(0, 4).length === 0 ? (
+                    <p className="text-xs text-zinc-600">Nenhum movimento registrado.</p>
+                  ) : (historicoCaixa || []).slice(0, 4).map((movimento) => (
+                    <div key={movimento.id} className="grid grid-cols-[1fr_auto] gap-3 rounded-xl border border-zinc-900 bg-black px-3 py-2">
+                      <div>
+                        <p className="text-xs text-white font-semibold">{movimento.tipo} · {moeda(movimento.valor)}</p>
+                        <p className="text-[10px] text-zinc-500">{dataHoraBR(movimento.data)} · Caixa: {moeda(movimento.caixaNovo)}</p>
+                        {movimento.observacao ? <p className="text-[10px] text-zinc-600 mt-1">{movimento.observacao}</p> : null}
+                      </div>
+                      <button type="button" onClick={() => removerMovimentoCaixa(movimento.id)} className="text-[10px] text-red-300">Remover</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </BlocoRelatorio>
           </div>
 
@@ -3450,15 +3711,6 @@ Delber Vilaça`
               <LinhaRelatorio rotulo="Total do mês" valor={clientesAtendidos} destaque="text-green-300" />
             </BlocoRelatorio>
 
-            <BlocoRelatorio titulo="Resumo de peças">
-              <LinhaRelatorio rotulo="Peças vendidas" valor={pecasVendidas} destaque="text-green-300" />
-              <LinhaRelatorio rotulo="Média líquida por peça" valor={moeda(mediaLiquidaPorPeca)} destaque="text-green-400" />
-              <LinhaRelatorio rotulo="Média peças por venda" valor={mediaPecasPorVenda.toFixed(1).replace('.', ',')} destaque="text-white" />
-              <LinhaRelatorio rotulo="Média peças por cliente" valor={mediaPecasPorCliente.toFixed(1).replace('.', ',')} destaque="text-white" />
-            </BlocoRelatorio>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mt-5">
             <BlocoRelatorio titulo="Custos operacionais">
               <LinhaRelatorio rotulo="Pagamentos fornecedores" valor={moeda(totalCustoProdutos)} destaque="text-red-300" />
               <LinhaRelatorio rotulo="Taxas" valor={moeda(totalTaxas)} destaque="text-red-300" />
@@ -3466,12 +3718,10 @@ Delber Vilaça`
               <LinhaRelatorio rotulo="Degustações" valor={moeda(totalDegustacoes)} destaque="text-red-300" />
               <LinhaRelatorio rotulo="Outros custos" valor={moeda(totalOutrosCustos)} destaque="text-red-300" />
             </BlocoRelatorio>
+          </div>
 
-            <BlocoRelatorio titulo="Status comercial">
-              <LinhaRelatorio rotulo="Número de vendas" valor={numeroVendas} destaque="text-white" />
-              <LinhaRelatorio rotulo="Vendas pagas" valor={vendas.filter((venda) => normalizarStatus(venda.status) === 'PAGO').length} destaque="text-green-300" />
-              <LinhaRelatorio rotulo="Vendas em aberto" valor={vendas.filter((venda) => normalizarStatus(venda.status) !== 'PAGO').length} destaque="text-orange-300" />
-            </BlocoRelatorio>
+          <div className="mt-5 rounded-2xl border border-zinc-900 bg-zinc-950/30 px-4 py-3 text-xs text-zinc-500 leading-relaxed">
+            O comparativo mensal usa os registros existentes no Supabase. Se as vendas antigas forem apagadas no fechamento do mês, será necessário criar futuramente uma tabela de fechamento mensal para guardar o histórico consolidado.
           </div>
         </section>
       </>
@@ -7226,6 +7476,7 @@ Delber Vilaça`
           >
             <option value="Abastecimento">Abastecimento</option>
             <option value="Degustação">Degustações</option>
+            <option value="Pró-labore / Retirada">Pró-labore / Retirada</option>
             <option value="Outros custos">Outros custos</option>
           </select>
 
@@ -8681,7 +8932,7 @@ Delber Vilaça`
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
             <CardPonto titulo="Venda projetada no mês" valor={moeda(brutoProjetadoMes)} detalhe={`Média atual: ${moeda(mediaDiariaProjetada)} por dia útil`} classe="text-green-300" />
-            <CardPonto titulo="Lucro operacional projetado" valor={moeda(lucroOperacionalProjetado)} detalhe="Após fornecedores, taxas e despesas projetadas" classe={lucroOperacionalProjetado >= 0 ? 'text-green-400' : 'text-red-300'} />
+            <CardPonto titulo="Resultado previsto do mês" valor={moeda(lucroOperacionalProjetado)} detalhe="Após fornecedores, taxas e despesas projetadas" classe={lucroOperacionalProjetado >= 0 ? 'text-green-400' : 'text-red-300'} />
             <CardPonto titulo="Equilíbrio projetado" valor={moeda(pontoEquilibrioProjetado)} detalhe="Estimativa do mínimo necessário no mês" classe="text-yellow-300" />
             <CardPonto titulo="Venda diária necessária" valor={moeda(vendaDiariaNecessariaProjetada)} detalhe={diasRestantesMesProjetado > 0 ? `${diasRestantesMesProjetado} dia(s) útil(eis) restante(s) no mês` : 'Mês fechado ou sem dias úteis restantes'} classe={vendaDiariaNecessariaProjetada > 0 ? 'text-orange-300' : 'text-green-400'} />
           </div>
