@@ -27,6 +27,7 @@ export default function App() {
 
   const [buscaClientes, setBuscaClientes] = useState('')
   const [filtroClientes, setFiltroClientes] = useState('ativos')
+  const [paginaClientes, setPaginaClientes] = useState(1)
   const [buscaVendas, setBuscaVendas] = useState('')
   const [paginaVendas, setPaginaVendas] = useState(1)
   const [buscaClienteVenda, setBuscaClienteVenda] = useState('')
@@ -35,6 +36,8 @@ export default function App() {
   const [buscaProdutos, setBuscaProdutos] = useState('')
   const [mostrarProdutosArquivados, setMostrarProdutosArquivados] = useState(false)
   const [buscaProdutosControle, setBuscaProdutosControle] = useState('')
+  const [paginaResumoProdutosControle, setPaginaResumoProdutosControle] = useState(1)
+  const [paginaItensProdutosControle, setPaginaItensProdutosControle] = useState(1)
   const [buscaProdutoLancamento, setBuscaProdutoLancamento] = useState('')
   const [dataControleProdutos, setDataControleProdutos] = useState(dataHoje())
   const [buscaDespesas, setBuscaDespesas] = useState('')
@@ -182,6 +185,15 @@ export default function App() {
   useEffect(() => {
     setPaginaVendas(1)
   }, [buscaVendas, filtroVendasInicio, filtroVendasFim])
+
+  useEffect(() => {
+    setPaginaClientes(1)
+  }, [buscaClientes, filtroClientes])
+
+  useEffect(() => {
+    setPaginaResumoProdutosControle(1)
+    setPaginaItensProdutosControle(1)
+  }, [buscaProdutosControle])
 
   async function buscarTudo() {
     await Promise.all([
@@ -3916,6 +3928,13 @@ Delber Vilaça`
       return contemTermos(texto, termo)
     })
 
+    const clientesPorPagina = 50
+    const totalPaginasClientes = Math.max(1, Math.ceil(clientesFiltrados.length / clientesPorPagina))
+    const paginaAtualClientes = Math.min(paginaClientes, totalPaginasClientes)
+    const indiceInicialClientes = (paginaAtualClientes - 1) * clientesPorPagina
+    const indiceFinalClientes = indiceInicialClientes + clientesPorPagina
+    const clientesPagina = clientesFiltrados.slice(indiceInicialClientes, indiceFinalClientes)
+
     const botaoFiltroCliente = (id, texto, total) => (
       <button
         type="button"
@@ -3970,7 +3989,7 @@ Delber Vilaça`
             <div className="mini-cliente-card mini-cliente-empty">Nenhum cliente encontrado.</div>
           )}
 
-          {clientesFiltrados.map((cliente) => {
+          {clientesPagina.map((cliente) => {
             const aberto = String(clienteExpandidoId) === String(cliente.id)
 
             return (
@@ -4051,7 +4070,7 @@ Delber Vilaça`
                 </tr>
               )}
 
-              {clientesFiltrados.map((cliente) => (
+              {clientesPagina.map((cliente) => (
                 <tr key={cliente.id} className="border-t border-zinc-900">
                   <td className="p-4 font-semibold">{cliente.nome}</td>
                   <td className="p-4 text-zinc-400">{cliente.referencia || 'Sem referência'}</td>
@@ -4096,6 +4115,38 @@ Delber Vilaça`
             </tbody>
           </table>
         </div>
+
+        {clientesFiltrados.length > clientesPorPagina && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 text-sm text-zinc-400">
+            <p>
+              Mostrando {indiceInicialClientes + 1} a {Math.min(indiceFinalClientes, clientesFiltrados.length)} de {clientesFiltrados.length} clientes
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={paginaAtualClientes <= 1}
+                onClick={() => setPaginaClientes((paginaAtual) => Math.max(1, paginaAtual - 1))}
+                className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Anterior
+              </button>
+
+              <span className="px-3 text-zinc-500">
+                Página {paginaAtualClientes} de {totalPaginasClientes}
+              </span>
+
+              <button
+                type="button"
+                disabled={paginaAtualClientes >= totalPaginasClientes}
+                onClick={() => setPaginaClientes((paginaAtual) => Math.min(totalPaginasClientes, paginaAtual + 1))}
+                className="px-4 py-2 rounded-xl bg-orange-950 border border-orange-800 font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     )
   }
@@ -5386,7 +5437,8 @@ Delber Vilaça`
             </tbody>
           </table>
         </div>
-      </section>
+
+              </section>
     )
   }
 
@@ -5495,6 +5547,8 @@ Delber Vilaça`
   }
 
   function TelaProdutosControle() {
+    const itensPorPaginaProdutosControle = 50
+
     const termo = normalizarTexto(buscaProdutosControle)
 
     const totalPecas = movimentacoesProdutos.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
@@ -5685,6 +5739,18 @@ Delber Vilaça`
       return contemTermos(texto, termo)
     })
 
+    const totalPaginasResumoProdutosControle = Math.max(1, Math.ceil(resumoProdutosFiltrados.length / itensPorPaginaProdutosControle))
+    const paginaResumoProdutosControleSegura = Math.min(paginaResumoProdutosControle, totalPaginasResumoProdutosControle)
+    const indiceInicialResumoProdutosControle = (paginaResumoProdutosControleSegura - 1) * itensPorPaginaProdutosControle
+    const indiceFinalResumoProdutosControle = indiceInicialResumoProdutosControle + itensPorPaginaProdutosControle
+    const resumoProdutosPagina = resumoProdutosFiltrados.slice(indiceInicialResumoProdutosControle, indiceFinalResumoProdutosControle)
+
+    const totalPaginasItensProdutosControle = Math.max(1, Math.ceil(movimentacoesProdutosFiltradas.length / itensPorPaginaProdutosControle))
+    const paginaItensProdutosControleSegura = Math.min(paginaItensProdutosControle, totalPaginasItensProdutosControle)
+    const indiceInicialItensProdutosControle = (paginaItensProdutosControleSegura - 1) * itensPorPaginaProdutosControle
+    const indiceFinalItensProdutosControle = indiceInicialItensProdutosControle + itensPorPaginaProdutosControle
+    const movimentacoesProdutosPagina = movimentacoesProdutosFiltradas.slice(indiceInicialItensProdutosControle, indiceFinalItensProdutosControle)
+
     return (
       <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-8">
         <div className="flex items-center justify-between gap-4 mb-6">
@@ -5806,7 +5872,7 @@ Delber Vilaça`
                 </tr>
               )}
 
-              {resumoProdutosFiltrados.map((produto) => (
+              {resumoProdutosPagina.map((produto) => (
                 <tr key={produto.id} className="border-t border-zinc-900">
                   <td className="p-4">{produto.nome}</td>
                   <td className="p-4">{produto.fornecedores?.nome || 'Sem fornecedor'}</td>
@@ -5832,7 +5898,7 @@ Delber Vilaça`
             <div className="mini-produto-empty-card">Nenhum produto encontrado no controle.</div>
           )}
 
-          {resumoProdutosFiltrados.map((produto) => (
+          {resumoProdutosPagina.map((produto) => (
             <div key={produto.id} className="mini-produto-controle-card">
               <div className="mini-produto-card-topo">
                 <div>
@@ -5866,6 +5932,32 @@ Delber Vilaça`
             </div>
           ))}
         </div>
+
+        {resumoProdutosFiltrados.length > itensPorPaginaProdutosControle && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8 rounded-2xl border border-zinc-900 bg-zinc-950/70 p-3">
+            <p className="text-xs text-zinc-500">
+              Mostrando {indiceInicialResumoProdutosControle + 1} a {Math.min(indiceFinalResumoProdutosControle, resumoProdutosFiltrados.length)} de {resumoProdutosFiltrados.length} produtos
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={paginaResumoProdutosControleSegura <= 1}
+                onClick={() => setPaginaResumoProdutosControle((paginaAtual) => Math.max(1, paginaAtual - 1))}
+                className="rounded-xl bg-zinc-800 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                disabled={paginaResumoProdutosControleSegura >= totalPaginasResumoProdutosControle}
+                onClick={() => setPaginaResumoProdutosControle((paginaAtual) => Math.min(totalPaginasResumoProdutosControle, paginaAtual + 1))}
+                className="rounded-xl bg-orange-950 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-4">
           <div>
@@ -5904,7 +5996,7 @@ Delber Vilaça`
                 </tr>
               )}
 
-              {movimentacoesProdutosFiltradas.map((item) => (
+              {movimentacoesProdutosPagina.map((item) => (
                 <tr key={item.id} className="border-t border-zinc-900 text-sm">
                   <td className="p-3 text-zinc-400">{dataBR(item.vendas?.data_venda || String(item.created_at || '').slice(0, 10))}</td>
                   <td className="p-3">#{item.vendas?.numero_venda}</td>
@@ -5945,7 +6037,7 @@ Delber Vilaça`
             <div className="mini-produto-empty-card">Nenhum item lançado.</div>
           )}
 
-          {movimentacoesProdutosFiltradas.map((item) => (
+          {movimentacoesProdutosPagina.map((item) => (
             <div key={item.id} className="mini-item-lancado-card">
               <div className="mini-item-card-topo">
                 <div>
@@ -5989,6 +6081,32 @@ Delber Vilaça`
             </div>
           ))}
         </div>
+
+        {movimentacoesProdutosFiltradas.length > itensPorPaginaProdutosControle && (
+          <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-zinc-900 bg-zinc-950/70 p-3">
+            <p className="text-xs text-zinc-500">
+              Mostrando {indiceInicialItensProdutosControle + 1} a {Math.min(indiceFinalItensProdutosControle, movimentacoesProdutosFiltradas.length)} de {movimentacoesProdutosFiltradas.length} itens lançados
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={paginaItensProdutosControleSegura <= 1}
+                onClick={() => setPaginaItensProdutosControle((paginaAtual) => Math.max(1, paginaAtual - 1))}
+                className="rounded-xl bg-zinc-800 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                disabled={paginaItensProdutosControleSegura >= totalPaginasItensProdutosControle}
+                onClick={() => setPaginaItensProdutosControle((paginaAtual) => Math.min(totalPaginasItensProdutosControle, paginaAtual + 1))}
+                className="rounded-xl bg-orange-950 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
 
         {modalConferenciaProdutosAberto && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4">
@@ -6333,7 +6451,8 @@ Delber Vilaça`
             </tbody>
           </table>
         </div>
-      </section>
+
+              </section>
     )
   }
 
@@ -7197,7 +7316,8 @@ Delber Vilaça`
             </tbody>
           </table>
         </div>
-      </section>
+
+              </section>
     )
   }
 
@@ -7744,7 +7864,8 @@ Delber Vilaça`
             </tbody>
           </table>
         </div>
-      </section>
+
+              </section>
     )
   }
 

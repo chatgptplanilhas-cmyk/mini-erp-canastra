@@ -14224,3 +14224,55 @@ span[class*="rounded-full"] {
     min-width: 170px !important;
   }
 }
+/* AJUSTE SEGURO, SOMENTE ABA COBRANÇAS DESKTOP
+   Objetivo: permitir rolagem interna na lista de clientes do local selecionado,
+   sem mexer em Supabase, lógica, cálculos, WhatsApp, mobile ou outras abas. */
+@media (min-width: 1024px) {
+  .mini-cobrancas-local-detalhe {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+  }
+
+  .mini-cobrancas-desktop-wrap {
+    display: block !important;
+    max-height: 52vh !important;
+    min-height: 260px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(124, 45, 18, 0.9) rgba(9, 9, 11, 0.9) !important;
+  }
+
+  .mini-cobrancas-desktop-wrap::-webkit-scrollbar {
+    width: 8px !important;
+  }
+
+  .mini-cobrancas-desktop-wrap::-webkit-scrollbar-track {
+    background: rgba(9, 9, 11, 0.9) !important;
+  }
+
+  .mini-cobrancas-desktop-wrap::-webkit-scrollbar-thumb {
+    background: rgba(124, 45, 18, 0.9) !important;
+    border-radius: 999px !important;
+  }
+
+  .mini-cobrancas-desktop-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .mini-cobrancas-desktop-table thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+    background: #050505 !important;
+    box-shadow: 0 1px 0 rgba(124, 45, 18, 0.65) !important;
+  }
+
+  .mini-cobrancas-desktop-table th,
+  .mini-cobrancas-desktop-table td {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+}
