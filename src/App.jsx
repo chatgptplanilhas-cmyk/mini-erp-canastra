@@ -312,6 +312,108 @@ export default function App() {
     setHistoricoCaixa((lista) => (lista || []).filter((item) => item.id !== id))
   }
 
+  function calcularLiquidoPagamentoCaixa(valorBruto, formaPagamento = 'Pix') {
+    const valor = Number(valorBruto || 0)
+    const taxa = buscarTaxaPorFormaPagamento(formaPagamento)
+    const percentual = Number(taxa?.taxa_percentual || 0)
+    const valorTaxa = valor * (percentual / 100)
+    const valorLiquido = Math.max(valor - valorTaxa, 0)
+
+    return {
+      valorBruto: valor,
+      valorTaxa,
+      valorLiquido,
+      percentual,
+      formaPagamento: formaPagamento || 'Pix',
+    }
+  }
+
+  function registrarEntradaCaixaAutomatica({ pagamentoId, vendaId, valorBruto, formaPagamento, cliente = '', origem = '', observacao = '' }) {
+    const calculo = calcularLiquidoPagamentoCaixa(valorBruto, formaPagamento)
+
+    if (calculo.valorLiquido <= 0) return
+
+    const jaEntrouNoCaixa = (historicoCaixa || []).some((item) =>
+      item.pagamentoId
+      && pagamentoId
+      && String(item.pagamentoId) === String(pagamentoId)
+      && String(item.tipo || '').toLowerCase().includes('entrada automática')
+    )
+
+    if (jaEntrouNoCaixa) {
+      console.warn('Este pagamento já possui entrada automática registrada no caixa. O caixa não foi alterado novamente.', pagamentoId)
+      return
+    }
+
+    setCaixaAtual((valorAtual) => {
+      const caixaAnterior = Number(valorAtual || 0)
+      const caixaNovo = caixaAnterior + calculo.valorLiquido
+
+      const movimento = {
+        id: Date.now() + Math.random(),
+        data: new Date().toISOString(),
+        tipo: 'Entrada automática',
+        origem,
+        pagamentoId: pagamentoId || null,
+        vendaId: vendaId || null,
+        cliente,
+        formaPagamento: calculo.formaPagamento,
+        valorBruto: calculo.valorBruto,
+        valorTaxa: calculo.valorTaxa,
+        valor: calculo.valorLiquido,
+        caixaAnterior,
+        caixaNovo,
+        observacao,
+      }
+
+      setHistoricoCaixa((lista) => [movimento, ...(lista || [])].slice(0, 60))
+      return caixaNovo
+    })
+  }
+
+  function registrarSaidaCaixaAutomatica({ pagamentoId, vendaId, valorBruto, formaPagamento, cliente = '', origem = '', observacao = '' }) {
+    const calculo = calcularLiquidoPagamentoCaixa(valorBruto, formaPagamento)
+
+    if (calculo.valorLiquido <= 0) return
+
+    const jaSaiuDoCaixa = (historicoCaixa || []).some((item) =>
+      item.pagamentoId
+      && pagamentoId
+      && String(item.pagamentoId) === String(pagamentoId)
+      && String(item.tipo || '').toLowerCase().includes('saída automática')
+    )
+
+    if (jaSaiuDoCaixa) {
+      console.warn('Este estorno já possui saída automática registrada no caixa. O caixa não foi alterado novamente.', pagamentoId)
+      return
+    }
+
+    setCaixaAtual((valorAtual) => {
+      const caixaAnterior = Number(valorAtual || 0)
+      const caixaNovo = caixaAnterior - calculo.valorLiquido
+
+      const movimento = {
+        id: Date.now() + Math.random(),
+        data: new Date().toISOString(),
+        tipo: 'Saída automática',
+        origem,
+        pagamentoId: pagamentoId || null,
+        vendaId: vendaId || null,
+        cliente,
+        formaPagamento: calculo.formaPagamento,
+        valorBruto: calculo.valorBruto,
+        valorTaxa: calculo.valorTaxa,
+        valor: calculo.valorLiquido,
+        caixaAnterior,
+        caixaNovo,
+        observacao,
+      }
+
+      setHistoricoCaixa((lista) => [movimento, ...(lista || [])].slice(0, 60))
+      return caixaNovo
+    })
+  }
+
   function dataHoje() {
     return new Date().toISOString().slice(0, 10)
   }
@@ -1110,16 +1212,32 @@ export default function App() {
       }
 
       if (valorRecebidoAgora > 0) {
-        await supabase.from('pagamentos').insert({
+        const formaPagamentoRecebida = taxaSelecionada?.forma_pagamento || 'Pix'
+        const { data: pagamentoCriado, error: erroPagamento } = await supabase.from('pagamentos').insert({
           venda_id: editandoVendaId,
           status: 'CONFIRMADO',
           data_pagamento: dataVenda || dataHoje(),
           valor_pago: valorRecebidoAgora,
-          forma_pagamento: taxaSelecionada?.forma_pagamento || 'Pix',
+          forma_pagamento: formaPagamentoRecebida,
           observacao: statusFinal === 'PARCIAL'
             ? 'Pagamento parcial registrado no lançamento da venda'
             : 'Pagamento integral registrado no lançamento da venda',
-        })
+        }).select('id').single()
+
+        if (erroPagamento) {
+          alert('Venda editada, mas houve erro ao registrar o pagamento recebido.')
+          console.error(erroPagamento)
+        } else {
+          registrarEntradaCaixaAutomatica({
+            pagamentoId: pagamentoCriado?.id,
+            vendaId: editandoVendaId,
+            valorBruto: valorRecebidoAgora,
+            formaPagamento: formaPagamentoRecebida,
+            cliente: clientes.find((cliente) => String(cliente.id) === String(clienteId))?.nome || '',
+            origem: 'Venda editada',
+            observacao: 'Entrada automática por pagamento registrado na edição da venda.',
+          })
+        }
       }
 
       await ajustarPendencia(editandoVendaId, saldoPendencia, statusFinal)
@@ -1155,20 +1273,31 @@ export default function App() {
     }
 
     if (valorRecebidoAgora > 0) {
-      const { error: erroPagamento } = await supabase.from('pagamentos').insert({
+      const formaPagamentoRecebida = taxaSelecionada?.forma_pagamento || 'Pix'
+      const { data: pagamentoCriado, error: erroPagamento } = await supabase.from('pagamentos').insert({
         venda_id: vendaCriada.id,
         status: 'CONFIRMADO',
         data_pagamento: dataVenda || dataHoje(),
         valor_pago: valorRecebidoAgora,
-        forma_pagamento: taxaSelecionada?.forma_pagamento || 'Pix',
+        forma_pagamento: formaPagamentoRecebida,
         observacao: statusFinal === 'PARCIAL'
           ? 'Pagamento parcial registrado no lançamento da venda'
           : 'Pagamento integral registrado no lançamento da venda',
-      })
+      }).select('id').single()
 
       if (erroPagamento) {
         alert('Venda criada, mas houve erro ao registrar o pagamento recebido.')
         console.error(erroPagamento)
+      } else {
+        registrarEntradaCaixaAutomatica({
+          pagamentoId: pagamentoCriado?.id,
+          vendaId: vendaCriada.id,
+          valorBruto: valorRecebidoAgora,
+          formaPagamento: formaPagamentoRecebida,
+          cliente: clientes.find((cliente) => String(cliente.id) === String(clienteId))?.nome || '',
+          origem: 'Venda',
+          observacao: 'Entrada automática por venda paga no lançamento.',
+        })
       }
     }
 
@@ -1349,6 +1478,16 @@ export default function App() {
         return
       }
 
+      registrarEntradaCaixaAutomatica({
+        pagamentoId: null,
+        vendaId: null,
+        valorBruto: valorPago,
+        formaPagamento: 'Pix',
+        cliente: pendencia ? clienteDaPendencia(pendencia)?.nome : '',
+        origem: 'Saldo anterior',
+        observacao: 'Entrada automática por recebimento de saldo anterior.',
+      })
+
       if (pendencia) {
         enviarConfirmacaoPagamentoWhatsApp(pendencia, saldoAnterior, valorPago, saldoFinal)
       }
@@ -1357,20 +1496,31 @@ export default function App() {
       return
     }
 
-    const { error: erroPagamento } = await supabase.from('pagamentos').insert({
+    const formaPagamentoRecebida = 'Pix'
+    const { data: pagamentoCriado, error: erroPagamento } = await supabase.from('pagamentos').insert({
       venda_id: vendaId,
       data_pagamento: dataHoje(),
       valor_pago: valorPago,
-      forma_pagamento: 'Pix',
+      forma_pagamento: formaPagamentoRecebida,
       observacao: 'Pagamento registrado pelo Mini ERP',
       status: 'CONFIRMADO',
-    })
+    }).select('id').single()
 
     if (erroPagamento) {
       alert('Erro ao registrar pagamento.')
       console.error(erroPagamento)
       return
     }
+
+    registrarEntradaCaixaAutomatica({
+      pagamentoId: pagamentoCriado?.id,
+      vendaId,
+      valorBruto: valorPago,
+      formaPagamento: formaPagamentoRecebida,
+      cliente: pendencia ? clienteDaPendencia(pendencia)?.nome : '',
+      origem: 'Pendência',
+      observacao: 'Entrada automática por recebimento de pendência.',
+    })
 
     await supabase
       .from('pendencias')
@@ -1520,7 +1670,16 @@ export default function App() {
 
     try {
       await recalcularVendaAposMovimento(pagamento.venda_id)
-      alert('Pagamento estornado e venda recalculada com sucesso.')
+      registrarSaidaCaixaAutomatica({
+        pagamentoId: pagamento.id,
+        vendaId: pagamento.venda_id,
+        valorBruto: pagamento.valor_pago,
+        formaPagamento: pagamento.forma_pagamento,
+        cliente,
+        origem: 'Estorno',
+        observacao: motivo || 'Saída automática por estorno de pagamento.',
+      })
+      alert('Pagamento estornado, caixa abatido e venda recalculada com sucesso.')
       buscarTudo()
     } catch (erro) {
       alert('Pagamento estornado, mas houve erro ao recalcular venda ou pendência. Verifique a aba Pendências.')
@@ -1550,7 +1709,16 @@ export default function App() {
 
     try {
       await recalcularVendaAposMovimento(pagamento.venda_id)
-      alert('Estorno corrigido e venda recalculada.')
+      registrarSaidaCaixaAutomatica({
+        pagamentoId: pagamento.id,
+        vendaId: pagamento.venda_id,
+        valorBruto: pagamento.valor_pago,
+        formaPagamento: pagamento.forma_pagamento,
+        cliente: pagamento.vendas?.clientes?.nome || '',
+        origem: 'Estorno forçado',
+        observacao: pagamento.observacao_estorno || 'Saída automática por estorno forçado.',
+      })
+      alert('Estorno corrigido, caixa abatido e venda recalculada.')
       buscarTudo()
     } catch (erro) {
       alert('Estorno corrigido, mas houve erro ao recalcular venda ou pendência.')
@@ -1580,7 +1748,16 @@ export default function App() {
 
     try {
       await recalcularVendaAposMovimento(pagamento.venda_id)
-      alert('Pagamento reativado e venda recalculada.')
+      registrarEntradaCaixaAutomatica({
+        pagamentoId: pagamento.id,
+        vendaId: pagamento.venda_id,
+        valorBruto: pagamento.valor_pago,
+        formaPagamento: pagamento.forma_pagamento,
+        cliente: pagamento.vendas?.clientes?.nome || '',
+        origem: 'Reativação de pagamento',
+        observacao: 'Entrada automática por reativação de pagamento.',
+      })
+      alert('Pagamento reativado, caixa atualizado e venda recalculada.')
       buscarTudo()
     } catch (erro) {
       alert('Pagamento reativado, mas houve erro ao recalcular venda ou pendência.')
@@ -2969,11 +3146,26 @@ Delber Vilaça`
           : `Pagamento integral registrado a partir do Delivery. Taxa: ${percentual(pagamento.taxa_percentual)}.`,
       }))
 
-      const { error: erroPagamento } = await supabase.from('pagamentos').insert(pagamentosParaInserir)
+      const { data: pagamentosCriados, error: erroPagamento } = await supabase
+        .from('pagamentos')
+        .insert(pagamentosParaInserir)
+        .select('id, valor_pago, forma_pagamento')
 
       if (erroPagamento) {
         alert('Venda criada, mas houve erro ao registrar o pagamento.')
         console.error(erroPagamento)
+      } else {
+        ;(pagamentosCriados || []).forEach((pagamentoCriado) => {
+          registrarEntradaCaixaAutomatica({
+            pagamentoId: pagamentoCriado?.id,
+            vendaId: vendaCriada.id,
+            valorBruto: pagamentoCriado?.valor_pago,
+            formaPagamento: pagamentoCriado?.forma_pagamento,
+            cliente: cliente?.nome || '',
+            origem: 'Delivery',
+            observacao: 'Entrada automática por pagamento registrado a partir do Delivery.',
+          })
+        })
       }
     }
 
