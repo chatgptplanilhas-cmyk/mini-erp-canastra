@@ -199,6 +199,7 @@ export default function App() {
     referencia: '',
     horario: '',
     observacao: '',
+    data_visita: dataHoje(),
   })
   const [editandoRoteiroVendasId, setEditandoRoteiroVendasId] = useState(null)
 
@@ -699,27 +700,49 @@ export default function App() {
     const dias = diasDesdeData(data)
 
     if (dias === null) {
-      return { texto: 'Sem data', classe: 'bg-zinc-900 text-zinc-300 border-zinc-800', prioridade: 0 }
-    }
-
-    if (dias >= 30) {
-      return { texto: 'Retornar', classe: 'bg-red-950 text-red-300 border-red-900', prioridade: 3 }
-    }
-
-    return { texto: 'Em dia', classe: 'bg-green-950 text-green-300 border-green-900', prioridade: 1 }
-  }
-
-  function textoRetornoRoteiro(data) {
-    const dias = diasDesdeData(data)
-
-    if (dias === null) return 'Sem data'
-
-    if (dias >= 30) {
-      return `${dias} dias, retornar`
+      return {
+        emoji: '⚪',
+        texto: 'Informe a última visita',
+        detalhe: 'Sem data registrada',
+        classe: 'border-zinc-800 bg-zinc-900/60 text-zinc-300',
+        prioridade: 0,
+      }
     }
 
     const faltam = 30 - dias
-    return `Faltam ${faltam} dias`
+
+    if (faltam < 0) {
+      const atraso = Math.abs(faltam)
+      return {
+        emoji: '🔴',
+        texto: `Atrasado há ${atraso} ${atraso === 1 ? 'dia' : 'dias'}`,
+        detalhe: `Última visita em ${dataBR(data)}`,
+        classe: 'border-red-900 bg-red-950/35 text-red-200',
+        prioridade: 3,
+      }
+    }
+
+    if (faltam <= 7) {
+      return {
+        emoji: '🟡',
+        texto: faltam === 0 ? 'Próxima visita hoje' : `Próxima visita em ${faltam} ${faltam === 1 ? 'dia' : 'dias'}`,
+        detalhe: `Última visita em ${dataBR(data)}`,
+        classe: 'border-yellow-800 bg-yellow-950/25 text-yellow-200',
+        prioridade: 2,
+      }
+    }
+
+    return {
+      emoji: '🟢',
+      texto: `Próxima visita em ${faltam} dias`,
+      detalhe: `Última visita em ${dataBR(data)}`,
+      classe: 'border-green-900 bg-green-950/25 text-green-200',
+      prioridade: 1,
+    }
+  }
+
+  function textoRetornoRoteiro(data) {
+    return statusRoteiro(data).texto
   }
 
 
@@ -3180,7 +3203,7 @@ Delber Vilaça`
       horario: formRoteiroVendas.horario || '',
       observacao: formRoteiroVendas.observacao || '',
       tipo: formRoteiroVendas.categoria === 'CLIENTE' ? 'Cliente' : 'Local',
-      data_visita: dataHoje(),
+      data_visita: formRoteiroVendas.data_visita || dataHoje(),
       pecas_vendidas: 0,
       ativo: true,
       updated_at: new Date().toISOString(),
@@ -3219,6 +3242,7 @@ Delber Vilaça`
       referencia: item.referencia || '',
       horario: item.horario || '',
       observacao: item.observacao || '',
+      data_visita: item.data_visita ? String(item.data_visita).slice(0, 10) : dataHoje(),
     })
     subirParaTopoFormulario()
   }
@@ -3231,17 +3255,40 @@ Delber Vilaça`
       referencia: '',
       horario: '',
       observacao: '',
+      data_visita: dataHoje(),
     })
   }
 
   async function alternarConcluidoRoteiroVendas(item) {
+    const novoConcluido = !item.concluido
+    const payload = novoConcluido
+      ? { concluido: true, data_visita: dataHoje(), updated_at: new Date().toISOString() }
+      : { concluido: false, updated_at: new Date().toISOString() }
+
     const { error } = await supabase
       .from('roteiro_vendas_v2')
-      .update({ concluido: !item.concluido, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq('id', item.id)
 
     if (error) {
       alert('Erro ao atualizar o check.')
+      console.error(error)
+      return
+    }
+
+    buscarRoteiroVendas()
+  }
+
+  async function ajustarDataVisitaRoteiro(item, novaData) {
+    if (!item?.id || !novaData) return
+
+    const { error } = await supabase
+      .from('roteiro_vendas_v2')
+      .update({ data_visita: novaData, updated_at: new Date().toISOString() })
+      .eq('id', item.id)
+
+    if (error) {
+      alert('Erro ao ajustar a data da visita.')
       console.error(error)
       return
     }
@@ -3286,11 +3333,23 @@ Delber Vilaça`
   }
 
   function roteirosVendasFiltrados(categoria = '') {
-    return (roteirosVendas || []).filter((item) => {
-      if (categoria && String(item.categoria || '').toUpperCase() !== categoria) return false
-      const texto = `${item.local || ''} ${item.referencia || ''} ${item.horario || ''} ${item.observacao || ''} ${item.tipo || ''} ${item.concluido ? 'marcado concluido' : 'pendente'}`
-      return contemTermos(texto, buscaRoteiroVendas)
-    })
+    return (roteirosVendas || [])
+      .filter((item) => {
+        if (categoria && String(item.categoria || '').toUpperCase() !== categoria) return false
+        const status = statusRoteiro(item.data_visita)
+        const texto = `${item.local || ''} ${item.referencia || ''} ${item.horario || ''} ${item.observacao || ''} ${item.tipo || ''} ${item.data_visita || ''} ${status.texto || ''} ${item.concluido ? 'marcado concluido' : 'pendente'}`
+        return contemTermos(texto, buscaRoteiroVendas)
+      })
+      .sort((a, b) => {
+        const statusA = statusRoteiro(a.data_visita)
+        const statusB = statusRoteiro(b.data_visita)
+
+        if (statusA.prioridade !== statusB.prioridade) return statusB.prioridade - statusA.prioridade
+
+        const diasA = diasDesdeData(a.data_visita) ?? -999
+        const diasB = diasDesdeData(b.data_visita) ?? -999
+        return diasB - diasA
+      })
   }
 
   function botaoMenu(id, icone, texto) {
@@ -8130,60 +8189,76 @@ Delber Vilaça`
 
     function ListaControle({ titulo, subtitulo, itens, vazio }) {
       return (
-        <div className="rounded-[28px] border border-zinc-900 bg-zinc-950 p-5">
-          <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="rounded-[22px] border border-zinc-900 bg-zinc-950 p-4">
+          <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-2xl font-bold text-white">{titulo}</h3>
-              <p className="text-sm text-zinc-500">{subtitulo}</p>
+              <h3 className="text-xl font-bold text-white">{titulo}</h3>
+              <p className="text-xs text-zinc-500">{subtitulo}</p>
             </div>
-            <span className="rounded-full border border-orange-950 bg-black px-4 py-2 text-sm font-bold text-orange-300">
-              {itens.filter((item) => item.concluido).length}/{itens.length} marcados
+            <span className="w-fit rounded-full border border-orange-950 bg-black px-3 py-1 text-xs font-bold text-orange-300">
+              {itens.filter((item) => item.concluido).length}/{itens.length}
             </span>
           </div>
 
-          <div className="mini-roteiro-lista grid gap-3">
+          <div className="mini-roteiro-lista grid gap-2">
             {itens.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-zinc-800 bg-black p-5 text-zinc-500">
+              <div className="rounded-2xl border border-dashed border-zinc-800 bg-black p-4 text-sm text-zinc-500">
                 {vazio}
               </div>
             )}
 
-            {itens.map((item) => (
-              <div
-                key={item.id}
-                className={`mini-roteiro-item rounded-2xl border p-4 transition ${item.concluido ? 'mini-roteiro-item-ok border-green-900 bg-green-950/20' : 'border-zinc-800 bg-black'}`}
-              >
-                <div className="mini-roteiro-row flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <button
-                    type="button"
-                    onClick={() => alternarConcluidoRoteiroVendas(item)}
-                    className="mini-roteiro-check-area flex min-w-0 flex-1 items-start gap-3 text-left"
-                  >
-                    <span className={`mini-roteiro-check mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-sm font-black ${item.concluido ? 'border-green-500 bg-green-700 text-white' : 'border-zinc-600 bg-zinc-950 text-transparent'}`}>
-                      ✓
-                    </span>
+            {itens.map((item) => {
+              const status = statusRoteiro(item.data_visita)
 
-                    <span className="mini-roteiro-texto min-w-0">
-                      <span className={`mini-roteiro-nome block text-lg font-bold ${item.concluido ? 'text-zinc-400 line-through' : 'text-white'}`}>{item.local}</span>
-                      <span className="mini-roteiro-detalhes mt-1 flex flex-wrap gap-2 text-sm text-zinc-500">
-                        {item.referencia && <span>{item.referencia}</span>}
-                        {item.horario && <span>{item.horario}</span>}
-                        {item.observacao && <span>{item.observacao}</span>}
+              return (
+                <div
+                  key={item.id}
+                  className={`mini-roteiro-item rounded-2xl border p-3 transition ${item.concluido ? 'mini-roteiro-item-ok border-green-900 bg-green-950/20' : 'border-zinc-800 bg-black'}`}
+                >
+                  <div className="mini-roteiro-row flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <button
+                      type="button"
+                      onClick={() => alternarConcluidoRoteiroVendas(item)}
+                      className="mini-roteiro-check-area flex min-w-0 flex-1 items-start gap-2 text-left"
+                    >
+                      <span className={`mini-roteiro-check mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs font-black ${item.concluido ? 'border-green-500 bg-green-700 text-white' : 'border-zinc-600 bg-zinc-950 text-transparent'}`}>
+                        ✓
                       </span>
-                    </span>
-                  </button>
 
-                  <div className="mini-roteiro-acoes flex gap-2 md:justify-end">
-                    <button onClick={() => editarRoteiroVendas(item)} className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700">
-                      Editar
+                      <span className="mini-roteiro-texto min-w-0">
+                        <span className={`mini-roteiro-nome block text-base font-bold leading-tight ${item.concluido ? 'text-zinc-400 line-through' : 'text-white'}`}>{item.local}</span>
+                        <span className="mini-roteiro-detalhes mt-1 flex flex-wrap gap-1.5 text-xs text-zinc-500">
+                          {item.referencia && <span>{item.referencia}</span>}
+                          {item.horario && <span>{item.horario}</span>}
+                          {item.observacao && <span>{item.observacao}</span>}
+                        </span>
+                        <span className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-bold ${status.classe}`}>
+                          {status.emoji} {status.texto}
+                        </span>
+                      </span>
                     </button>
-                    <button onClick={() => excluirRoteiroVendas(item)} className="rounded-xl bg-red-950 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-900">
-                      Remover
-                    </button>
+
+                    <div className="mini-roteiro-acoes flex flex-wrap items-center gap-2 md:justify-end">
+                      <label className="mini-roteiro-data flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                        Última
+                        <input
+                          type="date"
+                          value={item.data_visita ? String(item.data_visita).slice(0, 10) : ''}
+                          onChange={(e) => ajustarDataVisitaRoteiro(item, e.target.value)}
+                          className="h-8 rounded-md border border-zinc-800 bg-black px-2 text-xs font-bold text-white outline-none focus:border-orange-700"
+                        />
+                      </label>
+                      <button onClick={() => editarRoteiroVendas(item)} className="rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700">
+                        Editar
+                      </button>
+                      <button onClick={() => excluirRoteiroVendas(item)} className="rounded-lg bg-red-950 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-900">
+                        Remover
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )
@@ -8196,7 +8271,7 @@ Delber Vilaça`
             <div>
               <p className="mb-2 text-xs uppercase tracking-[0.4em] text-orange-400">Controle mensal</p>
               <h2 className="text-4xl font-bold">Locais e Clientes</h2>
-              <p className="mt-2 text-zinc-500">Lista simples para controlar locais de visita e clientes para lembrar durante o mês.</p>
+              <p className="mt-2 text-zinc-500">Controle de visitas com retorno automático em 30 dias.</p>
             </div>
             <button
               type="button"
@@ -8218,11 +8293,11 @@ Delber Vilaça`
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-2xl font-bold">{editandoRoteiroVendasId ? 'Editar item' : 'Adicionar local ou cliente'}</h3>
-              <p className="text-sm text-zinc-500">Cadastre apenas o que precisa lembrar. O controle é manual e mensal.</p>
+              <p className="text-sm text-zinc-500">Informe a última visita. O sistema calcula automaticamente o próximo retorno em 30 dias.</p>
             </div>
           </div>
 
-          <form onSubmit={salvarRoteiroVendas} className="grid gap-4 md:grid-cols-5">
+          <form onSubmit={salvarRoteiroVendas} className="grid gap-4 md:grid-cols-6">
             <div>
               <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Tipo</label>
               <select
@@ -8267,7 +8342,18 @@ Delber Vilaça`
               />
             </div>
 
-            <div className="md:col-span-5">
+            <div>
+              <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Última visita</label>
+              <input
+                type="date"
+                value={formRoteiroVendas.data_visita}
+                onClick={abrirCalendario}
+                onChange={(e) => setFormRoteiroVendas({ ...formRoteiroVendas, data_visita: e.target.value })}
+                className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-700"
+              />
+            </div>
+
+            <div className="md:col-span-6">
               <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-500">Observação</label>
               <input
                 value={formRoteiroVendas.observacao}
@@ -8277,7 +8363,7 @@ Delber Vilaça`
               />
             </div>
 
-            <div className="flex flex-col gap-3 md:col-span-5 md:flex-row">
+            <div className="flex flex-col gap-3 md:col-span-6 md:flex-row">
               <button type="submit" className="rounded-2xl bg-orange-950 px-6 py-3 font-semibold text-white hover:bg-orange-900">
                 {editandoRoteiroVendasId ? 'Salvar alterações' : 'Adicionar'}
               </button>
