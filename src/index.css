@@ -14276,3 +14276,928 @@ span[class*="rounded-full"] {
     padding-bottom: 12px !important;
   }
 }
+
+/* MINI ERP FASE 90, Resumo do Dia no antigo selo Gestão Conservadora */
+.resumo-dia-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.resumo-dia-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(63, 63, 70, 0.72);
+  background: rgba(20, 83, 45, 0.72);
+  color: #86efac;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  white-space: nowrap;
+}
+
+.resumo-dia-trigger:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 146, 60, 0.62);
+}
+
+.resumo-dia-trigger.tem-alertas {
+  background: linear-gradient(180deg, rgba(124, 45, 18, 0.92), rgba(67, 20, 7, 0.96));
+  border-color: rgba(251, 146, 60, 0.72);
+  color: #fed7aa;
+}
+
+.resumo-dia-trigger.sem-alertas {
+  background: rgba(20, 83, 45, 0.72);
+  border-color: rgba(34, 197, 94, 0.24);
+  color: #bbf7d0;
+}
+
+.resumo-dia-trigger span {
+  font-size: 15px;
+}
+
+.resumo-dia-trigger strong {
+  font-weight: 900;
+}
+
+.resumo-dia-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 70;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  border: 1px solid rgba(124, 45, 18, 0.86);
+  border-radius: 20px;
+  background: #020202;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.58);
+}
+
+.resumo-dia-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 4px 11px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(39, 39, 42, 0.88);
+}
+
+.resumo-dia-head p {
+  margin: 0 0 4px;
+  color: #fb923c;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.resumo-dia-head h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.1;
+  font-weight: 900;
+}
+
+.resumo-dia-head span {
+  color: #a1a1aa;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.resumo-dia-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 10px;
+  border: 1px solid rgba(39, 39, 42, 0.9);
+  border-radius: 15px;
+  background: #050505;
+  color: #ffffff;
+  text-align: left;
+  margin-top: 8px;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.resumo-dia-item:hover {
+  border-color: rgba(251, 146, 60, 0.62);
+  background: #090909;
+}
+
+.resumo-dia-item.critico {
+  border-color: rgba(127, 29, 29, 0.9);
+  background: rgba(69, 10, 10, 0.52);
+}
+
+.resumo-dia-item > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(124, 45, 18, 0.26);
+  font-size: 17px;
+}
+
+.resumo-dia-item strong {
+  display: block;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.resumo-dia-item small {
+  display: block;
+  margin-top: 3px;
+  color: #71717a;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+@media (max-width: 767px) {
+  .resumo-dia-wrap {
+    width: 100%;
+  }
+
+  .resumo-dia-trigger {
+    width: 100%;
+    min-height: 42px;
+    border-radius: 15px;
+    font-size: 12px;
+  }
+
+  .resumo-dia-dropdown {
+    position: static;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 10px;
+    border-radius: 18px;
+  }
+
+  .resumo-dia-head h3 {
+    font-size: 17px;
+  }
+
+  .resumo-dia-item {
+    grid-template-columns: 32px 1fr;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .resumo-dia-item strong {
+    font-size: 12px;
+  }
+
+  .resumo-dia-item small {
+    font-size: 10.5px;
+  }
+}
+
+
+/* MINI ERP TOAST INTERNO, substitui alert nativo */
+.mini-toast {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 13px 15px;
+  border: 1px solid rgba(63, 63, 70, 0.88);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.98), rgba(0, 0, 0, 0.98));
+  color: #ffffff;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  animation: miniToastEntrada 180ms ease-out;
+}
+
+.mini-toast span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 999px;
+  background: rgba(22, 101, 52, 0.82);
+  color: #bbf7d0;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.mini-toast p {
+  margin: 0;
+  color: #f4f4f5;
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.mini-toast-sucesso {
+  border-color: rgba(34, 197, 94, 0.32);
+}
+
+@keyframes miniToastEntrada {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .mini-toast {
+    top: 12px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+    padding: 12px 13px;
+    border-radius: 16px;
+  }
+
+  .mini-toast p {
+    font-size: 13px;
+  }
+}
+
+/* MINI ERP CLIENTES MODAL PREMIUM */
+.mini-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.mini-cliente-modal {
+  width: min(620px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  border: 1px solid rgba(124, 45, 18, 0.72);
+  border-radius: 28px;
+  background: linear-gradient(180deg, #15110f 0%, #050505 100%);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72);
+}
+
+.mini-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid rgba(124, 45, 18, 0.42);
+}
+
+.mini-modal-head p {
+  margin: 0 0 8px;
+  color: #f59e0b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+}
+
+.mini-modal-head h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1.08;
+  font-weight: 900;
+}
+
+.mini-modal-head span {
+  display: block;
+  margin-top: 8px;
+  color: #a1a1aa;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.mini-modal-head button {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(39, 39, 42, 0.82);
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.mini-cliente-modal-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 22px 24px;
+}
+
+.mini-cliente-modal-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.mini-cliente-modal-form label span {
+  color: #a1a1aa;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.mini-cliente-modal-form input,
+.mini-cliente-modal-form select,
+.mini-cliente-modal-form textarea {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid rgba(124, 45, 18, 0.62);
+  border-radius: 17px;
+  background: rgba(3, 3, 3, 0.72);
+  color: #ffffff;
+  padding: 0 15px;
+  font-size: 16px;
+  outline: none;
+}
+
+.mini-cliente-modal-form textarea {
+  min-height: 108px;
+  padding: 14px 15px;
+  resize: vertical;
+}
+
+.mini-cliente-modal-form input:focus,
+.mini-cliente-modal-form select:focus,
+.mini-cliente-modal-form textarea:focus {
+  border-color: rgba(251, 146, 60, 0.95);
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.18);
+}
+
+.mini-cliente-modal-full {
+  grid-column: 1 / -1;
+}
+
+.mini-modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0 24px 24px;
+}
+
+.mini-modal-actions button {
+  min-height: 54px;
+  border: 0;
+  border-radius: 17px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.mini-modal-actions button:first-child {
+  background: #27272a;
+}
+
+.mini-modal-actions button:last-child {
+  background: linear-gradient(180deg, #9a4a22 0%, #6b2a10 100%);
+}
+
+@media (max-width: 767px) {
+  .mini-modal-overlay {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .mini-cliente-modal {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .mini-modal-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 18px 16px 14px;
+    background: #080605;
+  }
+
+  .mini-modal-head h3 {
+    font-size: 24px;
+  }
+
+  .mini-cliente-modal-form {
+    grid-template-columns: 1fr;
+    gap: 13px;
+    padding: 16px;
+  }
+
+  .mini-cliente-modal-form input,
+  .mini-cliente-modal-form select,
+  .mini-cliente-modal-form textarea {
+    min-height: 50px;
+    border-radius: 16px;
+    font-size: 16px;
+  }
+
+  .mini-modal-actions {
+    position: sticky;
+    bottom: 0;
+    padding: 12px 16px 16px;
+    background: linear-gradient(180deg, rgba(5, 5, 5, 0.72), #050505 42%);
+  }
+}
+
+
+/* MINI ERP FASE 90, Modal de Produto */
+.mini-produto-modal {
+  width: min(760px, calc(100vw - 28px));
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  border: 1px solid rgba(124, 45, 18, 0.95);
+  border-radius: 28px;
+  background: #120f0d;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.68);
+}
+
+.mini-produto-modal-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+}
+
+.mini-produto-modal-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.mini-produto-modal-form label span,
+.mini-produto-indicadores span {
+  color: #a1a1aa;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.mini-produto-modal-form input,
+.mini-produto-modal-form select {
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid rgba(124, 45, 18, 0.55);
+  border-radius: 18px;
+  background: #0a0807;
+  color: #ffffff;
+  padding: 0 16px;
+  font-size: 16px;
+  font-weight: 800;
+  outline: none;
+}
+
+.mini-produto-modal-form input:focus,
+.mini-produto-modal-form select:focus {
+  border-color: rgba(251, 146, 60, 0.82);
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.16);
+}
+
+.mini-produto-modal-full {
+  grid-column: 1 / -1;
+}
+
+.mini-produto-indicadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 18px 18px;
+  padding: 14px;
+  border: 1px solid rgba(63, 63, 70, 0.82);
+  border-radius: 20px;
+  background: rgba(3, 3, 3, 0.72);
+}
+
+.mini-produto-indicadores div {
+  display: grid;
+  gap: 7px;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid rgba(39, 39, 42, 0.9);
+  border-radius: 16px;
+  background: #060606;
+}
+
+.mini-produto-indicadores strong {
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.1;
+  font-weight: 900;
+}
+
+.mini-produto-indicadores .texto-verde {
+  color: #86efac;
+}
+
+.mini-produto-indicadores .texto-vermelho {
+  color: #fca5a5;
+}
+
+.mini-indicador-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  font-size: 12px !important;
+}
+
+.mini-indicador-saudavel {
+  color: #86efac !important;
+  background: rgba(20, 83, 45, 0.62);
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+.mini-indicador-atencao {
+  color: #fdba74 !important;
+  background: rgba(124, 45, 18, 0.62);
+  border-color: rgba(251, 146, 60, 0.28);
+}
+
+.mini-indicador-critica {
+  color: #fca5a5 !important;
+  background: rgba(127, 29, 29, 0.62);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.mini-indicador-neutro {
+  color: #d4d4d8 !important;
+  background: rgba(39, 39, 42, 0.72);
+  border-color: rgba(82, 82, 91, 0.44);
+}
+
+@media (max-width: 767px) {
+  .mini-produto-modal {
+    width: 100%;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .mini-produto-modal-form {
+    grid-template-columns: 1fr;
+    gap: 11px;
+    padding: 14px;
+  }
+
+  .mini-produto-modal-form input,
+  .mini-produto-modal-form select {
+    min-height: 48px !important;
+    border-radius: 15px !important;
+    font-size: 15px !important;
+  }
+
+  .mini-produto-indicadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 14px 14px;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .mini-produto-indicadores div {
+    min-height: 62px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .mini-produto-indicadores strong {
+    font-size: 15px;
+  }
+}
+
+/* MINI ERP PRODUTOS MODAL V2, cadastro por janela */
+.mini-produtos-cadastro-acao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid rgba(124, 45, 18, 0.55);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(9, 9, 11, 0.78), rgba(0, 0, 0, 0.9));
+}
+
+.mini-produtos-cadastro-acao p {
+  margin: 0;
+  color: #fdba74;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.mini-produtos-cadastro-acao span {
+  display: block;
+  margin-top: 4px;
+  color: #a1a1aa;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.mini-produtos-cadastro-acao button {
+  flex: 0 0 auto;
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 16px;
+  background: #7c2d12;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+@media (max-width: 767px) {
+  .mini-produtos-cadastro-acao {
+    display: grid;
+    gap: 12px;
+    padding: 13px !important;
+    border-radius: 18px !important;
+  }
+
+  .mini-produtos-cadastro-acao button {
+    width: 100% !important;
+    min-height: 44px !important;
+  }
+}
+
+/* FASE 96 - Vendas: modal sem rolagem lateral, ajuste cirúrgico */
+@media (min-width: 768px) {
+  .mini-venda-modal-card {
+    width: min(860px, calc(100vw - 64px)) !important;
+    max-width: 860px !important;
+    overflow-x: hidden !important;
+  }
+
+  .mini-venda-modal-card > div {
+    max-width: 100% !important;
+  }
+
+  .mini-venda-modal-resumo {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .mini-venda-modal-resumo > div {
+    min-width: 0 !important;
+    padding: 13px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .mini-venda-modal-form {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    align-items: end !important;
+    overflow: visible !important;
+  }
+
+  .mini-venda-modal-form > div,
+  .mini-venda-modal-form > button {
+    min-width: 0 !important;
+    width: 100% !important;
+    grid-column: auto !important;
+  }
+
+  .mini-venda-modal-form > div:first-child,
+  .mini-venda-modal-form > div:last-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .mini-venda-modal-form label {
+    display: block !important;
+    margin-bottom: 7px !important;
+    color: #a1a1aa !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.14em !important;
+  }
+
+  .mini-venda-modal-form input,
+  .mini-venda-modal-form select {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 14px !important;
+    border-radius: 15px !important;
+    font-size: 14px !important;
+  }
+
+  .mini-venda-modal-form button {
+    min-height: 48px !important;
+    border-radius: 15px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .mini-venda-modal-card {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 96dvh !important;
+    overflow-x: hidden !important;
+    border-radius: 22px !important;
+  }
+
+  .mini-venda-modal-card > div:first-child,
+  .mini-venda-modal-card > div:nth-child(2) {
+    padding: 14px !important;
+  }
+
+  .mini-venda-modal-resumo {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .mini-venda-modal-resumo > div {
+    min-width: 0 !important;
+    padding: 9px !important;
+    border-radius: 13px !important;
+  }
+
+  .mini-venda-modal-resumo p:first-child {
+    font-size: 8px !important;
+    line-height: 1.1 !important;
+  }
+
+  .mini-venda-modal-resumo p:last-child {
+    font-size: 12px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  .mini-venda-modal-form {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .mini-venda-modal-form > div,
+  .mini-venda-modal-form > button {
+    grid-column: 1 / -1 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .mini-venda-modal-form input,
+  .mini-venda-modal-form select {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 12px !important;
+    border-radius: 14px !important;
+    font-size: 14px !important;
+  }
+
+  .mini-venda-modal-form button {
+    min-height: 44px !important;
+    border-radius: 14px !important;
+  }
+}
+
+/* MINI ERP DELIVERY, itens com valores mais legíveis */
+.delivery-itens-valor-lista {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.delivery-item-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 14px;
+  width: 100%;
+}
+
+.delivery-itens-valor-lista.pontilhada {
+  width: min(100%, 640px);
+}
+
+.delivery-itens-valor-lista.pontilhada .delivery-item-line {
+  grid-template-columns: auto minmax(28px, 1fr) auto;
+  gap: 8px;
+}
+
+.delivery-item-nome {
+  min-width: 0;
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.delivery-item-dots {
+  display: block;
+  min-width: 28px;
+  height: 1px;
+  transform: translateY(-3px);
+  border-bottom: 2px dotted rgba(161, 161, 170, 0.72);
+}
+
+.delivery-item-valor {
+  color: #86efac;
+  font-weight: 900;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.delivery-item-empty {
+  display: block;
+  color: #a1a1aa;
+  font-weight: 700;
+}
+
+.delivery-itens-valor-lista.compacta {
+  width: 100%;
+  gap: 4px;
+}
+
+.delivery-itens-valor-lista.compacta .delivery-item-line {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.delivery-itens-valor-lista.compacta .delivery-item-dots {
+  display: none;
+}
+
+.delivery-itens-valor-lista.compacta .delivery-item-nome,
+.delivery-itens-valor-lista.compacta .delivery-item-valor {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+@media (max-width: 767px) {
+  .delivery-itens-valor-lista {
+    gap: 7px;
+  }
+
+  .delivery-item-line {
+    gap: 10px;
+  }
+
+  .delivery-item-nome,
+  .delivery-item-valor {
+    font-size: 13px !important;
+  }
+
+  .mini-delivery-description .delivery-itens-valor-lista {
+    padding: 8px 0 2px;
+  }
+
+  .mini-delivery-compact-desc .delivery-itens-valor-lista.compacta {
+    min-width: 230px;
+    max-width: 360px;
+  }
+}
