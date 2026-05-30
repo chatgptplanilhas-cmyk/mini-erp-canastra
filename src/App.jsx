@@ -159,7 +159,7 @@ export default function App() {
   const [clienteId, setClienteId] = useState('')
   const [valorTotal, setValorTotal] = useState('')
   const [valorPagoVenda, setValorPagoVenda] = useState('')
-  const [dataVenda, setDataVenda] = useState(new Date().toISOString().slice(0, 10))
+  const [dataVenda, setDataVenda] = useState(dataHoje())
   const [taxaSelecionadaId, setTaxaSelecionadaId] = useState('')
   const [status, setStatus] = useState('EM ABERTO')
   const [vencimento, setVencimento] = useState('')
@@ -236,7 +236,7 @@ export default function App() {
   })
 
   const [formDespesa, setFormDespesa] = useState({
-    data_despesa: new Date().toISOString().slice(0, 10),
+    data_despesa: dataHoje(),
     categoria: 'Abastecimento',
     descricao: '',
     valor: '',
@@ -245,7 +245,7 @@ export default function App() {
 
   const [formDelivery, setFormDelivery] = useState({
     venda_id: '',
-    data_pedido: new Date().toISOString().slice(0, 10),
+    data_pedido: dataHoje(),
     data_entrega: '',
     cliente_id: '',
     referencia: '',
@@ -579,17 +579,23 @@ export default function App() {
     })
   }
 
+  function dataISO(data) {
+    if (!(data instanceof Date) || Number.isNaN(data.getTime())) return ''
+
+    const ano = data.getFullYear()
+    const mes = String(data.getMonth() + 1).padStart(2, '0')
+    const dia = String(data.getDate()).padStart(2, '0')
+
+    return `${ano}-${mes}-${dia}`
+  }
+
   function dataHoje() {
-    return new Date().toISOString().slice(0, 10)
+    return dataISO(new Date())
   }
 
   function inicioMesAtual() {
     const hoje = new Date()
-    return new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10)
-  }
-
-  function dataISO(data) {
-    return data.toISOString().slice(0, 10)
+    return dataISO(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
   }
 
   function periodoMesAnterior() {
@@ -9504,7 +9510,7 @@ Delber Vilaça`
 
     function aplicarPeriodoRapido(tipo) {
       const hoje = new Date()
-      const yyyyMmDd = (data) => data.toISOString().slice(0, 10)
+      const yyyyMmDd = dataISO
 
       if (tipo === 'hoje') {
         const hojeTexto = yyyyMmDd(hoje)
@@ -9827,7 +9833,7 @@ Delber Vilaça`
 
     function aplicarPeriodoPonto(tipo) {
       const hoje = new Date()
-      const yyyyMmDd = (data) => data.toISOString().slice(0, 10)
+      const yyyyMmDd = dataISO
 
       if (tipo === 'hoje') {
         const hojeTexto = yyyyMmDd(hoje)
@@ -9889,7 +9895,7 @@ Delber Vilaça`
 
     function ultimoDiaMes(dataTexto) {
       const [ano, mes] = String(dataTexto || dataHoje()).slice(0, 7).split('-').map(Number)
-      return new Date(ano, mes, 0).toISOString().slice(0, 10)
+      return dataISO(new Date(ano, mes, 0))
     }
 
     function diasEntre(inicioTexto, fimTexto) {
