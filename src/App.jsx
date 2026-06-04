@@ -60,6 +60,9 @@ export default function App() {
   const [buscaProdutoLancamento, setBuscaProdutoLancamento] = useState('')
   const [dataControleProdutos, setDataControleProdutos] = useState(dataHoje())
   const [buscaDespesas, setBuscaDespesas] = useState('')
+  const [periodoCardsDespesas, setPeriodoCardsDespesas] = useState('mesAtual')
+  const [periodoCardsPainel, setPeriodoCardsPainel] = useState('mesAtual')
+  const [paginaDespesas, setPaginaDespesas] = useState(1)
   const [buscaDelivery, setBuscaDelivery] = useState('')
   const [buscaCobrancas, setBuscaCobrancas] = useState('')
   const [filtroDeliveryData, setFiltroDeliveryData] = useState('')
@@ -303,6 +306,10 @@ export default function App() {
     setPaginaResumoProdutosControle(1)
     setPaginaItensProdutosControle(1)
   }, [buscaProdutosControle])
+
+  useEffect(() => {
+    setPaginaDespesas(1)
+  }, [buscaDespesas])
 
   async function buscarTudo() {
     await Promise.all([
@@ -576,7 +583,11 @@ export default function App() {
   }
 
   function dataHoje() {
-    return new Date().toISOString().slice(0, 10)
+    const hoje = new Date()
+    const ano = hoje.getFullYear()
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0')
+    const dia = String(hoje.getDate()).padStart(2, '0')
+    return `${ano}-${mes}-${dia}`
   }
 
   function inicioMesAtual() {
@@ -4017,17 +4028,30 @@ Delber Vilaça`
     const totalBruto = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_total || 0), 0)
     const totalLiquidoVendas = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_liquido || 0), 0)
     const totalTaxas = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_taxa || 0), 0)
+    function pendenciaAbertaPainel(item) {
+      return Number(item.saldo_restante || 0) > 0 && item.status !== 'PAGO'
+    }
+
+    function dataPendenciaPainel(item) {
+      return String(item.vendas?.data_venda || item.created_at || item.vencimento || '').slice(0, 10)
+    }
+
+    function pendenciaNoPeriodoPainel(item, inicio, fim) {
+      const data = dataPendenciaPainel(item)
+      return data && data >= inicio && data <= fim
+    }
+
     const totalPendencias = pendencias
-      .filter((item) => {
-        if (pendenciaEhHerdada(item)) return false
-        const dataVenda = String(item.vendas?.data_venda || '').slice(0, 10)
-        return dataVenda && dataVenda >= inicioMesPainel
-      })
+      .filter((item) => pendenciaAbertaPainel(item) && !pendenciaEhHerdada(item) && pendenciaNoPeriodoPainel(item, inicioMesPainel, dataHoje()))
+      .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+    const totalPendenciasMesAnterior = pendencias
+      .filter((item) => pendenciaAbertaPainel(item) && !pendenciaEhHerdada(item) && pendenciaNoPeriodoPainel(item, periodoAnterior.inicio, periodoAnterior.fim))
       .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
     const saldoAnteriorEmAberto = pendencias
       .filter((item) => {
+        if (!pendenciaAbertaPainel(item)) return false
         if (pendenciaEhHerdada(item)) return true
-        const dataVenda = String(item.vendas?.data_venda || '').slice(0, 10)
+        const dataVenda = dataPendenciaPainel(item)
         return dataVenda && dataVenda < inicioMesPainel
       })
       .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
@@ -4043,10 +4067,47 @@ Delber Vilaça`
 
     const lucroOperacionalProjetado = totalBruto - totalCustoProdutos - totalTaxas - totalDespesas
     const totalProjetadoFinal = lucroOperacionalProjetado
-    const totalValoresAReceber = totalPendencias + totalEmDelivery + saldoAnteriorEmAberto
+    const totalValoresAReceber = totalPendencias + saldoAnteriorEmAberto
+    const totalRecebiveisOperacionais = totalValoresAReceber + totalEmDelivery
     const recursosTotaisConservador = saldoCaixaAtualInformado + totalValoresAReceber
     const percentualRecebidoSobreVendido = totalBruto > 0 ? (totalRecebido / totalBruto) * 100 : 0
     const caixaLiquidoRealizado = saldoCaixaAtualInformado
+
+    const periodoCardsPainelSelecionado = (() => {
+      if (periodoCardsPainel === 'mesAnterior') return periodoAnterior
+      if (periodoCardsPainel === 'todos') return { inicio: '0000-01-01', fim: '9999-12-31' }
+      return { inicio: inicioMesPainel, fim: dataHoje() }
+    })()
+
+    const vendasCardsPainel = vendas.filter((venda) => pertenceAoPeriodoPainel(venda, 'data_venda', periodoCardsPainelSelecionado.inicio, periodoCardsPainelSelecionado.fim))
+    const pagamentosCardsPainel = pagamentos.filter((pagamento) => pertenceAoPeriodoPainel(pagamento, 'data_pagamento', periodoCardsPainelSelecionado.inicio, periodoCardsPainelSelecionado.fim))
+    const movimentacoesCardsPainel = movimentacoesProdutos.filter((item) => pertenceAoPeriodoPainel(item, 'data_venda', periodoCardsPainelSelecionado.inicio, periodoCardsPainelSelecionado.fim))
+    const despesasCardsPainel = despesas.filter((item) => pertenceAoPeriodoPainel(item, 'data_despesa', periodoCardsPainelSelecionado.inicio, periodoCardsPainelSelecionado.fim))
+
+    const totalBrutoCardsPainel = vendasCardsPainel.reduce((acc, venda) => acc + Number(venda.valor_total || 0), 0)
+    const totalTaxasCardsPainel = vendasCardsPainel.reduce((acc, venda) => acc + Number(venda.valor_taxa || 0), 0)
+    const totalRecebidoCardsPainel = pagamentosCardsPainel.reduce((acc, pagamento) => acc + Number(pagamento.valor_pago || 0), 0)
+    const totalCustoProdutosCardsPainel = movimentacoesCardsPainel.reduce((acc, item) => acc + Number(item.subtotal_custo || 0), 0)
+    const totalDespesasCardsPainel = despesasCardsPainel.reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const lucroLiquidoCardsPainel = totalBrutoCardsPainel - totalCustoProdutosCardsPainel - totalTaxasCardsPainel - totalDespesasCardsPainel
+    const percentualRecebidoCardsPainel = totalBrutoCardsPainel > 0 ? (totalRecebidoCardsPainel / totalBrutoCardsPainel) * 100 : 0
+    const totalPendenciasCardsPainel = pendencias
+      .filter((item) => {
+        if (!pendenciaAbertaPainel(item)) return false
+        if (periodoCardsPainel === 'todos') return true
+        return pendenciaNoPeriodoPainel(item, periodoCardsPainelSelecionado.inicio, periodoCardsPainelSelecionado.fim)
+      })
+      .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+    const totalEmDeliveryCardsPainel = deliveries
+      .filter((item) => {
+        if (item.status !== 'Programado') return false
+        if (periodoCardsPainel === 'todos') return true
+        const dataEntrega = String(item.data_entrega || item.data_pedido || item.created_at || '').slice(0, 10)
+        return dataEntrega && dataEntrega >= periodoCardsPainelSelecionado.inicio && dataEntrega <= periodoCardsPainelSelecionado.fim
+      })
+      .reduce((acc, item) => acc + Number(item.valor_total || 0), 0)
+    const totalValoresAReceberCardsPainel = totalPendenciasCardsPainel
+    const caixaMaisFiadosCardsPainel = saldoCaixaAtualInformado + totalPendenciasCardsPainel
 
     const pecasVendidas = movimentacoesMesPainel.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
     const numeroVendas = vendasMesPainel.length
@@ -4223,15 +4284,44 @@ Delber Vilaça`
 
     return (
       <>
+        <div className="mb-4">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500 font-bold mb-2">Período dos cards</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setPeriodoCardsPainel('mesAtual')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoCardsPainel === 'mesAtual' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Mês atual
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPeriodoCardsPainel('mesAnterior')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoCardsPainel === 'mesAnterior' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Mês anterior
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPeriodoCardsPainel('todos')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoCardsPainel === 'todos' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Todos
+            </button>
+          </div>
+        </div>
+
         <section className="mobile-summary-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-8 gap-4 mb-6">
-          <CardResumo titulo="Faturamento bruto" valor={moeda(totalBruto)} classe="text-green-300" />
-          <CardResumo titulo="Resultado previsto do mês" valor={moeda(lucroOperacionalProjetado)} classe={lucroOperacionalProjetado >= 0 ? 'text-green-400' : 'text-red-300'} />
+          <CardResumo titulo="Faturamento bruto" valor={moeda(totalBrutoCardsPainel)} classe="text-green-300" />
+          <CardResumo titulo="Lucro líquido" valor={moeda(lucroLiquidoCardsPainel)} classe={lucroLiquidoCardsPainel >= 0 ? 'text-green-400' : 'text-red-300'} />
           <CardResumo titulo="Caixa atual" valor={moeda(caixaLiquidoRealizado)} classe="text-green-300" />
-          <CardResumo titulo="Valores a receber" valor={moeda(totalValoresAReceber)} classe="text-orange-300" />
-          <CardResumo titulo="Recebido sobre vendido" valor={percentual(percentualRecebidoSobreVendido)} classe={percentualRecebidoSobreVendido >= 60 ? 'text-green-300' : 'text-yellow-300'} />
-          <CardResumo titulo="Fornecedores pagos" valor={moeda(totalCustoProdutos)} classe="text-red-300" />
-          <CardResumo titulo="Despesas e taxas" valor={moeda(totalDespesas + totalTaxas)} classe="text-red-300" />
-          <CardResumo titulo="Caixa + recebíveis" valor={moeda(recursosTotaisConservador)} classe="text-yellow-300" />
+          <CardResumo titulo="Fiados em aberto" valor={moeda(totalValoresAReceberCardsPainel)} classe="text-orange-300" />
+          <CardResumo titulo="Delivery programado" valor={moeda(totalEmDeliveryCardsPainel)} classe="text-yellow-300" />
+          <CardResumo titulo="Fornecedores pagos" valor={moeda(totalCustoProdutosCardsPainel)} classe="text-red-300" />
+          <CardResumo titulo="Despesas e taxas" valor={moeda(totalDespesasCardsPainel + totalTaxasCardsPainel)} classe="text-red-300" />
+          <CardResumo titulo="Caixa + fiados" valor={moeda(caixaMaisFiadosCardsPainel)} classe="text-yellow-300" />
         </section>
 
         <section className="mobile-panel-card bg-black border border-orange-950 rounded-[24px] lg:rounded-[28px] p-5 lg:p-8 mb-6">
@@ -4347,10 +4437,12 @@ Delber Vilaça`
 
             <BlocoRelatorio titulo="Carteira em aberto" subtitulo="Recebíveis ainda não convertidos em caixa">
               <LinhaRelatorio rotulo="Fiados em aberto, mês atual" valor={moeda(totalPendencias)} destaque="text-orange-300" />
+              <LinhaRelatorio rotulo="Fiados em aberto, mês anterior" valor={moeda(totalPendenciasMesAnterior)} destaque="text-yellow-300" />
+              <LinhaRelatorio rotulo="Saldo anterior total em aberto" valor={moeda(saldoAnteriorEmAberto)} destaque="text-yellow-300" />
               <LinhaRelatorio rotulo="Delivery programado" valor={moeda(totalEmDelivery)} destaque="text-yellow-300" />
-              <LinhaRelatorio rotulo="Saldo anterior em aberto" valor={moeda(saldoAnteriorEmAberto)} destaque="text-yellow-300" />
-              <LinhaRelatorio rotulo="Total de valores a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
-              <LinhaRelatorio rotulo="Caixa + recebíveis" valor={moeda(recursosTotaisConservador)} destaque="text-yellow-300" />
+              <LinhaRelatorio rotulo="Total de fiados a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
+              <LinhaRelatorio rotulo="Fiados + delivery programado" valor={moeda(totalRecebiveisOperacionais)} destaque="text-yellow-300" />
+              <LinhaRelatorio rotulo="Caixa + fiados" valor={moeda(recursosTotaisConservador)} destaque="text-yellow-300" />
             </BlocoRelatorio>
           </div>
 
@@ -4379,7 +4471,8 @@ Delber Vilaça`
               <LinhaComparativo rotulo="Taxas" atual={mesAtualComparativo.taxas} anterior={mesAnteriorComparativo.taxas} positivoAlta={false} />
               <LinhaComparativo rotulo="Despesas" atual={mesAtualComparativo.despesasTotal} anterior={mesAnteriorComparativo.despesasTotal} positivoAlta={false} />
               <LinhaRelatorio rotulo="Caixa atual" valor={moeda(caixaLiquidoRealizado)} destaque="text-green-300" />
-              <LinhaRelatorio rotulo="Valores a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
+              <LinhaRelatorio rotulo="Fiados a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
+              <LinhaRelatorio rotulo="Delivery programado" valor={moeda(totalEmDelivery)} destaque="text-yellow-300" />
 
               <div className="border-t border-zinc-900 p-4">
                 <p className="text-xs font-bold text-zinc-300 mb-3">Últimos movimentos de caixa</p>
@@ -6454,6 +6547,38 @@ Delber Vilaça`
           </table>
         </div>
 
+        {despesasFiltradas.length > itensPorPaginaDespesas && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 text-sm text-zinc-500">
+            <p>
+              Mostrando {inicioDespesas + 1} a {Math.min(inicioDespesas + itensPorPaginaDespesas, despesasFiltradas.length)} de {despesasFiltradas.length} despesas
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={paginaAtualDespesas <= 1}
+                onClick={() => setPaginaDespesas((pagina) => Math.max(1, pagina - 1))}
+                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-zinc-900 px-4 py-2 rounded-xl text-white font-semibold"
+              >
+                Anterior
+              </button>
+
+              <span className="px-3 text-zinc-400">
+                Página {paginaAtualDespesas} de {totalPaginasDespesas}
+              </span>
+
+              <button
+                type="button"
+                disabled={paginaAtualDespesas >= totalPaginasDespesas}
+                onClick={() => setPaginaDespesas((pagina) => Math.min(totalPaginasDespesas, pagina + 1))}
+                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-zinc-900 px-4 py-2 rounded-xl text-white font-semibold"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
+
               </section>
     )
   }
@@ -6567,18 +6692,23 @@ Delber Vilaça`
 
     const termo = normalizarTexto(buscaProdutosControle)
 
-    const totalPecas = movimentacoesProdutos.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
+    const inicioMesProdutosControle = inicioMesAtual()
+
+    function dataMovimentacaoProduto(item) {
+      return String(item?.vendas?.data_venda || item?.data_venda || item?.created_at || '').slice(0, 10)
+    }
+
+    const movimentacoesProdutosMesAtual = movimentacoesProdutos.filter((item) => {
+      const dataItem = dataMovimentacaoProduto(item)
+      return dataItem && dataItem >= inicioMesProdutosControle
+    })
+
+    const totalPecas = movimentacoesProdutosMesAtual.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
     const pecasVendidasNaData = movimentacoesProdutos
-      .filter((item) => {
-        const dataItem = item.vendas?.data_venda || String(item.created_at || '').slice(0, 10)
-        return dataItem === dataControleProdutos
-      })
+      .filter((item) => dataMovimentacaoProduto(item) === dataControleProdutos)
       .reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
 
-    const itensLancadosNaData = movimentacoesProdutos.filter((item) => {
-      const dataItem = item.vendas?.data_venda || String(item.created_at || '').slice(0, 10)
-      return dataItem === dataControleProdutos
-    })
+    const itensLancadosNaData = movimentacoesProdutos.filter((item) => dataMovimentacaoProduto(item) === dataControleProdutos)
 
     const conferenciaProdutosDoDia = Object.values(
       itensLancadosNaData.reduce((acc, item) => {
@@ -6677,9 +6807,9 @@ Delber Vilaça`
       await buscarTudo()
     }
 
-    const totalVendido = movimentacoesProdutos.reduce((acc, item) => acc + Number(item.subtotal_venda || 0), 0)
-    const totalCusto = movimentacoesProdutos.reduce((acc, item) => acc + Number(item.subtotal_custo || 0), 0)
-    const totalLucro = movimentacoesProdutos.reduce((acc, item) => acc + Number(item.lucro || 0), 0)
+    const totalVendido = movimentacoesProdutosMesAtual.reduce((acc, item) => acc + Number(item.subtotal_venda || 0), 0)
+    const totalCusto = movimentacoesProdutosMesAtual.reduce((acc, item) => acc + Number(item.subtotal_custo || 0), 0)
+    const totalLucro = movimentacoesProdutosMesAtual.reduce((acc, item) => acc + Number(item.lucro || 0), 0)
 
     const resumoProdutos = produtos.map((produto) => {
       const movimentosProduto = movimentacoesProdutos.filter((item) => item.produto_id === produto.id)
@@ -8167,7 +8297,6 @@ Delber Vilaça`
 
   function TelaDespesas() {
     const termo = normalizarTexto(buscaDespesas)
-
     const despesasFiltradas = despesas.filter((despesa) => {
       const texto = normalizarTexto(`
         ${despesa.data_despesa}
@@ -8180,10 +8309,28 @@ Delber Vilaça`
       return contemTermos(texto, termo)
     })
 
-    const totalDespesas = despesasFiltradas.reduce((acc, item) => acc + Number(item.valor || 0), 0)
-    const totalAbastecimentos = despesasFiltradas.filter((item) => item.categoria === 'Abastecimento').reduce((acc, item) => acc + Number(item.valor || 0), 0)
-    const totalDegustacoes = despesasFiltradas.filter((item) => item.categoria === 'Degustação' || item.categoria === 'Degustações').reduce((acc, item) => acc + Number(item.valor || 0), 0)
-    const totalOutrosCustos = despesasFiltradas.filter((item) => item.categoria === 'Outros custos').reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const mesAtualDespesas = dataHoje().slice(0, 7)
+    const [anoAtualDespesas, mesAtualNumeroDespesas] = mesAtualDespesas.split('-').map(Number)
+    const dataMesAnteriorDespesas = new Date(anoAtualDespesas, mesAtualNumeroDespesas - 2, 1)
+    const mesAnteriorDespesas = `${dataMesAnteriorDespesas.getFullYear()}-${String(dataMesAnteriorDespesas.getMonth() + 1).padStart(2, '0')}`
+
+    const despesasDosCards = despesasFiltradas.filter((item) => {
+      if (periodoCardsDespesas === 'todos') return true
+      const mesDaDespesa = String(item.data_despesa || '').slice(0, 7)
+      if (periodoCardsDespesas === 'mesAnterior') return mesDaDespesa === mesAnteriorDespesas
+      return mesDaDespesa === mesAtualDespesas
+    })
+
+    const itensPorPaginaDespesas = 20
+    const totalPaginasDespesas = Math.max(1, Math.ceil(despesasFiltradas.length / itensPorPaginaDespesas))
+    const paginaAtualDespesas = Math.min(paginaDespesas, totalPaginasDespesas)
+    const inicioDespesas = (paginaAtualDespesas - 1) * itensPorPaginaDespesas
+    const despesasPaginadas = despesasFiltradas.slice(inicioDespesas, inicioDespesas + itensPorPaginaDespesas)
+
+    const totalDespesas = despesasDosCards.reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const totalAbastecimentos = despesasDosCards.filter((item) => item.categoria === 'Abastecimento').reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const totalDegustacoes = despesasDosCards.filter((item) => item.categoria === 'Degustação' || item.categoria === 'Degustações').reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const totalOutrosCustos = despesasDosCards.filter((item) => item.categoria === 'Outros custos').reduce((acc, item) => acc + Number(item.valor || 0), 0)
 
     return (
       <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-8">
@@ -8199,6 +8346,35 @@ Delber Vilaça`
             placeholder="Buscar despesa, categoria ou observação"
             className="w-full lg:w-[420px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
           />
+        </div>
+
+        <div className="mb-4">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500 font-bold mb-2">Período dos cards</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setPeriodoCardsDespesas('mesAtual')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoCardsDespesas === 'mesAtual' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Mês atual
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPeriodoCardsDespesas('mesAnterior')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoCardsDespesas === 'mesAnterior' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Mês anterior
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPeriodoCardsDespesas('todos')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoCardsDespesas === 'todos' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Todos
+            </button>
+          </div>
         </div>
 
         <section className="mobile-summary-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
@@ -8287,7 +8463,7 @@ Delber Vilaça`
                 </tr>
               )}
 
-              {despesasFiltradas.map((despesa) => (
+              {despesasPaginadas.map((despesa) => (
                 <tr key={despesa.id} className="border-t border-zinc-900">
                   <td className="p-4 text-zinc-400">{dataBR(despesa.data_despesa)}</td>
                   <td className="p-4 font-semibold">{despesa.categoria}</td>
