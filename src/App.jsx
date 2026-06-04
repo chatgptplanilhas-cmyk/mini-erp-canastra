@@ -11,7 +11,6 @@ export default function App() {
   const [modalVendaAberto, setModalVendaAberto] = useState(false)
   const buscaClienteVendaInputRef = useRef(null)
   const [modalConferenciaProdutosAberto, setModalConferenciaProdutosAberto] = useState(false)
-  const [modalLancamentoProdutoAberto, setModalLancamentoProdutoAberto] = useState(false)
   const [conferenciaProdutoExpandido, setConferenciaProdutoExpandido] = useState(null)
   const resolverFormaPagamentoRef = useRef(null)
   const toastTimerRef = useRef(null)
@@ -159,7 +158,7 @@ export default function App() {
   const [clienteId, setClienteId] = useState('')
   const [valorTotal, setValorTotal] = useState('')
   const [valorPagoVenda, setValorPagoVenda] = useState('')
-  const [dataVenda, setDataVenda] = useState(dataHoje())
+  const [dataVenda, setDataVenda] = useState(new Date().toISOString().slice(0, 10))
   const [taxaSelecionadaId, setTaxaSelecionadaId] = useState('')
   const [status, setStatus] = useState('EM ABERTO')
   const [vencimento, setVencimento] = useState('')
@@ -236,7 +235,7 @@ export default function App() {
   })
 
   const [formDespesa, setFormDespesa] = useState({
-    data_despesa: dataHoje(),
+    data_despesa: new Date().toISOString().slice(0, 10),
     categoria: 'Abastecimento',
     descricao: '',
     valor: '',
@@ -245,18 +244,15 @@ export default function App() {
 
   const [formDelivery, setFormDelivery] = useState({
     venda_id: '',
-    data_pedido: dataHoje(),
+    data_pedido: new Date().toISOString().slice(0, 10),
     data_entrega: '',
     cliente_id: '',
     referencia: '',
     local_entrega: '',
     descricao: '',
-    valores_itens: '',
     valor_total: '',
     status: 'Programado',
   })
-
-  const [modalNovaDeliveryAberto, setModalNovaDeliveryAberto] = useState(false)
 
   const [formPedidoFornecedor, setFormPedidoFornecedor] = useState({
     produto_id: '',
@@ -579,23 +575,17 @@ export default function App() {
     })
   }
 
-  function dataISO(data) {
-    if (!(data instanceof Date) || Number.isNaN(data.getTime())) return ''
-
-    const ano = data.getFullYear()
-    const mes = String(data.getMonth() + 1).padStart(2, '0')
-    const dia = String(data.getDate()).padStart(2, '0')
-
-    return `${ano}-${mes}-${dia}`
-  }
-
   function dataHoje() {
-    return dataISO(new Date())
+    return new Date().toISOString().slice(0, 10)
   }
 
   function inicioMesAtual() {
     const hoje = new Date()
-    return dataISO(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
+    return new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10)
+  }
+
+  function dataISO(data) {
+    return data.toISOString().slice(0, 10)
   }
 
   function periodoMesAnterior() {
@@ -2224,26 +2214,44 @@ Queijos Serra da Canastra`
     return Boolean(dataVenda && dataVenda < inicioMesAtual())
   }
 
-  function montarMensagemCobranca({ cliente, valor, detalhe = '', titulo = 'da sua compra', mostrarValorFinal = true }) {
+  function montarMensagemCobranca({ cliente, valor }) {
     const nomeCliente = cliente.nome || 'cliente'
-    const detalheTexto = detalhe ? `
-${detalhe}
-` : ''
-    const valorTexto = mostrarValorFinal ? `
-Valor: ${valor}
-` : ''
 
     return `Olá, ${nomeCliente}. Tudo bem?
 
-Conforme combinado, seguem os dados para o pagamento via Pix ${titulo}:${detalheTexto}
-Chave Pix:
+Conforme combinado, seguem os dados para o pagamento via Pix da sua compra:
+
+💰 Valor: ${valor}
+
+🔑 Chave Pix:
 queijosserradacanastra@hotmail.com
 
 Dados para conferência:
 Delber Juliano Vilaça
 Stone Pagamentos S.A.
-${valorTexto}
+
 Assim que realizar a transferência, peço a gentileza de enviar o comprovante para registro.
+
+Atenciosamente,
+Delber Vilaça | Queijos Serra da Canastra`
+  }
+
+  function montarMensagemResumoPix({ valor }) {
+    return `📌 Pagamento via Pix – Queijos Serra da Canastra 🇧🇷
+
+Para realizar o pagamento, utilize a chave Pix abaixo:
+
+🔑 Chave Pix (e-mail):
+
+queijosserradacanastra@hotmail.com
+
+Dados do destinatário para conferência:
+Nome: Delber Juliano Vilaça
+Instituição: Stone Pagamentos S.A.
+
+💰 Valor da compra: ${valor}
+
+Após realizar a transferência, peço que envie o comprovante para que eu possa registrar o pagamento no sistema.
 
 Atenciosamente,
 Delber Vilaça | Queijos Serra da Canastra`
@@ -2259,13 +2267,9 @@ Delber Vilaça | Queijos Serra da Canastra`
       return
     }
 
-    const detalhe = pendenciaEhHerdada(pendencia)
-      ? `Referente ao saldo anterior em aberto.\nVencimento: ${dataBR(pendencia.vencimento)}`
-      : `Referente à pendência selecionada.\nVencimento: ${dataBR(pendencia.vencimento)}`
-
     abrirWhatsApp({
       telefone,
-      mensagem: montarMensagemCobranca({ cliente, valor, detalhe }),
+      mensagem: montarMensagemCobranca({ cliente, valor }),
     })
   }
 
@@ -2282,39 +2286,41 @@ Delber Vilaça | Queijos Serra da Canastra`
       .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
 
     if (itensEmAberto.length === 0) {
-      alert('Este cliente não possui pendências em aberto para cobrança.')
+      alert('Este cliente não possui valores em aberto para cobrança.')
       return
     }
 
     const itensVencidos = itensEmAberto.filter((item) => !item.vencimento || item.vencimento <= hoje)
     const itensValidos = somenteVencidos && itensVencidos.length > 0 ? itensVencidos : itensEmAberto
-    const cobrancaAntecipada = somenteVencidos && itensVencidos.length === 0
-
     const total = itensValidos.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
-    const linhasDetalhadas = itensValidos.map((item) => {
-      const valorItem = moeda(item.saldo_restante)
-      const vencimentoItem = dataBR(item.vencimento)
-      const estaVencido = !item.vencimento || item.vencimento <= hoje
-      const textoVencimento = estaVencido ? 'vencido em' : 'com vencimento em'
-
-      if (pendenciaContaComoSaldoAnterior(item)) {
-        return `• Saldo anterior${vencimentoItem ? `, ${textoVencimento} ${vencimentoItem}` : ''}: ${valorItem}`
-      }
-
-      return `• Compra ${textoVencimento} ${vencimentoItem}: ${valorItem}`
-    })
-
-    const detalhe = `${linhasDetalhadas.join('\n')}\n\nTotal para pagamento: ${moeda(total)}`
 
     abrirWhatsApp({
       telefone,
-      mensagem: montarMensagemCobranca({
-        cliente,
-        valor: moeda(total),
-        detalhe,
-        titulo: cobrancaAntecipada ? 'das pendências em aberto' : (somenteVencidos ? 'das pendências vencidas' : 'do total em aberto'),
-        mostrarValorFinal: false,
-      }),
+      mensagem: montarMensagemCobranca({ cliente, valor: moeda(total) }),
+    })
+  }
+
+  function resumoPixWhatsAppConsolidado(cliente, itens) {
+    const telefone = limparTelefone(cliente.telefone)
+
+    if (!telefone) {
+      alert('Este cliente não possui telefone cadastrado.')
+      return
+    }
+
+    const itensEmAberto = (itens || [])
+      .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+
+    if (itensEmAberto.length === 0) {
+      alert('Este cliente não possui valores em aberto para resumo.')
+      return
+    }
+
+    const total = itensEmAberto.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+
+    abrirWhatsApp({
+      telefone,
+      mensagem: montarMensagemResumoPix({ valor: moeda(total) }),
     })
   }
 
@@ -3007,7 +3013,6 @@ Delber Vilaça`
   async function salvarMovimentacaoProduto(e) {
     e.preventDefault()
 
-    const estavaEditandoMovimentacaoProduto = Boolean(editandoMovimentacaoProdutoId)
     const vendaIdFinal = formMovimentacaoProduto.venda_id || vendas[0]?.id
 
     if (!vendaIdFinal) {
@@ -3075,7 +3080,7 @@ Delber Vilaça`
     }
 
     limparMovimentacaoProduto()
-    await buscarTudo()
+    buscarTudo()
   }
 
   function editarMovimentacaoProduto(item) {
@@ -3222,134 +3227,6 @@ Delber Vilaça`
   }
 
 
-  function linhasDelivery(texto) {
-    return String(texto || '').split('\n')
-  }
-
-  function sincronizarValoresDelivery(descricaoAtual, valoresAtuais) {
-    const linhasItens = linhasDelivery(descricaoAtual)
-    const linhasValores = linhasDelivery(valoresAtuais)
-
-    return linhasItens
-      .map((linha, index) => {
-        if (!String(linha || '').trim()) return ''
-        return linhasValores[index] ?? ''
-      })
-      .join('\n')
-  }
-
-  function totalValoresDelivery(valoresTexto) {
-    return linhasDelivery(valoresTexto).reduce((acc, linha) => acc + numero(linha), 0)
-  }
-
-  function formatarValorItemDelivery(valor) {
-    const total = numero(valor)
-    return total > 0 ? moeda(total) : ''
-  }
-
-  function montarDescricaoDeliveryComValores(descricaoTexto, valoresTexto) {
-    const linhasItens = linhasDelivery(descricaoTexto)
-    const linhasValores = linhasDelivery(valoresTexto)
-
-    return linhasItens
-      .map((linha, index) => {
-        const item = String(linha || '').trim()
-        if (!item) return ''
-
-        const valor = numero(linhasValores[index])
-        return valor > 0 ? `${item} | ${moeda(valor)}` : item
-      })
-      .filter(Boolean)
-      .join('\n')
-  }
-
-  function separarDescricaoDelivery(descricaoTexto) {
-    const linhas = linhasDelivery(descricaoTexto).filter((linha) => String(linha || '').trim())
-    const itens = []
-    const valores = []
-
-    linhas.forEach((linha) => {
-      const partes = String(linha || '').split(/\s+\|\s+/)
-      if (partes.length >= 2 && numero(partes[partes.length - 1]) > 0) {
-        valores.push(moeda(numero(partes[partes.length - 1])))
-        itens.push(partes.slice(0, -1).join(' | ').trim())
-      } else {
-        itens.push(String(linha || '').trim())
-        valores.push('')
-      }
-    })
-
-    return {
-      descricao: itens.join('\n'),
-      valores_itens: valores.join('\n'),
-    }
-  }
-
-
-  function itensDeliveryParaVisualizacao(descricaoTexto) {
-    return linhasDelivery(descricaoTexto)
-      .map((linha) => String(linha || '').trim())
-      .filter(Boolean)
-      .map((linha) => {
-        const partes = linha.split(/\s+\|\s+/)
-        if (partes.length >= 2 && numero(partes[partes.length - 1]) > 0) {
-          return {
-            item: partes.slice(0, -1).join(' | ').trim(),
-            valor: moeda(numero(partes[partes.length - 1])),
-          }
-        }
-
-        return {
-          item: linha,
-          valor: '',
-        }
-      })
-  }
-
-  function renderizarItensDelivery(descricaoTexto, compacto = false, pontilhado = false) {
-    const itens = itensDeliveryParaVisualizacao(descricaoTexto)
-
-    if (itens.length === 0) {
-      return <span className="delivery-item-line delivery-item-empty">Sem descrição</span>
-    }
-
-    return (
-      <div className={`delivery-itens-valor-lista${compacto ? ' compacta' : ''}${pontilhado ? ' pontilhada' : ''}`}>
-        {itens.map((linha, index) => (
-          <div key={`${linha.item}-${index}`} className="delivery-item-line">
-            <span className="delivery-item-nome">{linha.item}</span>
-            {pontilhado && linha.valor && <span className="delivery-item-dots" aria-hidden="true" />}
-            {linha.valor && <span className="delivery-item-valor">{linha.valor}</span>}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  function atualizarDescricaoDelivery(descricaoAtualizada) {
-    const valoresSincronizados = sincronizarValoresDelivery(descricaoAtualizada, formDelivery.valores_itens)
-    const totalItens = totalValoresDelivery(valoresSincronizados)
-
-    setFormDelivery({
-      ...formDelivery,
-      descricao: descricaoAtualizada,
-      valores_itens: valoresSincronizados,
-      valor_total: totalItens > 0 ? moeda(totalItens) : formDelivery.valor_total,
-    })
-  }
-
-  function atualizarValoresItensDelivery(valoresAtualizados) {
-    const valoresSincronizados = sincronizarValoresDelivery(formDelivery.descricao, valoresAtualizados)
-    const totalItens = totalValoresDelivery(valoresSincronizados)
-
-    setFormDelivery({
-      ...formDelivery,
-      valores_itens: valoresSincronizados,
-      valor_total: totalItens > 0 ? moeda(totalItens) : '',
-    })
-  }
-
-
   function preencherDeliveryPorVenda(vendaId) {
     if (!vendaId) {
       setFormDelivery({
@@ -3359,7 +3236,6 @@ Delber Vilaça`
         referencia: '',
         valor_total: '',
         descricao: '',
-        valores_itens: '',
       })
       return
     }
@@ -3373,9 +3249,8 @@ Delber Vilaça`
       venda_id: venda.id,
       cliente_id: venda.cliente_id || '',
       referencia: venda.clientes?.referencia || '',
-      valor_total: moeda(venda.valor_total || 0),
+      valor_total: String(venda.valor_total || ''),
       descricao: `Venda #${venda.numero_venda}`,
-      valores_itens: moeda(venda.valor_total || 0),
     })
   }
 
@@ -3392,8 +3267,6 @@ Delber Vilaça`
       return
     }
 
-    const eraNovaEntregaDelivery = !editandoDeliveryId
-
     const dados = {
       venda_id: formDelivery.venda_id || null,
       data_pedido: formDelivery.data_pedido || dataHoje(),
@@ -3401,7 +3274,7 @@ Delber Vilaça`
       cliente_id: formDelivery.cliente_id,
       referencia: formDelivery.referencia || null,
       local_entrega: formDelivery.local_entrega || null,
-      descricao: montarDescricaoDeliveryComValores(formDelivery.descricao, formDelivery.valores_itens) || null,
+      descricao: formDelivery.descricao || null,
       valor_total: numero(formDelivery.valor_total),
       status: editandoDeliveryId ? formDelivery.status || 'Programado' : 'Programado',
     }
@@ -3430,14 +3303,11 @@ Delber Vilaça`
     }
 
     limparDelivery()
-    if (eraNovaEntregaDelivery) setModalNovaDeliveryAberto(false)
     buscarDelivery()
   }
 
   function editarDelivery(item) {
     setEditandoDeliveryId(item.id)
-
-    const descricaoSeparada = separarDescricaoDelivery(item.descricao || '')
 
     setFormDelivery({
       venda_id: item.venda_id || '',
@@ -3446,9 +3316,8 @@ Delber Vilaça`
       cliente_id: item.cliente_id || '',
       referencia: item.referencia || item.clientes?.referencia || '',
       local_entrega: item.local_entrega || '',
-      descricao: descricaoSeparada.descricao,
-      valores_itens: descricaoSeparada.valores_itens,
-      valor_total: item.valor_total ? moeda(item.valor_total) : '',
+      descricao: item.descricao || '',
+      valor_total: String(item.valor_total || ''),
       status: item.status || 'Programado',
     })
 
@@ -3465,7 +3334,6 @@ Delber Vilaça`
       referencia: '',
       local_entrega: '',
       descricao: '',
-      valores_itens: '',
       valor_total: '',
       status: 'Programado',
     })
@@ -3574,6 +3442,12 @@ Delber Vilaça`
       return
     }
 
+    const confirmar = window.confirm(
+      `Confirmar entrega e criar venda ${resumo.statusFinal} para ${clienteNomeDelivery}?`
+    )
+
+    if (!confirmar) return
+
     const { data: ultimaVenda } = await supabase
       .from('vendas')
       .select('numero_venda')
@@ -3680,7 +3554,7 @@ Delber Vilaça`
     setDeliveryExpandidoId(null)
     fecharModalDeliveryVenda()
     await buscarTudo()
-    exibirToast('Venda cadastrada com sucesso.')
+    alert(`Entrega concluída e venda #${proximoNumero} criada com sucesso.`)
   }
 
 
@@ -5545,6 +5419,7 @@ Delber Vilaça`
                               <details className="mini-cobrancas-menu">
                                 <summary aria-label="Mais ações">⋮</summary>
                                 <div className="mini-cobrancas-menu-list">
+                                  <button onClick={() => resumoPixWhatsAppConsolidado(clientePendencia, itensCliente)}>Resumo</button>
                                   <button onClick={() => cobrarWhatsApp(pendencia)}>Só este item</button>
                                   <button onClick={() => editarPendenciaFinanceira(pendencia)}>Editar</button>
                                 </div>
@@ -6863,10 +6738,6 @@ Delber Vilaça`
       return (produtoAtivo || produtoSelecionado) && contemTermos(texto, termoProdutoLancamento)
     })
 
-    const produtoSelecionadoLancamento = produtos.find(
-      (produto) => String(produto.id) === String(formMovimentacaoProduto.produto_id)
-    )
-
     const movimentacoesProdutosFiltradas = movimentacoesProdutos.filter((item) => {
       const texto = normalizarTexto(`
         ${item.vendas?.numero_venda}
@@ -6898,31 +6769,15 @@ Delber Vilaça`
 
     return (
       <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-3xl font-bold">Produtos & Controle</h2>
-            <p className="mt-1 text-sm text-zinc-500">Controle de peças vendidas, custo e lançamentos.</p>
-          </div>
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h2 className="text-3xl font-bold">Produtos & Controle</h2>
 
-          <div className="flex flex-col sm:flex-row gap-3 lg:items-center">
-            <button
-              type="button"
-              onClick={() => {
-                limparMovimentacaoProduto()
-                setModalLancamentoProdutoAberto(true)
-              }}
-              className="bg-orange-950 hover:bg-orange-900 px-5 py-3 rounded-2xl text-sm font-semibold"
-            >
-              ➕ Lançar Item
-            </button>
-
-            <input
-              value={buscaProdutosControle}
-              onChange={(e) => setBuscaProdutosControle(e.target.value)}
-              placeholder="Buscar produto, fornecedor, cliente, referência ou venda"
-              className="w-full lg:w-[460px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
-            />
-          </div>
+          <input
+            value={buscaProdutosControle}
+            onChange={(e) => setBuscaProdutosControle(e.target.value)}
+            placeholder="Buscar produto, fornecedor, cliente, referência ou venda"
+            className="w-[460px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+          />
         </div>
 
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
@@ -6942,56 +6797,54 @@ Delber Vilaça`
           <CardResumo titulo="Total a pagar" valor={moeda(totalCusto)} classe="text-red-300" />
         </section>
 
-        {editandoMovimentacaoProdutoId && (
-          <form onSubmit={salvarMovimentacaoProduto} className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
-            <input
-              value={buscaProdutoLancamento}
-              onChange={(e) => setBuscaProdutoLancamento(e.target.value)}
-              placeholder="Buscar produto por nome ou fornecedor"
-              className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
-            />
+        <form onSubmit={salvarMovimentacaoProduto} className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
+          <input
+            value={buscaProdutoLancamento}
+            onChange={(e) => setBuscaProdutoLancamento(e.target.value)}
+            placeholder="Buscar produto por nome ou fornecedor"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+          />
 
-            <select
-              value={formMovimentacaoProduto.produto_id}
-              onChange={(e) =>
-                setFormMovimentacaoProduto({
-                  ...formMovimentacaoProduto,
-                  produto_id: e.target.value,
-                })
-              }
-              className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
-            >
-              <option value="">
-                {termoProdutoLancamento ? 'Selecionar produto filtrado' : 'Selecionar produto'}
+          <select
+            value={formMovimentacaoProduto.produto_id}
+            onChange={(e) =>
+              setFormMovimentacaoProduto({
+                ...formMovimentacaoProduto,
+                produto_id: e.target.value,
+              })
+            }
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+          >
+            <option value="">
+              {termoProdutoLancamento ? 'Selecionar produto filtrado' : 'Selecionar produto'}
+            </option>
+            {produtosParaLancamento.map((produto) => (
+              <option key={produto.id} value={produto.id}>
+                {produto.nome} | {produto.fornecedores?.nome || 'Sem fornecedor'}
               </option>
-              {produtosParaLancamento.map((produto) => (
-                <option key={produto.id} value={produto.id}>
-                  {produto.nome} | {produto.fornecedores?.nome || 'Sem fornecedor'}
-                </option>
-              ))}
-            </select>
+            ))}
+          </select>
 
-            <input
-              value={formMovimentacaoProduto.quantidade}
-              onChange={(e) =>
-                setFormMovimentacaoProduto({
-                  ...formMovimentacaoProduto,
-                  quantidade: e.target.value,
-                })
-              }
-              placeholder="Quantidade"
-              className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
-            />
+          <input
+            value={formMovimentacaoProduto.quantidade}
+            onChange={(e) =>
+              setFormMovimentacaoProduto({
+                ...formMovimentacaoProduto,
+                quantidade: e.target.value,
+              })
+            }
+            placeholder="Quantidade"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
+          />
 
-            <button className="bg-orange-950 hover:bg-orange-900 rounded-2xl p-4 font-semibold">
-              Salvar edição
-            </button>
-          </form>
-        )}
+          <button className="bg-orange-950 hover:bg-orange-900 rounded-2xl p-4 font-semibold">
+            {editandoMovimentacaoProdutoId ? 'Salvar edição' : 'Lançar item'}
+          </button>
+        </form>
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
           <p className="text-xs text-zinc-500">
-            Dica: use o botão Lançar Item para registrar peças vendidas no período.
+            Dica: digite apenas parte do nome, como leite, tropical, zero, cachaça ou o nome do fornecedor.
           </p>
 
           <button
@@ -7267,162 +7120,6 @@ Delber Vilaça`
               >
                 Próxima
               </button>
-            </div>
-          </div>
-        )}
-
-        {modalLancamentoProdutoAberto && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-2xl rounded-[28px] border border-orange-950 bg-black shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-zinc-900 p-5">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-orange-400">Produtos</p>
-                  <h3 className="mt-2 text-2xl font-bold">Lançar item</h3>
-                  <p className="mt-1 text-sm text-zinc-500">Informe a data, produto e quantidade. O modal permanece aberto para lançamentos sequenciais.</p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModalLancamentoProdutoAberto(false)
-                    limparMovimentacaoProduto()
-                  }}
-                  className="h-10 w-10 rounded-2xl bg-zinc-900 text-xl font-bold text-white hover:bg-zinc-800"
-                >
-                  ×
-                </button>
-              </div>
-
-              <form onSubmit={salvarMovimentacaoProduto} className="grid gap-4 p-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="rounded-[22px] border border-zinc-900 bg-zinc-950 p-4">
-                    <label className="mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">
-                      Data de controle
-                    </label>
-                    <input
-                      type="date"
-                      onClick={abrirCalendario}
-                      onFocus={abrirCalendario}
-                      value={dataControleProdutos}
-                      onChange={(e) => setDataControleProdutos(e.target.value)}
-                      className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm"
-                    />
-                  </div>
-
-                  <div className="rounded-[22px] border border-zinc-900 bg-zinc-950 p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">Peças vendidas na data</p>
-                    <strong className="mt-3 block text-3xl font-black text-orange-300">{pecasVendidasNaData}</strong>
-                    <p className="mt-1 text-xs text-zinc-500">{dataBR(dataControleProdutos)}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">
-                    Busca
-                  </label>
-                  <input
-                    value={buscaProdutoLancamento}
-                    onChange={(e) => setBuscaProdutoLancamento(e.target.value)}
-                    placeholder="Buscar produto por nome ou fornecedor"
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_160px] gap-4">
-                  <div>
-                    <label className="mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">
-                      Produto
-                    </label>
-                    <select
-                      value={formMovimentacaoProduto.produto_id}
-                      onChange={(e) =>
-                        setFormMovimentacaoProduto({
-                          ...formMovimentacaoProduto,
-                          produto_id: e.target.value,
-                        })
-                      }
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
-                    >
-                      <option value="">
-                        {termoProdutoLancamento ? 'Selecionar produto filtrado' : 'Selecionar produto'}
-                      </option>
-                      {produtosParaLancamento.map((produto) => (
-                        <option key={produto.id} value={produto.id}>
-                          {produto.nome} | {produto.fornecedores?.nome || 'Sem fornecedor'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">
-                      Quantidade
-                    </label>
-                    <input
-                      value={formMovimentacaoProduto.quantidade}
-                      onChange={(e) =>
-                        setFormMovimentacaoProduto({
-                          ...formMovimentacaoProduto,
-                          quantidade: e.target.value,
-                        })
-                      }
-                      placeholder="Qtd"
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-zinc-900 bg-zinc-950 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">Produto selecionado</p>
-
-                  {produtoSelecionadoLancamento ? (
-                    <div className="mt-3 grid gap-3 md:grid-cols-4">
-                      <div className="md:col-span-4">
-                        <p className="text-lg font-bold text-white">{produtoSelecionadoLancamento.nome}</p>
-                        <p className="mt-1 text-sm text-zinc-500">
-                          {produtoSelecionadoLancamento.fornecedores?.nome || 'Sem fornecedor'}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-zinc-800 bg-black p-3">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Custo</p>
-                        <strong className="mt-2 block text-green-300">{moeda(produtoSelecionadoLancamento.preco_custo)}</strong>
-                      </div>
-                      <div className="rounded-2xl border border-zinc-800 bg-black p-3">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Venda</p>
-                        <strong className="mt-2 block text-green-300">{moeda(produtoSelecionadoLancamento.preco_venda)}</strong>
-                      </div>
-                      <div className="rounded-2xl border border-zinc-800 bg-black p-3">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Estoque</p>
-                        <strong className="mt-2 block text-white">{produtoSelecionadoLancamento.estoque ?? 0}</strong>
-                      </div>
-                      <div className="rounded-2xl border border-zinc-800 bg-black p-3">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Total venda</p>
-                        <strong className="mt-2 block text-orange-300">
-                          {moeda(Number(produtoSelecionadoLancamento.preco_venda || 0) * Number(formMovimentacaoProduto.quantidade || 0))}
-                        </strong>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-sm text-zinc-500">Selecione um produto para conferir custo, venda e estoque.</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalLancamentoProdutoAberto(false)
-                      limparMovimentacaoProduto()
-                    }}
-                    className="rounded-2xl bg-zinc-800 p-4 font-semibold text-white hover:bg-zinc-700"
-                  >
-                    Fechar
-                  </button>
-                  <button className="rounded-2xl bg-orange-950 p-4 font-semibold text-white hover:bg-orange-900">
-                    Lançar item e continuar
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}
@@ -8690,28 +8387,15 @@ Delber Vilaça`
             <p className="text-zinc-400 mt-1 delivery-subtitle">Bloco operacional para programar entregas. Depois de entregar, use Entregar + venda.</p>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto lg:items-center">
-            <button
-              type="button"
-              onClick={() => {
-                limparDelivery()
-                setModalNovaDeliveryAberto(true)
-              }}
-              className="bg-orange-950 hover:bg-orange-900 rounded-2xl px-5 py-3 font-semibold whitespace-nowrap"
-            >
-              🚚 Nova Entrega
-            </button>
-
-            <input
-              value={buscaDelivery}
-              onChange={(e) => {
-                setBuscaDelivery(e.target.value)
-                setFiltroDeliveryData('')
-              }}
-              placeholder="Buscar cliente, venda, local ou status"
-              className="mini-delivery-search w-full lg:w-[440px] bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
-            />
-          </div>
+          <input
+            value={buscaDelivery}
+            onChange={(e) => {
+              setBuscaDelivery(e.target.value)
+              setFiltroDeliveryData('')
+            }}
+            placeholder="Buscar cliente, venda, local ou status"
+            className="mini-delivery-search w-full lg:w-[440px] bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+          />
         </div>
 
         <section className="mini-delivery-kpis delivery-kpis-compact grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
@@ -8721,43 +8405,7 @@ Delber Vilaça`
           <CardResumo titulo="Valor programado" valor={moeda(totalValorProgramado)} classe="text-green-300" />
         </section>
 
-        {(modalNovaDeliveryAberto || editandoDeliveryId) && (
-          <div className={modalNovaDeliveryAberto && !editandoDeliveryId ? "fixed inset-0 z-[220] flex items-center justify-center p-4" : ""}>
-            {modalNovaDeliveryAberto && !editandoDeliveryId && (
-              <button
-                type="button"
-                aria-label="Fechar nova entrega"
-                onClick={() => {
-                  setModalNovaDeliveryAberto(false)
-                  limparDelivery()
-                }}
-                className="absolute inset-0 bg-black/78 backdrop-blur-sm"
-              />
-            )}
-
-            <div className={modalNovaDeliveryAberto && !editandoDeliveryId ? "relative z-[221] w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-black border border-orange-950 rounded-[28px] p-5 shadow-2xl" : ""}>
-              {modalNovaDeliveryAberto && !editandoDeliveryId && (
-                <div className="flex items-start justify-between gap-4 mb-5 pb-4 border-b border-zinc-900">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.35em] text-orange-400 font-black mb-2">Delivery</p>
-                    <h3 className="text-3xl font-black">Nova Entrega</h3>
-                    <p className="text-zinc-400 mt-1">Cadastre cliente, itens, valores e data da entrega.</p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalNovaDeliveryAberto(false)
-                      limparDelivery()
-                    }}
-                    className="w-11 h-11 rounded-full bg-zinc-800 hover:bg-zinc-700 font-black text-xl"
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-
-              <form onSubmit={salvarDelivery} className={`mini-delivery-form delivery-form-compact grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${modalNovaDeliveryAberto && !editandoDeliveryId ? 'mb-0' : 'mb-4'}`}>
+        <form onSubmit={salvarDelivery} className="mini-delivery-form delivery-form-compact grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
           <select
             value={formDelivery.venda_id}
             onChange={(e) => preencherDeliveryPorVenda(e.target.value)}
@@ -8837,40 +8485,20 @@ Delber Vilaça`
             className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
           />
 
-          <div className="lg:col-span-3 grid grid-cols-[minmax(0,1fr)_150px] gap-3">
-            <textarea
-              value={formDelivery.descricao}
-              onChange={(e) => atualizarDescricaoDelivery(e.target.value)}
-              placeholder="Itens do pedido"
-              rows={Math.max(3, linhasDelivery(formDelivery.descricao).length)}
-              className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-none overflow-hidden min-h-[74px] leading-relaxed"
-            />
+          <textarea
+            value={formDelivery.descricao}
+            onChange={(e) => setFormDelivery({ ...formDelivery, descricao: e.target.value })}
+            placeholder="Itens do pedido" 
+            rows={3}
+            className="lg:col-span-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-y min-h-[74px] leading-relaxed"
+          />
 
-            <textarea
-              value={formDelivery.valores_itens}
-              onChange={(e) => atualizarValoresItensDelivery(e.target.value)}
-              onBlur={(e) => atualizarValoresItensDelivery(
-                linhasDelivery(e.target.value)
-                  .map((linha) => formatarValorItemDelivery(linha))
-                  .join('\n')
-              )}
-              placeholder="R$ 0,00"
-              rows={Math.max(3, linhasDelivery(formDelivery.descricao).length)}
-              className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-none overflow-hidden min-h-[74px] leading-relaxed text-right"
-            />
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 mb-2">Total dos itens</p>
-            <p className="text-green-300 font-black text-lg mb-2">{moeda(totalValoresDelivery(formDelivery.valores_itens))}</p>
-            <input
-              value={formDelivery.valor_total}
-              onChange={(e) => setFormDelivery({ ...formDelivery, valor_total: e.target.value })}
-              onBlur={(e) => setFormDelivery({ ...formDelivery, valor_total: formatarValorItemDelivery(e.target.value) })}
-              placeholder="Valor final"
-              className="w-full bg-black border border-zinc-800 rounded-xl p-2 text-sm"
-            />
-          </div>
+          <input
+            value={formDelivery.valor_total}
+            onChange={(e) => setFormDelivery({ ...formDelivery, valor_total: e.target.value })}
+            placeholder="Valor total"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+          />
 
           <button className="lg:col-span-4 bg-orange-950 hover:bg-orange-900 rounded-2xl p-3 font-semibold">
             {editandoDeliveryId ? 'Salvar edição' : 'Cadastrar entrega'}
@@ -8885,11 +8513,7 @@ Delber Vilaça`
               Cancelar edição
             </button>
           )}
-              </form>
-            </div>
-          </div>
-        )}
-
+        </form>
 
 
         <div className="mini-delivery-filters flex flex-wrap gap-2 mb-4">
@@ -9036,7 +8660,9 @@ Delber Vilaça`
                   </div>
 
                   <div className="mini-delivery-compact-desc">
-                    {renderizarItensDelivery(item.descricao, true)}
+                    {itensDelivery.map((linha, index) => (
+                      <span key={`${item.id}-item-${index}`}>{linha}</span>
+                    ))}
                   </div>
 
                   <div className="mini-delivery-compact-meta">
@@ -9098,7 +8724,7 @@ Delber Vilaça`
 
                     <div className="mini-delivery-card-line mini-delivery-description">
                       <p className="mini-delivery-label">Itens / descrição</p>
-                      {renderizarItensDelivery(item.descricao, false, true)}
+                      <p>{item.descricao || 'Sem descrição'}</p>
                     </div>
 
                     <div className="mini-delivery-actions">
@@ -9195,7 +8821,7 @@ Delber Vilaça`
                   <td className="p-4 text-white font-semibold">{dataBR(item.data_entrega)}</td>
                   <td className="p-4 font-semibold">{item.clientes?.nome}</td>
                   <td className="p-4 text-zinc-400">{item.referencia || item.clientes?.referencia || 'Sem referência'}</td>
-                  <td className="p-4 text-zinc-300 max-w-[360px] leading-relaxed">{renderizarItensDelivery(item.descricao)}</td>
+                  <td className="p-4 text-zinc-300 max-w-[320px] whitespace-pre-line leading-relaxed">{item.descricao || 'Sem descrição'}</td>
                   <td className="p-4 text-green-300">{moeda(item.valor_total)}</td>
                   <td className="p-4 delivery-status-td">
                     <span
@@ -9510,7 +9136,7 @@ Delber Vilaça`
 
     function aplicarPeriodoRapido(tipo) {
       const hoje = new Date()
-      const yyyyMmDd = dataISO
+      const yyyyMmDd = (data) => data.toISOString().slice(0, 10)
 
       if (tipo === 'hoje') {
         const hojeTexto = yyyyMmDd(hoje)
@@ -9833,7 +9459,7 @@ Delber Vilaça`
 
     function aplicarPeriodoPonto(tipo) {
       const hoje = new Date()
-      const yyyyMmDd = dataISO
+      const yyyyMmDd = (data) => data.toISOString().slice(0, 10)
 
       if (tipo === 'hoje') {
         const hojeTexto = yyyyMmDd(hoje)
@@ -9895,7 +9521,7 @@ Delber Vilaça`
 
     function ultimoDiaMes(dataTexto) {
       const [ano, mes] = String(dataTexto || dataHoje()).slice(0, 7).split('-').map(Number)
-      return dataISO(new Date(ano, mes, 0))
+      return new Date(ano, mes, 0).toISOString().slice(0, 10)
     }
 
     function diasEntre(inicioTexto, fimTexto) {
