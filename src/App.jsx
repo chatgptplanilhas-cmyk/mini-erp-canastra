@@ -10,6 +10,7 @@ export default function App() {
   const [vendaExpandidaId, setVendaExpandidaId] = useState(null)
   const [modalVendaAberto, setModalVendaAberto] = useState(false)
   const buscaClienteVendaInputRef = useRef(null)
+  const clienteNomeInputRef = useRef(null)
   const [modalConferenciaProdutosAberto, setModalConferenciaProdutosAberto] = useState(false)
   const [conferenciaProdutoExpandido, setConferenciaProdutoExpandido] = useState(null)
   const resolverFormaPagamentoRef = useRef(null)
@@ -52,6 +53,7 @@ export default function App() {
   const [buscaClienteVenda, setBuscaClienteVenda] = useState('')
   const [buscaPendencias, setBuscaPendencias] = useState('')
   const [buscaPagamentos, setBuscaPagamentos] = useState('')
+  const [paginaPagamentos, setPaginaPagamentos] = useState(1)
   const [buscaProdutos, setBuscaProdutos] = useState('')
   const [mostrarProdutosArquivados, setMostrarProdutosArquivados] = useState(false)
   const [buscaProdutosControle, setBuscaProdutosControle] = useState('')
@@ -67,6 +69,7 @@ export default function App() {
   const [buscaCobrancas, setBuscaCobrancas] = useState('')
   const [filtroDeliveryData, setFiltroDeliveryData] = useState('')
   const [filtroCobrancasAlerta, setFiltroCobrancasAlerta] = useState('todos')
+  const [filtroPeriodoCobrancas, setFiltroPeriodoCobrancas] = useState('todos')
   const [localCobrancaAberto, setLocalCobrancaAberto] = useState('')
   const [cobrancaExpandidaId, setCobrancaExpandidaId] = useState(null)
   const [pendenciaLocalAberto, setPendenciaLocalAberto] = useState('')
@@ -174,6 +177,10 @@ export default function App() {
   const [filtroVendasFim, setFiltroVendasFim] = useState(dataHoje())
   const [filtroPagamentosInicio, setFiltroPagamentosInicio] = useState(inicioMesAtual())
   const [filtroPagamentosFim, setFiltroPagamentosFim] = useState(dataHoje())
+
+  useEffect(() => {
+    setPaginaPagamentos(1)
+  }, [buscaPagamentos, filtroPagamentosInicio, filtroPagamentosFim])
   const [filtroPendenciasInicio, setFiltroPendenciasInicio] = useState('')
   const [filtroPendenciasFim, setFiltroPendenciasFim] = useState('')
 
@@ -2161,16 +2168,16 @@ Atenciosamente,
 Delber Vilaça
 Queijos Serra da Canastra`
 
-    const mensagemQuitada = `Pagamento confirmado.
+    const mensagemQuitada = `✅ PAGAMENTO CONFIRMADO.
 
-Recebi o pagamento de ${moeda(valorPago)} referente à sua compra de produtos dos Queijos Serra da Canastra.
+Recebi o pagamento de ${moeda(valorPago)} referente à sua compra dos produtos da Queijos Serra da Canastra.
 
-Agradeço pela confiança.
+Muito obrigado e até breve.
 
 Atenciosamente,
 
 Delber Vilaça
-Queijos Serra da Canastra`
+Queijos Serra da Canastra 🇧🇷`
 
     const mensagem = saldoFinal > 0 ? mensagemParcial : mensagemQuitada
     abrirWhatsApp({ telefone, mensagem })
@@ -2600,9 +2607,21 @@ Delber Vilaça`
       return
     }
 
-    fecharModalEdicaoCliente()
+    setModalEdicaoCliente({
+      aberto: true,
+      cliente: null,
+      nome: '',
+      referencia: '',
+      observacao: '',
+      telefone: '',
+      ativo: true,
+    })
     buscarTudo()
     exibirToast('Cliente cadastrado com sucesso.')
+
+    setTimeout(() => {
+      clienteNomeInputRef.current?.focus()
+    }, 80)
   }
 
   async function salvarProduto(e) {
@@ -3960,9 +3979,27 @@ Delber Vilaça`
     )
   }
 
-  function CardResumo({ titulo, valor, classe }) {
+  function CardResumo({ titulo, valor, classe, onClick, ativo = false }) {
+    const clicavel = typeof onClick === 'function'
+
     return (
-      <div className="bg-black border border-orange-950 rounded-[28px] p-6">
+      <div
+        role={clicavel ? 'button' : undefined}
+        tabIndex={clicavel ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (!clicavel) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick()
+          }
+        }}
+        className={`bg-black border rounded-[28px] p-6 transition ${
+          ativo
+            ? 'border-orange-600 bg-orange-950/35'
+            : 'border-orange-950'
+        } ${clicavel ? 'cursor-pointer hover:border-orange-700 hover:bg-orange-950/20' : ''}`}
+      >
         <p className="text-zinc-500 mb-3">{titulo}</p>
         <h3 className={`text-3xl font-bold ${classe}`}>{valor}</h3>
       </div>
@@ -4028,30 +4065,17 @@ Delber Vilaça`
     const totalBruto = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_total || 0), 0)
     const totalLiquidoVendas = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_liquido || 0), 0)
     const totalTaxas = vendasMesPainel.reduce((acc, venda) => acc + Number(venda.valor_taxa || 0), 0)
-    function pendenciaAbertaPainel(item) {
-      return Number(item.saldo_restante || 0) > 0 && item.status !== 'PAGO'
-    }
-
-    function dataPendenciaPainel(item) {
-      return String(item.vendas?.data_venda || item.created_at || item.vencimento || '').slice(0, 10)
-    }
-
-    function pendenciaNoPeriodoPainel(item, inicio, fim) {
-      const data = dataPendenciaPainel(item)
-      return data && data >= inicio && data <= fim
-    }
-
     const totalPendencias = pendencias
-      .filter((item) => pendenciaAbertaPainel(item) && !pendenciaEhHerdada(item) && pendenciaNoPeriodoPainel(item, inicioMesPainel, dataHoje()))
-      .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
-    const totalPendenciasMesAnterior = pendencias
-      .filter((item) => pendenciaAbertaPainel(item) && !pendenciaEhHerdada(item) && pendenciaNoPeriodoPainel(item, periodoAnterior.inicio, periodoAnterior.fim))
+      .filter((item) => {
+        if (pendenciaEhHerdada(item)) return false
+        const dataVenda = String(item.vendas?.data_venda || '').slice(0, 10)
+        return dataVenda && dataVenda >= inicioMesPainel
+      })
       .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
     const saldoAnteriorEmAberto = pendencias
       .filter((item) => {
-        if (!pendenciaAbertaPainel(item)) return false
         if (pendenciaEhHerdada(item)) return true
-        const dataVenda = dataPendenciaPainel(item)
+        const dataVenda = String(item.vendas?.data_venda || '').slice(0, 10)
         return dataVenda && dataVenda < inicioMesPainel
       })
       .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
@@ -4067,8 +4091,7 @@ Delber Vilaça`
 
     const lucroOperacionalProjetado = totalBruto - totalCustoProdutos - totalTaxas - totalDespesas
     const totalProjetadoFinal = lucroOperacionalProjetado
-    const totalValoresAReceber = totalPendencias + saldoAnteriorEmAberto
-    const totalRecebiveisOperacionais = totalValoresAReceber + totalEmDelivery
+    const totalValoresAReceber = totalPendencias + totalEmDelivery + saldoAnteriorEmAberto
     const recursosTotaisConservador = saldoCaixaAtualInformado + totalValoresAReceber
     const percentualRecebidoSobreVendido = totalBruto > 0 ? (totalRecebido / totalBruto) * 100 : 0
     const caixaLiquidoRealizado = saldoCaixaAtualInformado
@@ -4093,9 +4116,10 @@ Delber Vilaça`
     const percentualRecebidoCardsPainel = totalBrutoCardsPainel > 0 ? (totalRecebidoCardsPainel / totalBrutoCardsPainel) * 100 : 0
     const totalPendenciasCardsPainel = pendencias
       .filter((item) => {
-        if (!pendenciaAbertaPainel(item)) return false
+        if (Number(item.saldo_restante || 0) <= 0 || item.status === 'PAGO') return false
         if (periodoCardsPainel === 'todos') return true
-        return pendenciaNoPeriodoPainel(item, periodoCardsPainelSelecionado.inicio, periodoCardsPainelSelecionado.fim)
+        const dataVenda = String(item.vendas?.data_venda || item.created_at || '').slice(0, 10)
+        return dataVenda && dataVenda >= periodoCardsPainelSelecionado.inicio && dataVenda <= periodoCardsPainelSelecionado.fim
       })
       .reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
     const totalEmDeliveryCardsPainel = deliveries
@@ -4106,8 +4130,7 @@ Delber Vilaça`
         return dataEntrega && dataEntrega >= periodoCardsPainelSelecionado.inicio && dataEntrega <= periodoCardsPainelSelecionado.fim
       })
       .reduce((acc, item) => acc + Number(item.valor_total || 0), 0)
-    const totalValoresAReceberCardsPainel = totalPendenciasCardsPainel
-    const caixaMaisFiadosCardsPainel = saldoCaixaAtualInformado + totalPendenciasCardsPainel
+    const totalValoresAReceberCardsPainel = totalPendenciasCardsPainel + totalEmDeliveryCardsPainel
 
     const pecasVendidas = movimentacoesMesPainel.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
     const numeroVendas = vendasMesPainel.length
@@ -4317,11 +4340,11 @@ Delber Vilaça`
           <CardResumo titulo="Faturamento bruto" valor={moeda(totalBrutoCardsPainel)} classe="text-green-300" />
           <CardResumo titulo="Lucro líquido" valor={moeda(lucroLiquidoCardsPainel)} classe={lucroLiquidoCardsPainel >= 0 ? 'text-green-400' : 'text-red-300'} />
           <CardResumo titulo="Caixa atual" valor={moeda(caixaLiquidoRealizado)} classe="text-green-300" />
-          <CardResumo titulo="Fiados em aberto" valor={moeda(totalValoresAReceberCardsPainel)} classe="text-orange-300" />
-          <CardResumo titulo="Delivery programado" valor={moeda(totalEmDeliveryCardsPainel)} classe="text-yellow-300" />
+          <CardResumo titulo="Valores a receber" valor={moeda(totalValoresAReceberCardsPainel)} classe="text-orange-300" />
+          <CardResumo titulo="Recebido sobre vendido" valor={percentual(percentualRecebidoCardsPainel)} classe={percentualRecebidoCardsPainel >= 60 ? 'text-green-300' : 'text-yellow-300'} />
           <CardResumo titulo="Fornecedores pagos" valor={moeda(totalCustoProdutosCardsPainel)} classe="text-red-300" />
           <CardResumo titulo="Despesas e taxas" valor={moeda(totalDespesasCardsPainel + totalTaxasCardsPainel)} classe="text-red-300" />
-          <CardResumo titulo="Caixa + fiados" valor={moeda(caixaMaisFiadosCardsPainel)} classe="text-yellow-300" />
+          <CardResumo titulo="Caixa + recebíveis" valor={moeda(recursosTotaisConservador)} classe="text-yellow-300" />
         </section>
 
         <section className="mobile-panel-card bg-black border border-orange-950 rounded-[24px] lg:rounded-[28px] p-5 lg:p-8 mb-6">
@@ -4437,12 +4460,10 @@ Delber Vilaça`
 
             <BlocoRelatorio titulo="Carteira em aberto" subtitulo="Recebíveis ainda não convertidos em caixa">
               <LinhaRelatorio rotulo="Fiados em aberto, mês atual" valor={moeda(totalPendencias)} destaque="text-orange-300" />
-              <LinhaRelatorio rotulo="Fiados em aberto, mês anterior" valor={moeda(totalPendenciasMesAnterior)} destaque="text-yellow-300" />
-              <LinhaRelatorio rotulo="Saldo anterior total em aberto" valor={moeda(saldoAnteriorEmAberto)} destaque="text-yellow-300" />
               <LinhaRelatorio rotulo="Delivery programado" valor={moeda(totalEmDelivery)} destaque="text-yellow-300" />
-              <LinhaRelatorio rotulo="Total de fiados a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
-              <LinhaRelatorio rotulo="Fiados + delivery programado" valor={moeda(totalRecebiveisOperacionais)} destaque="text-yellow-300" />
-              <LinhaRelatorio rotulo="Caixa + fiados" valor={moeda(recursosTotaisConservador)} destaque="text-yellow-300" />
+              <LinhaRelatorio rotulo="Saldo anterior em aberto" valor={moeda(saldoAnteriorEmAberto)} destaque="text-yellow-300" />
+              <LinhaRelatorio rotulo="Total de valores a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
+              <LinhaRelatorio rotulo="Caixa + recebíveis" valor={moeda(recursosTotaisConservador)} destaque="text-yellow-300" />
             </BlocoRelatorio>
           </div>
 
@@ -4471,8 +4492,7 @@ Delber Vilaça`
               <LinhaComparativo rotulo="Taxas" atual={mesAtualComparativo.taxas} anterior={mesAnteriorComparativo.taxas} positivoAlta={false} />
               <LinhaComparativo rotulo="Despesas" atual={mesAtualComparativo.despesasTotal} anterior={mesAnteriorComparativo.despesasTotal} positivoAlta={false} />
               <LinhaRelatorio rotulo="Caixa atual" valor={moeda(caixaLiquidoRealizado)} destaque="text-green-300" />
-              <LinhaRelatorio rotulo="Fiados a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
-              <LinhaRelatorio rotulo="Delivery programado" valor={moeda(totalEmDelivery)} destaque="text-yellow-300" />
+              <LinhaRelatorio rotulo="Valores a receber" valor={moeda(totalValoresAReceber)} destaque="text-orange-300" />
 
               <div className="border-t border-zinc-900 p-4">
                 <p className="text-xs font-bold text-zinc-300 mb-3">Últimos movimentos de caixa</p>
@@ -5268,7 +5288,7 @@ Delber Vilaça`
       return saldosPorPeriodo((itens || []).filter((item) => chaveClienteCobranca(item) === chave))
     }
 
-    const listaPendencias = pendencias
+    const listaPendenciasBase = pendencias
       .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
       .filter((item) => {
         if (filtroCobrancasAlerta === 'hoje') return item.vencimento === hoje
@@ -5289,6 +5309,12 @@ Delber Vilaça`
 
         return contemTermos(texto, termo)
       })
+
+    const listaPendencias = listaPendenciasBase.filter((item) => {
+      if (filtroPeriodoCobrancas === 'atual') return !pendenciaEhSaldoAnterior(item)
+      if (filtroPeriodoCobrancas === 'anterior') return pendenciaEhSaldoAnterior(item)
+      return true
+    })
 
     const grupos = listaPendencias.reduce((acc, pendencia) => {
       const referencia = clienteDaPendencia(pendencia).referencia || 'Sem referência'
@@ -5330,15 +5356,15 @@ Delber Vilaça`
       })
       .sort((a, b) => a.local.localeCompare(b.local, 'pt-BR'))
 
-    const saldosCobrancas = saldosPorPeriodo(listaPendencias)
+    const saldosCobrancas = saldosPorPeriodo(listaPendenciasBase)
     const totalGeral = saldosCobrancas.total
     const totalMesAtualCobrancas = saldosCobrancas.atual
     const totalSaldoAnteriorCobrancas = saldosCobrancas.anterior
     const totalClientes = new Set(
-      listaPendencias.map((item) => clienteDaPendencia(item).nome || item.venda_id || item.id).filter(Boolean)
+      listaPendenciasBase.map((item) => clienteDaPendencia(item).nome || item.venda_id || item.id).filter(Boolean)
     ).size
-    const totalAtrasados = listaPendencias.filter((item) => item.vencimento && item.vencimento < hoje).length
-    const totalHoje = listaPendencias.filter((item) => item.vencimento === hoje).length
+    const totalAtrasados = listaPendenciasBase.filter((item) => item.vencimento && item.vencimento < hoje).length
+    const totalHoje = listaPendenciasBase.filter((item) => item.vencimento === hoje).length
 
     function statusCobranca(pendencia) {
       if (!pendencia.vencimento) return { texto: 'Sem vencimento', classe: 'text-zinc-400', badge: 'bg-zinc-900 text-zinc-300' }
@@ -5367,6 +5393,7 @@ Delber Vilaça`
             onChange={(e) => {
               setBuscaCobrancas(e.target.value)
               setFiltroCobrancasAlerta('todos')
+              setFiltroPeriodoCobrancas('todos')
             }}
             placeholder="Buscar cliente, referência, observação ou status"
             className="w-full lg:w-[420px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
@@ -5383,7 +5410,10 @@ Delber Vilaça`
             </div>
             <button
               type="button"
-              onClick={() => setFiltroCobrancasAlerta('todos')}
+              onClick={() => {
+                setFiltroCobrancasAlerta('todos')
+                setFiltroPeriodoCobrancas('todos')
+              }}
               className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-700"
             >
               Ver todas
@@ -5392,9 +5422,39 @@ Delber Vilaça`
         )}
 
         <div className="grid grid-cols-2 xl:grid-cols-6 gap-4 mb-6 mini-cobrancas-resumo">
-          <CardResumo titulo="Total consolidado" valor={moeda(totalGeral)} classe="text-orange-300" />
-          <CardResumo titulo="Mês atual" valor={moeda(totalMesAtualCobrancas)} classe="text-green-300" />
-          <CardResumo titulo="Saldo anterior" valor={moeda(totalSaldoAnteriorCobrancas)} classe="text-yellow-300" />
+          <CardResumo
+            titulo="Total consolidado"
+            valor={moeda(totalGeral)}
+            classe="text-orange-300"
+            ativo={filtroPeriodoCobrancas === 'todos'}
+            onClick={() => {
+              setFiltroPeriodoCobrancas('todos')
+              setLocalCobrancaAberto('')
+              setCobrancaExpandidaId(null)
+            }}
+          />
+          <CardResumo
+            titulo="Mês atual"
+            valor={moeda(totalMesAtualCobrancas)}
+            classe="text-green-300"
+            ativo={filtroPeriodoCobrancas === 'atual'}
+            onClick={() => {
+              setFiltroPeriodoCobrancas('atual')
+              setLocalCobrancaAberto('')
+              setCobrancaExpandidaId(null)
+            }}
+          />
+          <CardResumo
+            titulo="Saldo anterior"
+            valor={moeda(totalSaldoAnteriorCobrancas)}
+            classe="text-yellow-300"
+            ativo={filtroPeriodoCobrancas === 'anterior'}
+            onClick={() => {
+              setFiltroPeriodoCobrancas('anterior')
+              setLocalCobrancaAberto('')
+              setCobrancaExpandidaId(null)
+            }}
+          />
           <CardResumo titulo="Clientes" valor={totalClientes} classe="text-white" />
           <CardResumo titulo="Atrasados" valor={totalAtrasados} classe="text-red-300" />
           <CardResumo titulo="Vence hoje" valor={totalHoje} classe="text-yellow-300" />
@@ -6309,6 +6369,16 @@ Delber Vilaça`
 
     const ultimoPagamento = pagamentosConfirmadosFiltrados[0]
 
+    const pagamentosPorPagina = 25
+    const totalPaginasPagamentos = Math.max(1, Math.ceil(pagamentosFiltrados.length / pagamentosPorPagina))
+    const paginaAtualPagamentos = Math.min(paginaPagamentos, totalPaginasPagamentos)
+    const indiceInicialPagamentos = (paginaAtualPagamentos - 1) * pagamentosPorPagina
+    const indiceFinalPagamentos = indiceInicialPagamentos + pagamentosPorPagina
+    const pagamentosPaginados = pagamentosFiltrados.slice(indiceInicialPagamentos, indiceFinalPagamentos)
+    const textoResumoPaginacaoPagamentos = pagamentosFiltrados.length === 0
+      ? 'Nenhum pagamento encontrado.'
+      : `Mostrando ${indiceInicialPagamentos + 1} a ${Math.min(indiceFinalPagamentos, pagamentosFiltrados.length)} de ${pagamentosFiltrados.length} pagamentos.`
+
     return (
       <section className="mobile-panel-card mini-pagamentos-panel bg-black border border-orange-950 rounded-[28px] p-8">
         <div className="mini-pagamentos-head flex items-center justify-between gap-4 mb-6">
@@ -6375,12 +6445,44 @@ Delber Vilaça`
           </div>
         </div>
 
+        {pagamentosFiltrados.length > pagamentosPorPagina && (
+          <div className="mb-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 rounded-2xl border border-zinc-900 bg-zinc-950/60 px-4 py-3">
+            <p className="text-sm text-zinc-400">
+              {textoResumoPaginacaoPagamentos}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={paginaAtualPagamentos <= 1}
+                onClick={() => setPaginaPagamentos((paginaAtual) => Math.max(1, paginaAtual - 1))}
+                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-xs font-semibold"
+              >
+                Anterior
+              </button>
+
+              <span className="text-xs text-zinc-500 font-bold px-2">
+                Página {paginaAtualPagamentos} de {totalPaginasPagamentos}
+              </span>
+
+              <button
+                type="button"
+                disabled={paginaAtualPagamentos >= totalPaginasPagamentos}
+                onClick={() => setPaginaPagamentos((paginaAtual) => Math.min(totalPaginasPagamentos, paginaAtual + 1))}
+                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-xs font-semibold"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="mini-pagamentos-lista-mobile">
           {pagamentosFiltrados.length === 0 && (
             <div className="mini-pagamento-vazio">Nenhum pagamento encontrado.</div>
           )}
 
-          {pagamentosFiltrados.map((pagamento) => {
+          {pagamentosPaginados.map((pagamento) => {
             const pagamentoEstornado = normalizarStatus(pagamento.status || 'CONFIRMADO') === 'ESTORNADO'
 
             return (
@@ -6480,7 +6582,7 @@ Delber Vilaça`
                 </tr>
               )}
 
-              {pagamentosFiltrados.map((pagamento) => {
+              {pagamentosPaginados.map((pagamento) => {
                 const pagamentoEstornado = normalizarStatus(pagamento.status || 'CONFIRMADO') === 'ESTORNADO'
 
                 return (
@@ -6547,39 +6649,38 @@ Delber Vilaça`
           </table>
         </div>
 
-        {despesasFiltradas.length > itensPorPaginaDespesas && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 text-sm text-zinc-500">
-            <p>
-              Mostrando {inicioDespesas + 1} a {Math.min(inicioDespesas + itensPorPaginaDespesas, despesasFiltradas.length)} de {despesasFiltradas.length} despesas
+        {pagamentosFiltrados.length > pagamentosPorPagina && (
+          <div className="mt-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 rounded-2xl border border-zinc-900 bg-zinc-950/60 px-4 py-3">
+            <p className="text-sm text-zinc-400">
+              {textoResumoPaginacaoPagamentos}
             </p>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={paginaAtualDespesas <= 1}
-                onClick={() => setPaginaDespesas((pagina) => Math.max(1, pagina - 1))}
-                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-zinc-900 px-4 py-2 rounded-xl text-white font-semibold"
+                disabled={paginaAtualPagamentos <= 1}
+                onClick={() => setPaginaPagamentos((paginaAtual) => Math.max(1, paginaAtual - 1))}
+                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-xs font-semibold"
               >
                 Anterior
               </button>
 
-              <span className="px-3 text-zinc-400">
-                Página {paginaAtualDespesas} de {totalPaginasDespesas}
+              <span className="text-xs text-zinc-500 font-bold px-2">
+                Página {paginaAtualPagamentos} de {totalPaginasPagamentos}
               </span>
 
               <button
                 type="button"
-                disabled={paginaAtualDespesas >= totalPaginasDespesas}
-                onClick={() => setPaginaDespesas((pagina) => Math.min(totalPaginasDespesas, pagina + 1))}
-                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-zinc-900 px-4 py-2 rounded-xl text-white font-semibold"
+                disabled={paginaAtualPagamentos >= totalPaginasPagamentos}
+                onClick={() => setPaginaPagamentos((paginaAtual) => Math.min(totalPaginasPagamentos, paginaAtual + 1))}
+                className="bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-xs font-semibold"
               >
                 Próxima
               </button>
             </div>
           </div>
         )}
-
-              </section>
+      </section>
     )
   }
 
@@ -10046,6 +10147,7 @@ Delber Vilaça`
               <label>
                 <span>Nome</span>
                 <input
+                  ref={clienteNomeInputRef}
                   value={modalEdicaoCliente.nome}
                   onChange={(e) => setModalEdicaoCliente({ ...modalEdicaoCliente, nome: e.target.value })}
                   placeholder="Nome do cliente"
