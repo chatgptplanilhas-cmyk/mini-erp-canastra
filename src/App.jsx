@@ -24,6 +24,13 @@ export default function App() {
     valor: '',
   })
 
+  const [modalSelecaoCobrancas, setModalSelecaoCobrancas] = useState({
+    aberto: false,
+    cliente: null,
+    itens: [],
+    selecionados: [],
+  })
+
   const [toast, setToast] = useState({
     visivel: false,
     tipo: 'sucesso',
@@ -1640,6 +1647,81 @@ export default function App() {
     alert('Saldo anterior cadastrado com sucesso.')
   }
 
+  function chaveClienteParaSelecaoCobrancas(pendencia) {
+    const cliente = clienteDaPendencia(pendencia)
+    const clienteChave = pendencia?.cliente_id || cliente?.id || cliente?.nome || ''
+    const referenciaChave = cliente?.referencia || ''
+    return normalizarTexto(`${clienteChave}|${referenciaChave}`) || String(pendencia?.venda_id || pendencia?.id || '')
+  }
+
+  function abrirSelecaoCobrancasCliente(pendenciaBase, itensCliente = []) {
+    const chaveBase = chaveClienteParaSelecaoCobrancas(pendenciaBase)
+    const origemItens = Array.isArray(itensCliente) && itensCliente.length > 0 ? itensCliente : pendencias
+
+    let itensEmAberto = (origemItens || [])
+      .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+      .filter((item) => chaveClienteParaSelecaoCobrancas(item) === chaveBase)
+
+    if (itensEmAberto.length <= 1 && Array.isArray(itensCliente) && itensCliente.length > 0) {
+      itensEmAberto = (pendencias || [])
+        .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+        .filter((item) => chaveClienteParaSelecaoCobrancas(item) === chaveBase)
+    }
+
+    itensEmAberto = itensEmAberto
+      .sort((a, b) => String(a.vencimento || '').localeCompare(String(b.vencimento || '')))
+
+    if (itensEmAberto.length <= 1) {
+      registrarPagamento(pendenciaBase.venda_id, pendenciaBase.saldo_restante, pendenciaBase)
+      return
+    }
+
+    setModalSelecaoCobrancas({
+      aberto: true,
+      cliente: clienteDaPendencia(pendenciaBase),
+      itens: itensEmAberto,
+      selecionados: [pendenciaBase.id],
+    })
+  }
+
+  function fecharModalSelecaoCobrancas() {
+    setModalSelecaoCobrancas({
+      aberto: false,
+      cliente: null,
+      itens: [],
+      selecionados: [],
+    })
+  }
+
+  function alternarCobrancaSelecionada(pendenciaId) {
+    setModalSelecaoCobrancas((atual) => {
+      const selecionados = atual.selecionados || []
+      const jaSelecionada = selecionados.includes(pendenciaId)
+
+      return {
+        ...atual,
+        selecionados: jaSelecionada
+          ? selecionados.filter((id) => id !== pendenciaId)
+          : [...selecionados, pendenciaId],
+      }
+    })
+  }
+
+  async function confirmarSelecaoCobrancasCliente() {
+    const itensSelecionados = (modalSelecaoCobrancas.itens || [])
+      .filter((item) => (modalSelecaoCobrancas.selecionados || []).includes(item.id))
+
+    if (itensSelecionados.length === 0) {
+      alert('Selecione pelo menos uma cobrança para confirmar.')
+      return
+    }
+
+    const totalSelecionado = itensSelecionados.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+
+    fecharModalSelecaoCobrancas()
+    await registrarPagamentoMultiplasCobrancas(itensSelecionados, totalSelecionado)
+  }
+
   async function registrarPagamento(vendaId, saldoAtual, pendencia = null) {
     const saldoAnterior = Number(saldoAtual || 0)
     const recebimento = await escolherFormaPagamentoRecebimento('Pix', saldoAnterior)
@@ -1743,6 +1825,107 @@ export default function App() {
     }
 
     buscarTudo()
+  }
+
+  async function registrarPagamentoMultiplasCobrancas(itensSelecionados = [], totalSelecionado = 0) {
+    const total = Number(totalSelecionado || 0)
+
+    if (!Array.isArray(itensSelecionados) || itensSelecionados.length === 0 || total <= 0) {
+      alert('Nenhuma cobrança selecionada para confirmação.')
+      return
+    }
+
+    const recebimento = await escolherFormaPagamentoRecebimento('Pix', total)
+    if (!recebimento) return
+
+    const valorRecebido = numero(recebimento.valor)
+    const formaPagamentoRecebido = recebimento.forma || 'Pix'
+
+    if (Math.abs(valorRecebido - total) > 0.009) {
+      alert(`Para confirmar várias cobranças, o valor recebido deve ser exatamente ${moeda(total)}.`)
+      return
+    }
+
+    try {
+      for (const pendencia of itensSelecionados) {
+        const valorPendencia = Number(pendencia.saldo_restante || 0)
+        const vendaId = pendencia.venda_id
+
+        if (valorPendencia <= 0) continue
+
+        if (pendenciaEhHerdada(pendencia) || !vendaId) {
+          const { error } = await supabase
+            .from('pendencias')
+            .update({
+              saldo_restante: 0,
+              status: 'PAGO',
+            })
+            .eq('id', pendencia.id)
+
+          if (error) throw error
+
+          registrarEntradaCaixaAutomatica({
+            pagamentoId: `saldo-anterior-${pendencia.id}-${Date.now()}`,
+            vendaId: null,
+            valorBruto: valorPendencia,
+            formaPagamento: formaPagamentoRecebido,
+            cliente: clienteDaPendencia(pendencia)?.nome || '',
+            origem: 'Saldo anterior',
+            observacao: 'Entrada automática de recebimento de saldo anterior.',
+          })
+        } else {
+          const { data: pagamentoCriado, error: erroPagamento } = await supabase
+            .from('pagamentos')
+            .insert({
+              venda_id: vendaId,
+              data_pagamento: dataHoje(),
+              valor_pago: valorPendencia,
+              forma_pagamento: formaPagamentoRecebido,
+              observacao: 'Pagamento registrado pelo Mini ERP',
+              status: 'CONFIRMADO',
+            })
+            .select()
+            .single()
+
+          if (erroPagamento) throw erroPagamento
+
+          const { error: erroPendencia } = await supabase
+            .from('pendencias')
+            .update({
+              saldo_restante: 0,
+              status: 'PAGO',
+            })
+            .eq('id', pendencia.id)
+
+          if (erroPendencia) throw erroPendencia
+
+          const { error: erroVenda } = await supabase
+            .from('vendas')
+            .update({
+              status: 'PAGO',
+            })
+            .eq('id', vendaId)
+
+          if (erroVenda) throw erroVenda
+
+          registrarEntradaCaixaAutomatica({
+            pagamentoId: pagamentoCriado?.id,
+            vendaId,
+            valorBruto: valorPendencia,
+            formaPagamento: formaPagamentoRecebido,
+            cliente: clienteDaPendencia(pendencia)?.nome || '',
+            origem: 'Pendência',
+            observacao: 'Entrada automática de recebimento de pendência.',
+          })
+        }
+      }
+
+      enviarConfirmacaoPagamentoWhatsAppMultiplas(itensSelecionados, total)
+      buscarTudo()
+    } catch (erro) {
+      alert('Erro ao registrar as cobranças selecionadas.')
+      console.error(erro)
+    }
   }
 
   async function recalcularVendaAposMovimento(vendaId) {
@@ -2180,6 +2363,30 @@ Delber Vilaça
 Queijos Serra da Canastra 🇧🇷`
 
     const mensagem = saldoFinal > 0 ? mensagemParcial : mensagemQuitada
+    abrirWhatsApp({ telefone, mensagem })
+  }
+
+  function enviarConfirmacaoPagamentoWhatsAppMultiplas(itensSelecionados = [], valorTotal = 0) {
+    const primeiraPendencia = itensSelecionados[0]
+    const cliente = clienteDaPendencia(primeiraPendencia || {})
+    const telefone = limparTelefone(cliente.telefone)
+
+    if (!telefone) {
+      alert('Pagamentos registrados, mas este cliente não possui telefone cadastrado para envio da confirmação.')
+      return
+    }
+
+    const mensagem = `✅ PAGAMENTO CONFIRMADO.
+
+Recebi o pagamento de ${moeda(valorTotal)} referente às suas compras dos produtos da Queijos Serra da Canastra.
+
+Muito obrigado e até breve.
+
+Atenciosamente,
+
+Delber Vilaça
+Queijos Serra da Canastra 🇧🇷`
+
     abrirWhatsApp({ telefone, mensagem })
   }
 
@@ -5564,7 +5771,7 @@ Delber Vilaça`
                                 Cobrar
                               </button>
                               <button
-                                onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)}
+                                onClick={() => abrirSelecaoCobrancasCliente(pendencia, itensCliente)}
                                 className="mini-cobrancas-btn mini-cobrancas-btn-secondary"
                               >
                                 Confirmar
@@ -5711,7 +5918,7 @@ Delber Vilaça`
                                         Só este item
                                       </button>
 
-                                      <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-zinc-700 hover:bg-zinc-600 mini-pend-wide">
+                                      <button onClick={() => abrirSelecaoCobrancasCliente(pendencia, grupoCliente.itens)} className="bg-zinc-700 hover:bg-zinc-600 mini-pend-wide">
                                         Confirmar pagamento
                                       </button>
 
@@ -5890,7 +6097,7 @@ Delber Vilaça`
                               Cobrar
                             </button>
 
-                            <button type="button" onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-green-700 hover:bg-green-600 px-3 py-2 rounded-xl text-xs font-bold">
+                            <button type="button" onClick={() => abrirSelecaoCobrancasCliente(pendencia)} className="bg-green-700 hover:bg-green-600 px-3 py-2 rounded-xl text-xs font-bold">
                               Registrar
                             </button>
 
@@ -6131,7 +6338,7 @@ Delber Vilaça`
                                             Só este item
                                           </button>
 
-                                          <button onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="bg-zinc-700 hover:bg-zinc-600 mini-pend-wide">
+                                          <button onClick={() => abrirSelecaoCobrancasCliente(pendencia, grupoCliente.itens)} className="bg-zinc-700 hover:bg-zinc-600 mini-pend-wide">
                                             Confirmar pagamento
                                           </button>
 
@@ -6298,7 +6505,7 @@ Delber Vilaça`
 
                                 <div className="mini-pend-acoes-desktop">
                                   <button type="button" onClick={() => cobrarWhatsApp(pendencia)} className="acao-cobrar">Cobrar</button>
-                                  <button type="button" onClick={() => registrarPagamento(pendencia.venda_id, pendencia.saldo_restante, pendencia)} className="acao-confirmar">Confirmar</button>
+                                  <button type="button" onClick={() => abrirSelecaoCobrancasCliente(pendencia, grupoCliente.itens)} className="acao-confirmar">Confirmar</button>
                                   <button type="button" onClick={() => editarPendenciaFinanceira(pendencia)} className="acao-mais">Editar</button>
                                   {ehHerdada ? (
                                     <button type="button" onClick={() => excluirSaldoAnterior(pendencia)} className="acao-excluir">Excluir</button>
@@ -10130,6 +10337,95 @@ Delber Vilaça`
           <p>{toast.mensagem}</p>
         </div>
       )}
+
+      {modalSelecaoCobrancas.aberto && (() => {
+        const itensSelecionados = (modalSelecaoCobrancas.itens || [])
+          .filter((item) => (modalSelecaoCobrancas.selecionados || []).includes(item.id))
+        const totalSelecionado = itensSelecionados.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+
+        return (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4">
+            <div className="w-full max-w-[720px] max-h-[90vh] overflow-y-auto rounded-[28px] border border-orange-950 bg-[#120f0d] p-6 shadow-2xl" role="dialog" aria-modal="true">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-[4px] text-orange-400">Cobranças</p>
+                  <h2 className="text-2xl font-bold">Selecionar cobranças recebidas</h2>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Cliente: <strong className="text-white">{modalSelecaoCobrancas.cliente?.nome || 'Cliente não informado'}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fecharModalSelecaoCobrancas}
+                  className="rounded-2xl bg-zinc-800 px-4 py-2 text-xl font-black text-white hover:bg-zinc-700"
+                  aria-label="Fechar"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="grid gap-3">
+                {(modalSelecaoCobrancas.itens || []).map((pendencia) => {
+                  const selecionada = (modalSelecaoCobrancas.selecionados || []).includes(pendencia.id)
+                  const ehSaldoAnterior = pendenciaEhHerdada(pendencia) || !pendencia.venda_id
+
+                  return (
+                    <button
+                      key={pendencia.id}
+                      type="button"
+                      onClick={() => alternarCobrancaSelecionada(pendencia.id)}
+                      className={`rounded-2xl border p-4 text-left transition ${selecionada ? 'border-orange-500 bg-orange-950/35' : 'border-zinc-800 bg-zinc-950 hover:border-orange-700'}`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-1 flex h-6 w-6 items-center justify-center rounded-lg border text-xs font-black ${selecionada ? 'border-orange-400 bg-orange-500 text-black' : 'border-zinc-600 text-zinc-500'}`}>
+                            {selecionada ? '✓' : ''}
+                          </span>
+                          <div>
+                            <strong className="block text-white">
+                              {ehSaldoAnterior ? 'Saldo anterior' : `Venda ${pendencia.vendas?.numero_venda ? `#${pendencia.vendas.numero_venda}` : ''}`}
+                            </strong>
+                            <span className="mt-1 block text-sm text-zinc-400">
+                              Vencimento: {dataBR(pendencia.vencimento)}
+                            </span>
+                          </div>
+                        </div>
+                        <strong className="text-lg text-orange-300">{moeda(pendencia.saldo_restante)}</strong>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Total selecionado</p>
+                <strong className="mt-1 block text-2xl text-green-300">{moeda(totalSelecionado)}</strong>
+                <span className="mt-1 block text-sm text-zinc-500">
+                  {itensSelecionados.length} cobrança{itensSelecionados.length === 1 ? '' : 's'} selecionada{itensSelecionados.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={fecharModalSelecaoCobrancas}
+                  className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold text-white hover:bg-zinc-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmarSelecaoCobrancasCliente}
+                  className="rounded-2xl bg-orange-900 px-5 py-3 font-bold text-white hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={itensSelecionados.length === 0}
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {modalEdicaoCliente.aberto && (
         <div className="mini-modal-overlay">
