@@ -31,6 +31,16 @@ export default function App() {
     selecionados: [],
   })
 
+  function fecharTecladoMobile() {
+    try {
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur()
+      }
+    } catch (erro) {
+      console.error(erro)
+    }
+  }
+
   const [toast, setToast] = useState({
     visivel: false,
     tipo: 'sucesso',
@@ -188,6 +198,46 @@ export default function App() {
   useEffect(() => {
     setPaginaPagamentos(1)
   }, [buscaPagamentos, filtroPagamentosInicio, filtroPagamentosFim])
+
+  useEffect(() => {
+    const modalAberto = modalFormaPagamento.aberto || modalSelecaoCobrancas.aberto
+    if (!modalAberto) return undefined
+
+    const scrollY = window.scrollY || window.pageYOffset || 0
+    const body = document.body
+    const html = document.documentElement
+    const estiloBodyAnterior = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    }
+    const estiloHtmlAnterior = {
+      overflow: html.style.overflow,
+    }
+
+    body.style.overflow = 'hidden'
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
+    html.style.overflow = 'hidden'
+
+    return () => {
+      body.style.overflow = estiloBodyAnterior.overflow
+      body.style.position = estiloBodyAnterior.position
+      body.style.top = estiloBodyAnterior.top
+      body.style.left = estiloBodyAnterior.left
+      body.style.right = estiloBodyAnterior.right
+      body.style.width = estiloBodyAnterior.width
+      html.style.overflow = estiloHtmlAnterior.overflow
+      window.scrollTo(0, scrollY)
+    }
+  }, [modalFormaPagamento.aberto, modalSelecaoCobrancas.aberto])
+
   const [filtroPendenciasInicio, setFiltroPendenciasInicio] = useState('')
   const [filtroPendenciasFim, setFiltroPendenciasFim] = useState('')
 
@@ -531,6 +581,8 @@ export default function App() {
   }
 
   function fecharModalFormaPagamento() {
+    fecharTecladoMobile()
+
     if (resolverFormaPagamentoRef.current) {
       resolverFormaPagamentoRef.current(null)
       resolverFormaPagamentoRef.current = null
@@ -555,6 +607,8 @@ export default function App() {
   }
 
   function confirmarBuscaFormaPagamento() {
+    fecharTecladoMobile()
+
     const opcoes = modalFormaPagamento.opcoes || []
     const texto = String(modalFormaPagamento.busca || '').trim()
     let formaEscolhida = modalFormaPagamento.selecionada || modalFormaPagamento.padrao || 'Pix'
@@ -1685,6 +1739,8 @@ export default function App() {
   }
 
   function fecharModalSelecaoCobrancas() {
+    fecharTecladoMobile()
+
     setModalSelecaoCobrancas({
       aberto: false,
       cliente: null,
@@ -1708,6 +1764,8 @@ export default function App() {
   }
 
   async function confirmarSelecaoCobrancasCliente() {
+    fecharTecladoMobile()
+
     const itensSelecionados = (modalSelecaoCobrancas.itens || [])
       .filter((item) => (modalSelecaoCobrancas.selecionados || []).includes(item.id))
 
@@ -10344,7 +10402,7 @@ Delber Vilaça`
         const totalSelecionado = itensSelecionados.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
 
         return (
-          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4">
+          <div className="fixed inset-0 z-[999] flex h-dvh items-center justify-center overflow-y-auto overscroll-contain bg-black/80 p-4">
             <div className="w-full max-w-[720px] max-h-[90vh] overflow-y-auto rounded-[28px] border border-orange-950 bg-[#120f0d] p-6 shadow-2xl" role="dialog" aria-modal="true">
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
@@ -10356,6 +10414,7 @@ Delber Vilaça`
                 </div>
                 <button
                   type="button"
+                  onPointerDown={fecharTecladoMobile}
                   onClick={fecharModalSelecaoCobrancas}
                   className="rounded-2xl bg-zinc-800 px-4 py-2 text-xl font-black text-white hover:bg-zinc-700"
                   aria-label="Fechar"
@@ -10373,6 +10432,7 @@ Delber Vilaça`
                     <button
                       key={pendencia.id}
                       type="button"
+                      onPointerDown={fecharTecladoMobile}
                       onClick={() => alternarCobrancaSelecionada(pendencia.id)}
                       className={`rounded-2xl border p-4 text-left transition ${selecionada ? 'border-orange-500 bg-orange-950/35' : 'border-zinc-800 bg-zinc-950 hover:border-orange-700'}`}
                     >
@@ -10408,6 +10468,7 @@ Delber Vilaça`
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
+                  onPointerDown={fecharTecladoMobile}
                   onClick={fecharModalSelecaoCobrancas}
                   className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold text-white hover:bg-zinc-700"
                 >
@@ -10415,6 +10476,7 @@ Delber Vilaça`
                 </button>
                 <button
                   type="button"
+                  onPointerDown={fecharTecladoMobile}
                   onClick={confirmarSelecaoCobrancasCliente}
                   className="rounded-2xl bg-orange-900 px-5 py-3 font-bold text-white hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={itensSelecionados.length === 0}
@@ -10631,8 +10693,8 @@ Delber Vilaça`
       </header>
 
       {modalFormaPagamento.aberto && (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-[520px] rounded-[26px] border border-zinc-700 bg-gradient-to-b from-zinc-900 to-black p-5 shadow-2xl">
+        <div className="mini-payment-modal-backdrop fixed inset-0 z-[220] flex h-dvh items-center justify-center overflow-y-auto overscroll-contain bg-black/75 p-4 backdrop-blur-sm">
+          <div className="mini-payment-modal w-full max-w-[520px] max-h-[92dvh] overflow-y-auto overscroll-contain rounded-[26px] border border-zinc-700 bg-gradient-to-b from-zinc-900 to-black p-5 shadow-2xl">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-black text-white">Selecionar forma de pagamento</h3>
@@ -10640,6 +10702,7 @@ Delber Vilaça`
               </div>
               <button
                 type="button"
+                onPointerDown={fecharTecladoMobile}
                 onClick={fecharModalFormaPagamento}
                 className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-800 text-xl font-black text-zinc-300 hover:bg-zinc-700"
               >
@@ -10666,6 +10729,7 @@ Delber Vilaça`
                   <button
                     key={forma}
                     type="button"
+                    onPointerDown={fecharTecladoMobile}
                     onClick={() => selecionarFormaPagamentoRecebimento(forma)}
                     className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left ${modalFormaPagamento.selecionada === forma ? 'border-orange-500 bg-orange-950/35' : 'border-zinc-700 bg-zinc-950 hover:border-orange-500 hover:bg-zinc-900'}`}
                   >
@@ -10727,6 +10791,7 @@ Delber Vilaça`
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
+                onPointerDown={fecharTecladoMobile}
                 onClick={fecharModalFormaPagamento}
                 className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold text-white hover:bg-zinc-700"
               >
@@ -10734,6 +10799,7 @@ Delber Vilaça`
               </button>
               <button
                 type="button"
+                onPointerDown={fecharTecladoMobile}
                 onClick={confirmarBuscaFormaPagamento}
                 className="rounded-2xl bg-orange-900 px-5 py-3 font-bold text-white hover:bg-orange-800"
               >

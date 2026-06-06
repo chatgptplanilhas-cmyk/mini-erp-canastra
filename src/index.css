@@ -15201,3 +15201,32 @@ span[class*="rounded-full"] {
     max-width: 360px;
   }
 }
+
+
+/* Correção cirúrgica mobile, evita zoom automático do iOS no modal de pagamento */
+@media (max-width: 767px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  .mini-payment-modal-backdrop {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  .mini-payment-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .mini-payment-modal input,
+  .mini-payment-modal select,
+  .mini-payment-modal textarea {
+    font-size: 16px !important;
+    line-height: 1.35 !important;
+  }
+}
