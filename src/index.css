@@ -1673,11 +1673,6 @@
     color: #ffffff !important;
   }
 
-  .mini-bottom-nav button:nth-child(4) {
-    font-size: 9.6px !important;
-    letter-spacing: -0.04em !important;
-  }
-
   .mini-app-main {
     padding-bottom: 80px !important;
   }
@@ -1867,14 +1862,6 @@
     padding: 8px 6px !important;
   }
 
-  .mini-bottom-nav button:nth-child(4)::after {
-    content: "Pend�ncias";
-    font-size: 9.6px;
-  }
-
-  .mini-bottom-nav button:nth-child(4) {
-    font-size: 0 !important;
-  }
 }
 
 /* MINI ERP MOBILE PENDENCIAS AJUSTE FINO */
@@ -1901,11 +1888,6 @@
   .mini-pendencias-card-table td:nth-child(8) {
     margin-top: 4px !important;
     padding-bottom: 18px !important;
-  }
-
-  .mini-bottom-nav button:nth-child(4)::after {
-    content: "Pendencias" !important;
-    font-size: 9.6px !important;
   }
 
   .mini-bottom-nav {
@@ -15229,4 +15211,510 @@ span[class*="rounded-full"] {
     font-size: 16px !important;
     line-height: 1.35 !important;
   }
+}
+
+/* MINI ERP v15, refinamento mobile de Pré-vendas */
+@media (max-width: 767px) {
+  .mini-prevenda-edit-backdrop {
+    align-items: flex-start !important;
+    padding: 10px 10px 112px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .mini-prevenda-edit-modal {
+    max-height: calc(100dvh - 130px) !important;
+    padding: 18px 18px 128px !important;
+    border-radius: 24px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .mini-prevenda-edit-actions {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 20 !important;
+    margin: 16px -18px -128px !important;
+    padding: 12px 18px calc(18px + env(safe-area-inset-bottom)) !important;
+    background: linear-gradient(180deg, rgba(21, 17, 15, 0.92) 0%, #15110f 45%, #15110f 100%) !important;
+    border-top: 1px solid rgba(124, 45, 18, 0.45) !important;
+    backdrop-filter: blur(12px) !important;
+  }
+
+  .mini-prevenda-edit-actions button {
+    min-height: 48px !important;
+    border-radius: 16px !important;
+    font-size: 13px !important;
+  }
+
+  .mini-bottom-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .mini-bottom-nav button {
+    font-size: 10.5px !important;
+    letter-spacing: -0.01em !important;
+  }
+}
+
+/* Controle de versão e atualização segura */
+.mini-version-pill {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.45rem;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  border-radius: 999px;
+  color: #fed7aa;
+  background: rgba(67, 20, 7, 0.42);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mini-version-box {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(249, 115, 22, 0.22);
+  border-radius: 1rem;
+  background: rgba(12, 10, 9, 0.7);
+}
+
+.mini-version-box-inline {
+  min-width: 210px;
+  align-self: stretch;
+}
+
+.mini-version-box span {
+  color: #fed7aa;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mini-version-box button,
+.mini-update-alert button {
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, #9a4b22, #6b2a13);
+  color: #fff7ed;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.68rem 0.8rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.mini-version-box button:hover,
+.mini-update-alert button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.mini-update-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: -0.5rem 0 1.5rem;
+  padding: 1rem;
+  border: 1px solid rgba(251, 146, 60, 0.4);
+  border-radius: 1.25rem;
+  background: rgba(67, 20, 7, 0.75);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+}
+
+.mini-update-alert div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.mini-update-alert strong {
+  color: #ffedd5;
+  font-size: 0.95rem;
+}
+
+.mini-update-alert span {
+  color: #fdba74;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 640px) {
+  .mini-version-box-inline {
+    min-width: 0;
+  }
+
+  .mini-update-alert {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+
+/* MINI ERP MOBILE SCROLL SAFE AREA FINAL - 2026.06.15.03
+   Corrige o menu mobile quando a barra inferior fixa cobre o final do conteúdo. */
+@media (max-width: 767px) {
+  .mini-mobile-drawer {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .mini-mobile-nav {
+    padding-bottom: 8px !important;
+  }
+
+  .mini-mobile-drawer .mini-version-box {
+    margin-top: 12px !important;
+    margin-bottom: calc(36px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .mini-app-main {
+    padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+
+/* MINI ERP UPDATE ALERT SAFE AREA - 2026.06.15.03
+   Mantém o aviso de nova versão visível em telas pequenas sem cobrir a navegação inferior. */
+@media (max-width: 767px) {
+  .mini-update-alert {
+    position: sticky;
+    top: 12px;
+    z-index: 60;
+    margin-bottom: 1rem !important;
+  }
+
+  .mini-update-alert button {
+    min-height: 44px;
+  }
+}
+
+/* MINI ERP AUTO DATA SYNC - 2026.06.15.04
+   Sincronização automática dos dados sem recarregar a página inteira. */
+.mini-sync-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: -0.25rem 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(113, 113, 122, 0.34);
+  border-radius: 1.1rem;
+  background: rgba(12, 10, 9, 0.72);
+}
+
+.mini-sync-bar div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.mini-sync-bar strong {
+  color: #f4f4f5;
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.mini-sync-bar span {
+  color: #a1a1aa;
+  font-size: 0.78rem;
+}
+
+.mini-sync-bar button {
+  border: 1px solid rgba(249, 115, 22, 0.42);
+  border-radius: 0.85rem;
+  background: rgba(67, 20, 7, 0.9);
+  color: #ffedd5;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.68rem 0.82rem;
+  cursor: pointer;
+}
+
+.mini-sync-bar button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.mini-sync-bar-error {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(69, 10, 10, 0.55);
+}
+
+.mini-sync-bar-error span {
+  color: #fecaca;
+}
+
+@media (max-width: 767px) {
+  .mini-sync-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mini-sync-bar button {
+    min-height: 44px;
+  }
+}
+
+/* Operação Offline */
+.mini-offline-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border: 1px solid rgba(120, 113, 108, 0.35);
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.mini-offline-bar strong,
+.mini-offline-card strong,
+.mini-offline-form h3,
+.mini-offline-list h3 {
+  display: block;
+  color: #fff;
+}
+
+.mini-offline-bar span,
+.mini-offline-card p,
+.mini-offline-form p,
+.mini-offline-list p,
+.mini-offline-list span,
+.mini-offline-list small {
+  color: #a1a1aa;
+}
+
+.mini-offline-bar-online {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.mini-offline-bar-offline {
+  border-color: rgba(251, 146, 60, 0.55);
+  background: rgba(67, 20, 7, 0.35);
+}
+
+.mini-offline-bar button,
+.mini-offline-form button,
+.mini-offline-list button {
+  border: 0;
+  border-radius: 16px;
+  background: #431407;
+  color: #fff;
+  font-weight: 800;
+  padding: 12px 16px;
+}
+
+.mini-offline-bar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.mini-offline-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mini-offline-card,
+.mini-offline-form,
+.mini-offline-list {
+  border: 1px solid rgba(124, 45, 18, 0.55);
+  border-radius: 24px;
+  background: rgba(24, 24, 27, 0.45);
+  padding: 18px;
+}
+
+.mini-offline-card span,
+.mini-offline-form label span {
+  display: block;
+  color: #fb923c;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mini-offline-card strong {
+  margin-top: 8px;
+  font-size: 26px;
+}
+
+.mini-offline-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mini-offline-form-head {
+  grid-column: 1 / -1;
+}
+
+.mini-offline-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.mini-offline-form input,
+.mini-offline-form select,
+.mini-offline-form textarea {
+  width: 100%;
+  border: 1px solid #27272a;
+  border-radius: 18px;
+  background: #050505;
+  color: #fff;
+  padding: 14px;
+  outline: none;
+}
+
+.mini-offline-form textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.mini-offline-form button {
+  grid-column: 1 / -1;
+}
+
+.mini-offline-list {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.mini-offline-list article {
+  display: grid;
+  gap: 5px;
+  border-top: 1px solid rgba(39, 39, 42, 0.9);
+  padding-top: 12px;
+}
+
+.mini-offline-list article:first-of-type {
+  border-top: 0;
+}
+
+.mini-offline-list button {
+  justify-self: start;
+  margin-top: 6px;
+  padding: 9px 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .mini-offline-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mini-offline-bar button {
+    width: 100%;
+  }
+
+  .mini-offline-grid,
+  .mini-offline-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* MINI ERP V2026.06.16.04 - Refinamento 1, modal de pré-venda protegido no mobile */
+@media (max-width: 767px) {
+  .mini-prevenda-edit-backdrop {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: 12px !important;
+    padding-top: max(12px, env(safe-area-inset-top)) !important;
+    padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .mini-prevenda-edit-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    min-height: auto !important;
+    margin: 0 auto !important;
+    padding: 16px !important;
+    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+    border-radius: 24px !important;
+    overflow: visible !important;
+  }
+
+  .mini-prevenda-edit-actions {
+    position: sticky !important;
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+    z-index: 1200 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-top: 16px !important;
+    padding: 12px 0 4px !important;
+    background: linear-gradient(180deg, rgba(21, 17, 15, 0.12), rgba(21, 17, 15, 0.98) 28%, #15110f 100%) !important;
+    backdrop-filter: blur(10px) !important;
+  }
+
+  .mini-prevenda-edit-actions button {
+    min-height: 56px !important;
+    border-radius: 18px !important;
+    font-size: 16px !important;
+  }
+}
+
+
+/* MINI ERP V2026.06.16.05 - Refinamento 2, evita zoom automático do Safari/iPhone nos campos do modal de pré-venda */
+@media (max-width: 767px) {
+  html {
+    -webkit-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+  }
+
+  .mini-prevenda-edit-modal input,
+  .mini-prevenda-edit-modal select,
+  .mini-prevenda-edit-modal textarea,
+  .mini-prevenda-edit-modal button {
+    font-size: 16px !important;
+    line-height: 1.35 !important;
+  }
+
+  .mini-prevenda-edit-modal input[type="number"],
+  .mini-prevenda-edit-modal input[inputmode="numeric"],
+  .mini-prevenda-edit-modal input[inputmode="decimal"] {
+    font-size: 16px !important;
+    min-height: 52px !important;
+    touch-action: manipulation !important;
+    -webkit-appearance: none !important;
+    appearance: textfield !important;
+  }
+
+  .mini-prevenda-edit-modal input[type="number"]::-webkit-inner-spin-button,
+  .mini-prevenda-edit-modal input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+
+  .mini-prevenda-edit-modal label,
+  .mini-prevenda-edit-modal span,
+  .mini-prevenda-edit-modal p {
+    -webkit-text-size-adjust: 100% !important;
+  }
+}
+
+
+/* MINI ERP V2026.06.20.02 - alerta de proteção contra downgrade */
+.mini-update-alert-danger {
+  border-color: rgba(239, 68, 68, 0.55);
+  background: rgba(127, 29, 29, 0.35);
+}
+
+.mini-update-alert-danger strong {
+  color: #fecaca;
 }

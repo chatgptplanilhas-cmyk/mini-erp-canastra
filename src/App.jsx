@@ -1,6 +1,161 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 
+const APP_VERSION = '2026.06.24.03'
+const APP_VERSION_LABEL = `Mini ERP v${APP_VERSION}`
+const TIME_ZONE_BRASIL = 'America/Sao_Paulo'
+
+const MINI_ERP_HIGHEST_VERSION_KEY = 'miniErpHighestAcceptedVersion'
+const MINI_ERP_DOWNGRADE_BLOCK_KEY = 'miniErpDowngradeBlocked'
+const MINI_ERP_DIAGNOSTICO_KEY = 'miniErpDiagnosticoHistorico'
+
+function normalizarVersao(valor) {
+  return String(valor || '')
+    .trim()
+    .replace(/[^0-9.]/g, '')
+}
+
+function compararVersoes(a, b) {
+  const partesA = normalizarVersao(a).split('.').map((parte) => Number(parte) || 0)
+  const partesB = normalizarVersao(b).split('.').map((parte) => Number(parte) || 0)
+  const tamanho = Math.max(partesA.length, partesB.length)
+
+  for (let indice = 0; indice < tamanho; indice += 1) {
+    const numeroA = partesA[indice] || 0
+    const numeroB = partesB[indice] || 0
+
+    if (numeroA > numeroB) return 1
+    if (numeroA < numeroB) return -1
+  }
+
+  return 0
+}
+
+function lerMaiorVersaoAceita() {
+  try {
+    return window.localStorage.getItem(MINI_ERP_HIGHEST_VERSION_KEY) || APP_VERSION
+  } catch (erro) {
+    return APP_VERSION
+  }
+}
+
+function registrarMaiorVersaoAceita(versao) {
+  try {
+    const versaoLimpa = normalizarVersao(versao)
+    const maiorAtual = lerMaiorVersaoAceita()
+
+    if (!versaoLimpa) return maiorAtual
+
+    if (compararVersoes(versaoLimpa, maiorAtual) >= 0) {
+      window.localStorage.setItem(MINI_ERP_HIGHEST_VERSION_KEY, versaoLimpa)
+      window.localStorage.removeItem(MINI_ERP_DOWNGRADE_BLOCK_KEY)
+      return versaoLimpa
+    }
+
+    return maiorAtual
+  } catch (erro) {
+    return APP_VERSION
+  }
+}
+
+function registrarTentativaDowngrade({ versaoAtual, versaoPublicada, maiorVersao }) {
+  try {
+    window.localStorage.setItem(
+      MINI_ERP_DOWNGRADE_BLOCK_KEY,
+      JSON.stringify({
+        versaoAtual,
+        versaoPublicada,
+        maiorVersao,
+        bloqueadoEm: new Date().toISOString(),
+      }),
+    )
+  } catch (erro) {
+    console.warn('Não foi possível registrar tentativa de downgrade.', erro)
+  }
+}
+
+function existeDowngrade({ versaoAtual, versaoPublicada, maiorVersao }) {
+  if (compararVersoes(versaoAtual, maiorVersao) < 0) return true
+  if (compararVersoes(versaoPublicada, maiorVersao) < 0) return true
+  return false
+}
+
+
+function dataHoraDiagnostico(valor = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('pt-BR', {
+      timeZone: TIME_ZONE_BRASIL,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).format(new Date(valor))
+  } catch (erro) {
+    return new Date(valor).toLocaleString('pt-BR')
+  }
+}
+
+function lerHistoricoDiagnostico() {
+  try {
+    const bruto = window.localStorage.getItem(MINI_ERP_DIAGNOSTICO_KEY)
+    const lista = JSON.parse(bruto || '[]')
+    return Array.isArray(lista) ? lista.slice(0, 10) : []
+  } catch (erro) {
+    return []
+  }
+}
+
+function salvarHistoricoDiagnostico(registro) {
+  try {
+    const lista = [registro, ...lerHistoricoDiagnostico()].slice(0, 10)
+    window.localStorage.setItem(MINI_ERP_DIAGNOSTICO_KEY, JSON.stringify(lista))
+    return lista
+  } catch (erro) {
+    return [registro]
+  }
+}
+
+function detectarAmbienteMiniErp() {
+  try {
+    const host = window.location.hostname || ''
+    if (host.includes('localhost') || host.includes('127.0.0.1')) return 'local'
+    if (host.includes('vercel.app') || host.includes('mini-erp-canastra')) return 'produção'
+    return host || 'desconhecido'
+  } catch (erro) {
+    return 'desconhecido'
+  }
+}
+
+function detectarNavegadorMiniErp() {
+  try {
+    const agente = navigator.userAgent || ''
+    if (/Edg\//.test(agente)) return 'Microsoft Edge'
+    if (/Chrome\//.test(agente) && /Android/.test(agente)) return 'Chrome Android'
+    if (/Chrome\//.test(agente)) return 'Chrome'
+    if (/Safari\//.test(agente) && /Mobile/.test(agente)) return 'Safari Mobile'
+    if (/Safari\//.test(agente)) return 'Safari'
+    return agente.slice(0, 80) || 'não identificado'
+  } catch (erro) {
+    return 'não identificado'
+  }
+}
+
+function detectarSistemaMiniErp() {
+  try {
+    const agente = navigator.userAgent || ''
+    if (/Android/.test(agente)) return 'Android'
+    if (/iPhone|iPad|iPod/.test(agente)) return 'iOS'
+    if (/Windows/.test(agente)) return 'Windows'
+    if (/Mac OS/.test(agente)) return 'macOS'
+    return navigator.platform || 'não identificado'
+  } catch (erro) {
+    return 'não identificado'
+  }
+}
+
+
 export default function App() {
   const [pagina, setPagina] = useState('painel')
   const [resumoDiaAberto, setResumoDiaAberto] = useState(false)
@@ -31,6 +186,69 @@ export default function App() {
     selecionados: [],
   })
 
+  const [novaVersaoDisponivel, setNovaVersaoDisponivel] = useState(false)
+  const [versaoPublicada, setVersaoPublicada] = useState(APP_VERSION)
+  const [downgradeBloqueado, setDowngradeBloqueado] = useState(false)
+  const [sincronizandoDados, setSincronizandoDados] = useState(false)
+  const [ultimaAtualizacaoDados, setUltimaAtualizacaoDados] = useState(null)
+  const [erroSincronizacaoDados, setErroSincronizacaoDados] = useState('')
+  const sincronizacaoDadosRef = useRef(false)
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+  const [filaOffline, setFilaOffline] = useState([])
+  const [sincronizandoOffline, setSincronizandoOffline] = useState(false)
+  const [ultimaAtualizacaoOffline, setUltimaAtualizacaoOffline] = useState(null)
+  const [formOfflineRapido, setFormOfflineRapido] = useState({
+    tipo: 'prevenda',
+    cliente: '',
+    referencia: '',
+    itens: '',
+    valor: '',
+    observacao: '',
+  })
+  const [historicoDiagnostico, setHistoricoDiagnostico] = useState(() => lerHistoricoDiagnostico())
+  const [diagnosticoAtual, setDiagnosticoAtual] = useState(null)
+  const [diagnosticoCopiado, setDiagnosticoCopiado] = useState(false)
+
+  function registrarDiagnosticoSistema({ versaoRemota = versaoPublicada, status = 'OK', erro = '' } = {}) {
+    const maiorVersao = lerMaiorVersaoAceita()
+    const registro = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      dataIso: new Date().toISOString(),
+      dataLocal: dataHoraDiagnostico(),
+      versaoAplicativo: APP_VERSION,
+      versaoPublicada: versaoRemota || versaoPublicada || APP_VERSION,
+      maiorVersaoAceita: maiorVersao,
+      status,
+      erro,
+      online: typeof navigator === 'undefined' ? true : navigator.onLine,
+      serviceWorker: typeof navigator !== 'undefined' && !!navigator.serviceWorker ? 'disponível' : 'indisponível',
+      serviceWorkerControlando: typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller,
+      url: typeof window === 'undefined' ? '' : window.location.href,
+      ambiente: detectarAmbienteMiniErp(),
+      navegador: detectarNavegadorMiniErp(),
+      sistema: detectarSistemaMiniErp(),
+    }
+
+    const lista = salvarHistoricoDiagnostico(registro)
+    setHistoricoDiagnostico(lista)
+    setDiagnosticoAtual(registro)
+    return registro
+  }
+
+  useEffect(() => {
+    const maiorVersao = registrarMaiorVersaoAceita(APP_VERSION)
+    const precisaBloquear = compararVersoes(APP_VERSION, maiorVersao) < 0
+    setDowngradeBloqueado(precisaBloquear)
+
+    if (precisaBloquear) {
+      registrarTentativaDowngrade({
+        versaoAtual: APP_VERSION,
+        versaoPublicada: versaoPublicada || APP_VERSION,
+        maiorVersao,
+      })
+    }
+  }, [versaoPublicada])
+
   function fecharTecladoMobile() {
     try {
       if (document.activeElement && typeof document.activeElement.blur === 'function') {
@@ -40,6 +258,132 @@ export default function App() {
       console.error(erro)
     }
   }
+
+  async function verificarVersaoPublicada() {
+    try {
+      const resposta = await fetch(`/version.json?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
+      })
+
+      if (!resposta.ok) return
+
+      const dados = await resposta.json()
+      const versaoRemota = String(dados?.version || '').trim()
+
+      if (!versaoRemota) return
+
+      const maiorVersao = registrarMaiorVersaoAceita(APP_VERSION)
+      const tentativaDowngrade = existeDowngrade({
+        versaoAtual: APP_VERSION,
+        versaoPublicada: versaoRemota,
+        maiorVersao,
+      })
+
+      setVersaoPublicada(versaoRemota)
+      window.localStorage.setItem('miniErpVersionRemote', versaoRemota)
+      registrarDiagnosticoSistema({
+        versaoRemota,
+        status: tentativaDowngrade ? 'DIVERGÊNCIA' : 'OK',
+      })
+
+      if (tentativaDowngrade) {
+        registrarTentativaDowngrade({
+          versaoAtual: APP_VERSION,
+          versaoPublicada: versaoRemota,
+          maiorVersao,
+        })
+        setDowngradeBloqueado(true)
+        setNovaVersaoDisponivel(false)
+        return
+      }
+
+      setDowngradeBloqueado(false)
+
+      if (compararVersoes(versaoRemota, APP_VERSION) > 0) {
+        registrarMaiorVersaoAceita(versaoRemota)
+        setNovaVersaoDisponivel(true)
+      } else {
+        setNovaVersaoDisponivel(false)
+      }
+    } catch (erro) {
+      registrarDiagnosticoSistema({
+        versaoRemota: versaoPublicada || APP_VERSION,
+        status: 'ERRO',
+        erro: erro?.message || 'Não foi possível verificar a versão publicada.',
+      })
+      console.error('Não foi possível verificar a versão publicada.', erro)
+    }
+  }
+
+  async function atualizarSistema() {
+    try {
+      window.localStorage.setItem('miniErpLastManualRefresh', new Date().toISOString())
+
+      if ('serviceWorker' in navigator) {
+        const registros = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(registros.map((registro) => registro.unregister()))
+      }
+
+      if ('caches' in window) {
+        const nomes = await window.caches.keys()
+        await Promise.all(nomes.map((nome) => window.caches.delete(nome)))
+      }
+    } catch (erro) {
+      console.error('Falha ao limpar cache local.', erro)
+    } finally {
+      const url = new URL(window.location.href)
+      url.searchParams.set('v', `${versaoPublicada || APP_VERSION}-${Date.now()}`)
+      window.location.replace(url.toString())
+    }
+  }
+
+  useEffect(() => {
+    verificarVersaoPublicada()
+
+    const intervalo = window.setInterval(verificarVersaoPublicada, 30000)
+
+    function verificarAoVoltarParaTela() {
+      if (!document.hidden) {
+        verificarVersaoPublicada()
+      }
+    }
+
+    window.addEventListener('focus', verificarVersaoPublicada)
+    document.addEventListener('visibilitychange', verificarAoVoltarParaTela)
+    window.addEventListener('online', verificarVersaoPublicada)
+
+    return () => {
+      window.clearInterval(intervalo)
+      window.removeEventListener('focus', verificarVersaoPublicada)
+      document.removeEventListener('visibilitychange', verificarAoVoltarParaTela)
+      window.removeEventListener('online', verificarVersaoPublicada)
+    }
+  }, [])
+
+  useEffect(() => {
+    carregarCacheOffline()
+    setFilaOffline(lerJsonLocal(CHAVE_FILA_OFFLINE, []) || [])
+
+    function atualizarStatusOnline() {
+      const conectado = navigator.onLine
+      setOnline(conectado)
+      if (conectado) {
+        sincronizarFilaOffline()
+      }
+    }
+
+    window.addEventListener('online', atualizarStatusOnline)
+    window.addEventListener('offline', atualizarStatusOnline)
+
+    return () => {
+      window.removeEventListener('online', atualizarStatusOnline)
+      window.removeEventListener('offline', atualizarStatusOnline)
+    }
+  }, [])
 
   const [toast, setToast] = useState({
     visivel: false,
@@ -149,6 +493,8 @@ export default function App() {
     ativo: true,
   })
 
+  const [clienteModalOrigemVenda, setClienteModalOrigemVenda] = useState(false)
+
   const [modalEdicaoProduto, setModalEdicaoProduto] = useState({
     aberto: false,
     produto: null,
@@ -178,13 +524,248 @@ export default function App() {
   }
 
 
+
+  const CHAVE_CACHE_OFFLINE = 'miniErpOfflineCacheV1'
+  const CHAVE_FILA_OFFLINE = 'miniErpOfflineQueueV1'
+
+  function lerJsonLocal(chave, fallback) {
+    try {
+      const bruto = window.localStorage.getItem(chave)
+      return bruto ? JSON.parse(bruto) : fallback
+    } catch (erro) {
+      console.error(erro)
+      return fallback
+    }
+  }
+
+  function salvarJsonLocal(chave, valor) {
+    try {
+      window.localStorage.setItem(chave, JSON.stringify(valor))
+    } catch (erro) {
+      console.error('Falha ao salvar cache local.', erro)
+    }
+  }
+
+  function atualizarCacheOffline(parcial) {
+    const cacheAtual = lerJsonLocal(CHAVE_CACHE_OFFLINE, {}) || {}
+    const proximo = {
+      ...cacheAtual,
+      ...parcial,
+      atualizadoEm: new Date().toISOString(),
+    }
+    salvarJsonLocal(CHAVE_CACHE_OFFLINE, proximo)
+    setUltimaAtualizacaoOffline(proximo.atualizadoEm)
+    return proximo
+  }
+
+  function carregarCacheOffline() {
+    const cache = lerJsonLocal(CHAVE_CACHE_OFFLINE, {}) || {}
+    if (Array.isArray(cache.clientes)) setClientes(cache.clientes)
+    if (Array.isArray(cache.produtos)) setProdutos(cache.produtos)
+    if (Array.isArray(cache.preVendas)) setPreVendas(cache.preVendas)
+    if (Array.isArray(cache.deliveries)) setDeliveries(cache.deliveries)
+    if (Array.isArray(cache.pendencias)) setPendencias(cache.pendencias)
+    if (cache.atualizadoEm) setUltimaAtualizacaoOffline(cache.atualizadoEm)
+  }
+
+  function salvarFilaOffline(proximaFila) {
+    salvarJsonLocal(CHAVE_FILA_OFFLINE, proximaFila)
+    setFilaOffline(proximaFila)
+  }
+
+  function adicionarFilaOffline(item) {
+    const filaAtual = lerJsonLocal(CHAVE_FILA_OFFLINE, []) || []
+    const proximoItem = {
+      idLocal: `offline-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      criadoEm: new Date().toISOString(),
+      status: 'Pendente',
+      ...item,
+    }
+    const proximaFila = [proximoItem, ...filaAtual]
+    salvarFilaOffline(proximaFila)
+    return proximoItem
+  }
+
+  function textoStatusConexao() {
+    if (!online) return 'Offline, usando dados salvos neste aparelho'
+    if (sincronizandoOffline) return 'Sincronizando registros offline...'
+    if (filaOffline.length > 0) return `${filaOffline.length} registro${filaOffline.length === 1 ? '' : 's'} offline pendente${filaOffline.length === 1 ? '' : 's'}`
+    return 'Online, dados sincronizados'
+  }
+
+  function textoCacheOffline() {
+    if (!ultimaAtualizacaoOffline) return 'Cache offline ainda não preparado'
+    return `Dados offline preparados em ${formatarDataHoraBrasil(ultimaAtualizacaoOffline)}`
+  }
+
+  function registrarOfflineRapido(e) {
+    e?.preventDefault?.()
+
+    const cliente = String(formOfflineRapido.cliente || '').trim()
+    const valor = numero(formOfflineRapido.valor)
+
+    if (!cliente) {
+      exibirToast('Informe o cliente para salvar offline.', 'erro')
+      return
+    }
+
+    const registro = adicionarFilaOffline({
+      tipo: formOfflineRapido.tipo,
+      payload: {
+        cliente,
+        referencia: String(formOfflineRapido.referencia || '').trim(),
+        itensTexto: String(formOfflineRapido.itens || '').trim(),
+        valor,
+        observacao: String(formOfflineRapido.observacao || '').trim(),
+      },
+    })
+
+    if (formOfflineRapido.tipo === 'prevenda') {
+      const preVendaLocal = {
+        id: registro.idLocal,
+        cliente,
+        referencia: formOfflineRapido.referencia || '',
+        itens: formOfflineRapido.itens ? [{ nome: formOfflineRapido.itens, quantidade: 1, valorUnitario: valor, valor }] : [],
+        total: valor,
+        transcricao: formOfflineRapido.observacao || formOfflineRapido.itens || '',
+        status: 'Pendente',
+        criadoEm: registro.criadoEm,
+        offline: true,
+      }
+      setPreVendas((lista) => [preVendaLocal, ...(lista || [])])
+      atualizarCacheOffline({ preVendas: [preVendaLocal, ...(preVendas || [])] })
+    }
+
+    setFormOfflineRapido({ tipo: 'prevenda', cliente: '', referencia: '', itens: '', valor: '', observacao: '' })
+    exibirToast('Registro salvo no modo offline.')
+  }
+
+  async function sincronizarFilaOffline() {
+    if (sincronizandoOffline) return
+
+    if (!navigator.onLine) {
+      exibirToast('Sem internet para sincronizar agora.', 'erro')
+      return
+    }
+
+    const filaAtual = lerJsonLocal(CHAVE_FILA_OFFLINE, []) || []
+    if (filaAtual.length === 0) {
+      exibirToast('Não há registros offline pendentes.')
+      return
+    }
+
+    setSincronizandoOffline(true)
+    const pendentes = []
+    let sincronizados = 0
+
+    for (const item of filaAtual.slice().reverse()) {
+      try {
+        if (item.tipo === 'prevenda') {
+          const payload = {
+            cliente_nome: item.payload?.cliente || 'Cliente não informado',
+            referencia: item.payload?.referencia || null,
+            itens: item.payload?.itensTexto
+              ? [{ nome: item.payload.itensTexto, quantidade: 1, valorUnitario: Number(item.payload?.valor || 0), valor: Number(item.payload?.valor || 0) }]
+              : [],
+            total: Number(item.payload?.valor || 0),
+            transcricao: item.payload?.observacao || item.payload?.itensTexto || '',
+            status: 'Pendente',
+            mensagem_gerada: false,
+          }
+          const { error } = await supabase.from('prevendas').insert(payload)
+          if (error) throw error
+          sincronizados += 1
+          continue
+        }
+
+        if (item.tipo === 'delivery-status' && item.payload?.id) {
+          const { error } = await supabase.from('delivery').update({ status: item.payload.status || 'Entregue' }).eq('id', item.payload.id)
+          if (error) throw error
+          sincronizados += 1
+          continue
+        }
+
+        if (item.tipo === 'cobranca-paga' && item.payload?.id) {
+          const { error } = await supabase.from('pendencias').update({ saldo_restante: 0, status: 'PAGO' }).eq('id', item.payload.id)
+          if (error) throw error
+          sincronizados += 1
+          continue
+        }
+
+        pendentes.push(item)
+      } catch (erro) {
+        console.error('Falha ao sincronizar item offline.', erro)
+        pendentes.push(item)
+      }
+    }
+
+    salvarFilaOffline(pendentes.reverse())
+    setSincronizandoOffline(false)
+
+    if (sincronizados > 0) {
+      await sincronizarDados({ manual: true })
+      exibirToast(`${sincronizados} registro${sincronizados === 1 ? '' : 's'} offline sincronizado${sincronizados === 1 ? '' : 's'}.`)
+    } else {
+      exibirToast('Nenhum registro offline foi sincronizado.', 'erro')
+    }
+  }
+
+  function registrarEntregaOffline(item, status = 'Entregue') {
+    if (!item?.id) return
+    adicionarFilaOffline({ tipo: 'delivery-status', payload: { id: item.id, cliente: item.clientes?.nome || '', status } })
+    setDeliveries((lista) => (lista || []).map((delivery) => String(delivery.id) === String(item.id) ? { ...delivery, status, offlinePendente: true } : delivery))
+    exibirToast('Entrega marcada offline. Sincronize quando a internet voltar.')
+  }
+
+  function registrarCobrancaPagaOffline(pendencia) {
+    if (!pendencia?.id) return
+    adicionarFilaOffline({
+      tipo: 'cobranca-paga',
+      payload: {
+        id: pendencia.id,
+        cliente: pendencia.vendas?.clientes?.nome || 'Cliente não informado',
+        valor: Number(pendencia.saldo_restante || 0),
+      },
+    })
+    setPendencias((lista) => (lista || []).map((item) => String(item.id) === String(pendencia.id) ? { ...item, status: 'PAGO', saldo_restante: 0, offlinePendente: true } : item))
+    exibirToast('Cobrança marcada offline. Sincronize quando a internet voltar.')
+  }
+
   const [clienteId, setClienteId] = useState('')
   const [valorTotal, setValorTotal] = useState('')
   const [valorPagoVenda, setValorPagoVenda] = useState('')
-  const [dataVenda, setDataVenda] = useState(new Date().toISOString().slice(0, 10))
+  const [dataVenda, setDataVenda] = useState(dataHoje())
   const [taxaSelecionadaId, setTaxaSelecionadaId] = useState('')
   const [status, setStatus] = useState('EM ABERTO')
   const [vencimento, setVencimento] = useState('')
+  const [ouvindoVendaVoz, setOuvindoVendaVoz] = useState(false)
+  const [textoVendaVoz, setTextoVendaVoz] = useState('')
+  const [avisoVendaVoz, setAvisoVendaVoz] = useState('')
+  const [clienteAvulsoVendaNome, setClienteAvulsoVendaNome] = useState('')
+  const [clienteVozPendente, setClienteVozPendente] = useState({
+    aberto: false,
+    etapa: 'escolha',
+    nome: '',
+    candidatos: [],
+  })
+  const [speechVendaDisponivel] = useState(() => (
+    typeof window !== 'undefined' && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)
+  ))
+  const reconhecimentoVendaRef = useRef(null)
+  const [preVendas, setPreVendas] = useState([])
+  const [buscaPreVendas, setBuscaPreVendas] = useState('')
+  const [ouvindoPreVendaVoz, setOuvindoPreVendaVoz] = useState(false)
+  const [textoPreVendaVoz, setTextoPreVendaVoz] = useState('')
+  const [avisoPreVenda, setAvisoPreVenda] = useState('')
+  const [mensagemPreVendaModal, setMensagemPreVendaModal] = useState({ aberto: false, preVendaId: '', texto: '' })
+  const [preVendaEdicaoModal, setPreVendaEdicaoModal] = useState({ aberto: false, preVenda: null })
+  const [preVendaDetalheModal, setPreVendaDetalheModal] = useState({ aberto: false, preVenda: null })
+  const [preVendaConvertendoId, setPreVendaConvertendoId] = useState('')
+  const [preVendaDeliveryOrigemId, setPreVendaDeliveryOrigemId] = useState('')
+  const reconhecimentoPreVendaRef = useRef(null)
+  const textoPreVendaAcumuladoRef = useRef('')
+  const deveSalvarPreVendaNoFimRef = useRef(false)
+
 
   const [dataRelatorioInicio, setDataRelatorioInicio] = useState(inicioMesAtual())
   const [dataRelatorioFim, setDataRelatorioFim] = useState(dataHoje())
@@ -198,6 +779,26 @@ export default function App() {
   useEffect(() => {
     setPaginaPagamentos(1)
   }, [buscaPagamentos, filtroPagamentosInicio, filtroPagamentosFim])
+
+  useEffect(() => {
+    return () => {
+      try {
+        reconhecimentoVendaRef.current?.abort?.()
+      } catch (erro) {
+        console.error(erro)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      try {
+        reconhecimentoPreVendaRef.current?.abort?.()
+      } catch (erro) {
+        console.error(erro)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const modalAberto = modalFormaPagamento.aberto || modalSelecaoCobrancas.aberto
@@ -302,7 +903,7 @@ export default function App() {
   })
 
   const [formDespesa, setFormDespesa] = useState({
-    data_despesa: new Date().toISOString().slice(0, 10),
+    data_despesa: dataHoje(),
     categoria: 'Abastecimento',
     descricao: '',
     valor: '',
@@ -311,7 +912,7 @@ export default function App() {
 
   const [formDelivery, setFormDelivery] = useState({
     venda_id: '',
-    data_pedido: new Date().toISOString().slice(0, 10),
+    data_pedido: dataHoje(),
     data_entrega: '',
     cliente_id: '',
     referencia: '',
@@ -339,7 +940,30 @@ export default function App() {
   const [editandoRoteiroVendasId, setEditandoRoteiroVendasId] = useState(null)
 
   useEffect(() => {
-    buscarTudo()
+    sincronizarDados({ manual: true })
+  }, [])
+
+  useEffect(() => {
+    const intervalo = window.setInterval(() => {
+      sincronizarDados({ manual: false })
+    }, 60000)
+
+    function sincronizarAoVoltar() {
+      if (!document.hidden) {
+        sincronizarDados({ manual: false })
+      }
+    }
+
+    window.addEventListener('focus', sincronizarAoVoltar)
+    document.addEventListener('visibilitychange', sincronizarAoVoltar)
+    window.addEventListener('online', sincronizarAoVoltar)
+
+    return () => {
+      window.clearInterval(intervalo)
+      window.removeEventListener('focus', sincronizarAoVoltar)
+      document.removeEventListener('visibilitychange', sincronizarAoVoltar)
+      window.removeEventListener('online', sincronizarAoVoltar)
+    }
   }, [])
 
   useEffect(() => {
@@ -390,7 +1014,297 @@ export default function App() {
       buscarPedidosFornecedor(),
       buscarPedidosFornecedorGrupos(),
       buscarRoteiroVendas(),
+      buscarPreVendas(),
     ])
+  }
+
+
+  function existeEdicaoAtivaDados() {
+    try {
+      const ativo = document.activeElement
+      const tag = String(ativo?.tagName || '').toLowerCase()
+      const digitando = tag === 'input' || tag === 'textarea' || tag === 'select' || Boolean(ativo?.isContentEditable)
+
+      if (digitando) return true
+
+      return Boolean(
+        modalVendaAberto ||
+        modalFormaPagamento.aberto ||
+        modalSelecaoCobrancas.aberto ||
+        modalDeliveryVenda.aberto ||
+        modalEdicaoPendencia.aberto ||
+        modalConferenciaProdutosAberto ||
+        modalEdicaoProduto.aberto ||
+        preVendaEdicaoModal.aberto ||
+        preVendaDetalheModal.aberto ||
+        mensagemPreVendaModal.aberto ||
+        editandoVendaId ||
+        editandoClienteId ||
+        editandoProdutoId ||
+        editandoFornecedorId ||
+        editandoDespesaId ||
+        editandoPedidoFornecedorId ||
+        editandoRoteiroVendasId
+      )
+    } catch (erro) {
+      console.error(erro)
+      return true
+    }
+  }
+
+  async function sincronizarDados({ manual = false } = {}) {
+    if (sincronizacaoDadosRef.current) return
+
+    if (!manual && existeEdicaoAtivaDados()) return
+
+    sincronizacaoDadosRef.current = true
+    setSincronizandoDados(true)
+    setErroSincronizacaoDados('')
+
+    try {
+      await buscarTudo()
+      setUltimaAtualizacaoDados(new Date())
+    } catch (erro) {
+      console.error('Falha ao sincronizar dados.', erro)
+      setErroSincronizacaoDados('Falha ao atualizar dados')
+    } finally {
+      sincronizacaoDadosRef.current = false
+      setSincronizandoDados(false)
+    }
+  }
+
+  function textoUltimaAtualizacaoDados() {
+    if (sincronizandoDados) return 'Sincronizando...'
+    if (erroSincronizacaoDados) return erroSincronizacaoDados
+    if (!ultimaAtualizacaoDados) return 'Aguardando sincronização'
+
+    return `Última atualização: ${formatarHoraBrasil(ultimaAtualizacaoDados)}`
+  }
+
+
+  const REFERENCIAS_PRE_VENDA_VOZ = [
+    'EP 210 Norte',
+    'EP 210 Sul',
+    'CEAN',
+    'Paulo Freire',
+    'Objetivo',
+    'SEB',
+    'CHPP',
+    'Contato Pro',
+    '113 Norte',
+    '304 Norte',
+    '306 Norte',
+    'EC 114 Sul',
+    'Regional',
+  ]
+
+  function regexReferenciaPreVenda(referencia) {
+    const partes = String(referencia || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((parte) => parte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+
+    return new RegExp(`\\b${partes.join('\\s+')}\\b`, 'i')
+  }
+
+  function extrairTrechoMarcadoPreVenda(texto, marcadoresInicio, marcadoresFim = []) {
+    const original = String(texto || '')
+    if (!original.trim()) return ''
+
+    const marcadorRegex = (marcador) => String(marcador || '')
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/a/g, '[aáàâã]')
+      .replace(/e/g, '[eéê]')
+      .replace(/i/g, '[ií]')
+      .replace(/o/g, '[oóôõ]')
+      .replace(/u/g, '[uú]')
+      .replace(/c/g, '[cç]')
+      .replace(/\s+/g, '\\s+')
+
+    const inicios = (marcadoresInicio || []).filter(Boolean)
+    const fins = (marcadoresFim || []).filter(Boolean)
+
+    let inicioEncontrado = -1
+    let marcadorEncontrado = ''
+
+    inicios.forEach((marcador) => {
+      const regex = new RegExp(`(^|\\s|[,.;:])(${marcadorRegex(marcador)})(?=\\s|[,.;:]|$)`, 'i')
+      const match = original.match(regex)
+      if (match?.index >= 0) {
+        const indiceReal = match.index + (match[1] || '').length
+        if (inicioEncontrado < 0 || indiceReal < inicioEncontrado) {
+          inicioEncontrado = indiceReal
+          marcadorEncontrado = match[2]
+        }
+      }
+    })
+
+    if (inicioEncontrado < 0) return ''
+
+    const inicioConteudo = inicioEncontrado + marcadorEncontrado.length
+    let fimConteudo = original.length
+    const depois = original.slice(inicioConteudo)
+
+    fins.forEach((marcador) => {
+      const regexFim = new RegExp(`(^|\\s|[,.;:])(${marcadorRegex(marcador)})(?=\\s|[,.;:]|$)`, 'i')
+      const matchFim = depois.match(regexFim)
+      if (matchFim?.index >= 0) {
+        fimConteudo = Math.min(fimConteudo, inicioConteudo + matchFim.index + (matchFim[1] || '').length)
+      }
+    })
+
+    return original
+      .slice(inicioConteudo, fimConteudo)
+      .replace(/^[\s:：,.;-]+|[\s:：,.;-]+$/g, '')
+      .trim()
+  }
+
+  function formatarReferenciaPreVendaPorVoz(referencia) {
+    const siglasMaiusculas = new Set(['ep', 'ec', 'sc', 'chpp', 'seb', 'cean', 'dna', 'dpe', 'deam', 'dp'])
+    const palavrasMinusculas = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
+
+    return String(referencia || '')
+      .replace(/[,:;]+$/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .map((parte, indice) => {
+        const limpa = parte.replace(/^[.\-]+|[.\-]+$/g, '')
+        const chave = normalizarTexto(limpa)
+
+        if (!limpa) return ''
+        if (/^\d+[a-z]?$/i.test(limpa)) return limpa.toUpperCase()
+        if (siglasMaiusculas.has(chave)) return chave.toUpperCase()
+        if (indice > 0 && palavrasMinusculas.has(chave)) return chave
+
+        return limpa.charAt(0).toUpperCase() + limpa.slice(1).toLowerCase()
+      })
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  function extrairReferenciaPreVendaPorVoz(texto) {
+    const original = String(texto || '')
+    const porMarcador = extrairTrechoMarcadoPreVenda(
+      original,
+      ['referência', 'referencia', 'ref', 'local'],
+      ['itens adquiridos', 'itens', 'forma de pagamento', 'pagamento', 'comprou', 'pegou', 'levou']
+    )
+
+    if (porMarcador) {
+      const referenciaCadastrada = REFERENCIAS_PRE_VENDA_VOZ.find((referencia) => regexReferenciaPreVenda(referencia).test(porMarcador))
+      return referenciaCadastrada || formatarReferenciaPreVendaPorVoz(porMarcador)
+    }
+
+    const encontrada = REFERENCIAS_PRE_VENDA_VOZ.find((referencia) => regexReferenciaPreVenda(referencia).test(original))
+    return encontrada || ''
+  }
+
+  function normalizarFormaPagamentoPreVenda(valor) {
+    const normalizado = limparPontuacaoTexto(valor || '')
+
+    if (/\bfiado\b|em aberto|pagamento fiado|prazo/.test(normalizado)) return 'Fiado / Em aberto'
+    if (/\bpix\b|pagamento pix|pagou no pix|\bpics\b|\bpic\b/.test(normalizado)) return 'Pix'
+    if (/debito|pagamento debito|pagou no debito|cartao de debito/.test(normalizado)) return 'Débito'
+    if (/credito|pagamento credito|pagou no credito|cartao de credito/.test(normalizado)) return 'Crédito'
+    if (/dinheiro|pagamento dinheiro|pagou em dinheiro|especie/.test(normalizado)) return 'Dinheiro'
+
+    return ''
+  }
+
+  function extrairPagamentoPreVendaPorVoz(texto) {
+    const original = String(texto || '')
+    const porMarcador = extrairTrechoMarcadoPreVenda(
+      original,
+      ['forma de pagamento', 'pagamento', 'pagou no', 'pagou em'],
+      []
+    )
+
+    return normalizarFormaPagamentoPreVenda(porMarcador) || normalizarFormaPagamentoPreVenda(original)
+  }
+
+  function removerMetadadosPreVendaPorVoz(texto) {
+    let limpo = String(texto || '')
+
+    const itensMarcados = extrairTrechoMarcadoPreVenda(limpo, ['itens adquiridos', 'itens'], ['forma de pagamento', 'pagamento'])
+    if (itensMarcados) return itensMarcados
+
+    REFERENCIAS_PRE_VENDA_VOZ.forEach((referencia) => {
+      limpo = limpo.replace(regexReferenciaPreVenda(referencia), ' ')
+    })
+
+    limpo = limpo
+      .replace(/\bcliente\s*[:：-]?\s*/gi, ' ')
+      .replace(/\b(?:refer[eê]ncia|referencia|ref|local)\s*[:：-]?\s*[^,;.\n]+/gi, ' ')
+      .replace(/\b(?:forma\s+de\s+pagamento|pagamento|pagou\s+no|pagou\s+em)\s*[:：-]?\s*(?:pix|pics|pic|d[eé]bito|cr[eé]dito|dinheiro|fiado|em\s+aberto)\b/gi, ' ')
+      .replace(/\b(?:pix|pics|pic|d[eé]bito|cr[eé]dito|dinheiro|fiado|em\s+aberto)\b\s*$/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    return limpo
+  }
+
+  function normalizarPreVendaBanco(registro) {
+    if (!registro) return null
+
+    return {
+      id: registro.id,
+      cliente: registro.cliente_nome || registro.cliente || 'Cliente não informado',
+      referencia: registro.referencia || extrairReferenciaPreVendaPorVoz(registro.transcricao || ''),
+      pagamento: registro.forma_pagamento || registro.pagamento || extrairPagamentoPreVendaPorVoz(registro.transcricao || ''),
+      itens: Array.isArray(registro.itens) ? registro.itens : [],
+      total: Number(registro.total || 0),
+      transcricao: registro.transcricao || '',
+      status: registro.status || 'Pendente',
+      mensagemGerada: Boolean(registro.mensagem_gerada),
+      criadoEm: registro.created_at || registro.criadoEm || new Date().toISOString(),
+      atualizadoEm: registro.updated_at || registro.atualizadoEm || null,
+    }
+  }
+
+  function montarPayloadPreVenda(preVenda) {
+    return {
+      cliente_nome: preVenda?.cliente || preVenda?.cliente_nome || 'Cliente não informado',
+      referencia: preVenda?.referencia || extrairReferenciaPreVendaPorVoz(preVenda?.transcricao || ''),
+      forma_pagamento: preVenda?.pagamento || preVenda?.forma_pagamento || extrairPagamentoPreVendaPorVoz(preVenda?.transcricao || ''),
+      itens: Array.isArray(preVenda?.itens) ? preVenda.itens : [],
+      total: Number(preVenda?.total || 0),
+      transcricao: preVenda?.transcricao || '',
+      status: preVenda?.status || 'Pendente',
+      mensagem_gerada: preVenda?.status === 'Mensagem gerada' || Boolean(preVenda?.mensagemGerada),
+      updated_at: new Date().toISOString(),
+    }
+  }
+
+  function erroColunaFormaPagamentoPreVenda(error) {
+    const mensagem = String(error?.message || error?.details || error?.hint || '')
+    return mensagem.includes('forma_pagamento') || mensagem.includes('Could not find')
+  }
+
+  function payloadPreVendaSemFormaPagamento(payload) {
+    const { forma_pagamento, ...restante } = payload || {}
+    return restante
+  }
+
+  async function buscarPreVendas() {
+    const { data, error } = await supabase
+      .from('prevendas')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar pré-vendas:', error)
+      setAvisoPreVenda('Não consegui carregar as pré-vendas do Supabase. Usando dados offline, se disponíveis.')
+      const cache = lerJsonLocal(CHAVE_CACHE_OFFLINE, {}) || {}
+      if (Array.isArray(cache.preVendas)) setPreVendas(cache.preVendas)
+      return
+    }
+
+    const lista = (data || []).map(normalizarPreVendaBanco).filter(Boolean)
+    setPreVendas(lista)
+    atualizarCacheOffline({ preVendas: lista })
   }
 
   function numero(valor) {
@@ -650,21 +1564,36 @@ export default function App() {
     })
   }
 
+  function partesDataBrasil(data = new Date()) {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+      timeZone: TIME_ZONE_BRASIL,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(data)
+
+    return {
+      ano: partes.find((parte) => parte.type === 'year')?.value || '1970',
+      mes: partes.find((parte) => parte.type === 'month')?.value || '01',
+      dia: partes.find((parte) => parte.type === 'day')?.value || '01',
+    }
+  }
+
   function dataHoje() {
-    const hoje = new Date()
-    const ano = hoje.getFullYear()
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0')
-    const dia = String(hoje.getDate()).padStart(2, '0')
+    const { ano, mes, dia } = partesDataBrasil()
     return `${ano}-${mes}-${dia}`
   }
 
   function inicioMesAtual() {
-    const hoje = new Date()
-    return new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10)
+    const { ano, mes } = partesDataBrasil()
+    return `${ano}-${mes}-01`
   }
 
   function dataISO(data) {
-    return data.toISOString().slice(0, 10)
+    const dataObj = data instanceof Date ? data : new Date(data)
+    if (Number.isNaN(dataObj.getTime())) return dataHoje()
+    const { ano, mes, dia } = partesDataBrasil(dataObj)
+    return `${ano}-${mes}-${dia}`
   }
 
   function periodoMesAnterior() {
@@ -763,6 +1692,1070 @@ export default function App() {
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .trim()
+  }
+
+
+
+  function limparPontuacaoTexto(texto) {
+    return normalizarTexto(texto).replace(/[^a-z0-9\s,./-]/g, ' ')
+  }
+
+  function capitalizarNomeVendaAvulsa(nome) {
+    const ajustes = {
+      claudio: 'Cláudio',
+      claudia: 'Cláudia',
+      jose: 'José',
+      joao: 'João',
+      marcia: 'Márcia',
+      lucia: 'Lúcia',
+      lucio: 'Lúcio',
+      antonio: 'Antônio',
+      antonia: 'Antônia',
+      debora: 'Débora',
+      fabio: 'Fábio',
+      lucas: 'Lucas',
+      maria: 'Maria',
+    }
+
+    const palavrasPequenas = new Set(['da', 'de', 'do', 'das', 'dos', 'e'])
+
+    return String(nome || '')
+      .toLowerCase()
+      .replace(/[^a-záàâãéêíóôõúçñ\s]/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .map((parte, indice) => {
+        const chave = normalizarTexto(parte)
+        if (ajustes[chave]) return ajustes[chave]
+        if (indice > 0 && palavrasPequenas.has(chave)) return chave
+        return parte.charAt(0).toUpperCase() + parte.slice(1)
+      })
+      .join(' ')
+  }
+
+  function nomeClienteVenda(venda) {
+    return venda?.cliente_nome_avulso || venda?.clientes?.nome || 'Cliente sem nome'
+  }
+
+  function referenciaClienteVenda(venda) {
+    if (venda?.cliente_nome_avulso) return 'Venda avulsa'
+    return venda?.clientes?.referencia || 'Sem referência'
+  }
+
+  function nomeClientePagamento(pagamento) {
+    return pagamento?.vendas?.cliente_nome_avulso || pagamento?.vendas?.clientes?.nome || 'Cliente não informado'
+  }
+
+  function referenciaClientePagamento(pagamento) {
+    if (pagamento?.vendas?.cliente_nome_avulso) return 'Venda avulsa'
+    return pagamento?.vendas?.clientes?.referencia || ''
+  }
+
+  function textoNumeroPortuguesParaNumero(texto) {
+    const normalizado = limparPontuacaoTexto(texto).replace(/\be\b/g, ' ')
+    const palavras = normalizado.split(/\s+/).filter(Boolean)
+
+    const unidades = {
+      zero: 0,
+      um: 1,
+      uma: 1,
+      dois: 2,
+      duas: 2,
+      tres: 3,
+      quatro: 4,
+      cinco: 5,
+      seis: 6,
+      sete: 7,
+      oito: 8,
+      nove: 9,
+      dez: 10,
+      onze: 11,
+      doze: 12,
+      treze: 13,
+      catorze: 14,
+      quatorze: 14,
+      quinze: 15,
+      dezesseis: 16,
+      dezasseis: 16,
+      dezessete: 17,
+      dezassete: 17,
+      dezoito: 18,
+      dezenove: 19,
+      dezanove: 19,
+      vinte: 20,
+      trinta: 30,
+      quarenta: 40,
+      cinquenta: 50,
+      sessenta: 60,
+      setenta: 70,
+      oitenta: 80,
+      noventa: 90,
+      cem: 100,
+      cento: 100,
+      duzentos: 200,
+      trezentos: 300,
+      quatrocentos: 400,
+      quinhentos: 500,
+      seiscentos: 600,
+      setecentos: 700,
+      oitocentos: 800,
+      novecentos: 900,
+    }
+
+    let total = 0
+    let encontrou = false
+
+    palavras.forEach((palavra) => {
+      if (Object.prototype.hasOwnProperty.call(unidades, palavra)) {
+        total += unidades[palavra]
+        encontrou = true
+      }
+    })
+
+    return encontrou ? total : null
+  }
+
+  function extrairValorVendaPorVoz(texto) {
+    const normalizado = limparPontuacaoTexto(texto)
+    const comNumero = normalizado.match(/(?:valor|total|deu|venda|r\$)\s*(?:de\s*)?(\d+(?:[.,]\d{1,2})?)/i)
+    if (comNumero?.[1]) return moedaInput(comNumero[1])
+
+    const numeroSoltoComReais = normalizado.match(/\b(\d+(?:[.,]\d{1,2})?)\s*(?:reais?|real)\b/i)
+    if (numeroSoltoComReais?.[1]) return moedaInput(numeroSoltoComReais[1])
+
+    const numeroSolto = normalizado.match(/\b(\d{2,5}(?:[.,]\d{1,2})?)\b/i)
+    if (numeroSolto?.[1]) return moedaInput(numeroSolto[1])
+
+    const porExtenso = normalizado.match(/(?:valor|total|deu|venda)?\s*(?:de\s*)?([a-z\s]+?)(?:\s+reais?|\s+real|\s+pagamento|\s+status|\s+vencimento|\s+cliente|$)/i)
+    const numeroExtenso = porExtenso?.[1] ? textoNumeroPortuguesParaNumero(porExtenso[1]) : null
+
+    return numeroExtenso !== null ? moedaInput(numeroExtenso) : ''
+  }
+
+  function localizarClienteAvulsoVenda() {
+    return clientes.find((cliente) => {
+      const nome = normalizarTexto(cliente.nome || '')
+      return nome === 'cliente avulso' || nome === 'avulso' || nome.includes('cliente avulso')
+    })
+  }
+
+  function extrairTextoClienteVendaPorVoz(texto) {
+    const normalizado = limparPontuacaoTexto(texto)
+    const encontrado = normalizado.match(/cliente\s+(.+?)(?:\s+referencia|\s+valor|\s+total|\s+pagamento|\s+status|\s+vencimento|\s+data|$)/i)
+    if (encontrado?.[1]) return encontrado[1].trim()
+
+    let textoLivre = normalizado
+      .replace(/\b(valor|total|deu|venda|pagamento|status|vencimento|vence|data|dia|reais|real|r)\b/g, ' ')
+      .replace(/\b(pix|pics|pic|dinheiro|debito|credito|cartao|cartao de credito|visa|master|mastercard|elo|fiado|aberto|em aberto|prazo|pago|pagou|recebido|quitado|parcial|entrada)\b/g, ' ')
+      .replace(/\b\d{1,5}(?:[.,]\d{1,2})?\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    return textoLivre
+  }
+
+  function candidatosClienteVendaPorVoz(textoCliente) {
+    const termoCliente = normalizarTexto(textoCliente)
+    if (!termoCliente) return []
+
+    const palavrasTermo = termoCliente.split(/\s+/).filter(Boolean)
+
+    return clientes
+      .filter((cliente) => {
+        const nome = normalizarTexto(cliente.nome || '')
+        const referencia = normalizarTexto(cliente.referencia || '')
+        const observacao = normalizarTexto(cliente.observacao || '')
+        const textoClienteCadastrado = `${nome} ${referencia} ${observacao}`.trim()
+        const primeiroNome = nome.split(/\s+/)[0] || ''
+
+        return (
+          nome.includes(termoCliente) ||
+          termoCliente.includes(nome) ||
+          primeiroNome === palavrasTermo[0] ||
+          textoClienteCadastrado.includes(termoCliente)
+        )
+      })
+      .slice(0, 12)
+  }
+
+  function aplicarClienteAvulsoVendaPorVoz(nome) {
+    const clienteAvulso = localizarClienteAvulsoVenda()
+    const nomeAvulsoCapitalizado = capitalizarNomeVendaAvulsa(nome)
+
+    if (clienteAvulso) {
+      setClienteId(clienteAvulso.id)
+      setBuscaClienteVenda(nomeAvulsoCapitalizado)
+      setClienteAvulsoVendaNome(nomeAvulsoCapitalizado)
+      setClienteVozPendente({ aberto: false, etapa: 'escolha', nome: '', candidatos: [] })
+      setAvisoVendaVoz(`Cliente avulso aplicado: ${nomeAvulsoCapitalizado}. Confira os campos antes de salvar.`)
+      return true
+    }
+
+    setClienteId('')
+    setBuscaClienteVenda(nomeAvulsoCapitalizado)
+    setClienteAvulsoVendaNome(nomeAvulsoCapitalizado)
+    setClienteVozPendente({ aberto: false, etapa: 'escolha', nome: '', candidatos: [] })
+    setAvisoVendaVoz(`Nome avulso preenchido: ${nomeAvulsoCapitalizado}. Cadastre ou selecione o cliente avulso antes de salvar.`)
+    return false
+  }
+
+  function aplicarClienteCadastradoVendaPorVoz(cliente) {
+    if (!cliente?.id) return
+
+    setClienteId(cliente.id)
+    setBuscaClienteVenda('')
+    setClienteAvulsoVendaNome('')
+    setClienteVozPendente({ aberto: false, etapa: 'escolha', nome: '', candidatos: [] })
+    setAvisoVendaVoz(`Cliente cadastrado selecionado: ${cliente.nome || 'cliente'}. Confira os campos antes de salvar.`)
+  }
+
+  function selecionarClienteVendaPorVoz(textoCliente) {
+    if (!textoCliente) return false
+
+    const nomeAvulsoCapitalizado = capitalizarNomeVendaAvulsa(textoCliente)
+    const candidatos = candidatosClienteVendaPorVoz(textoCliente)
+
+    setBuscaClienteVenda(nomeAvulsoCapitalizado)
+    setClienteId('')
+    setClienteAvulsoVendaNome('')
+
+    if (candidatos.length > 0) {
+      setClienteVozPendente({
+        aberto: true,
+        etapa: 'escolha',
+        nome: nomeAvulsoCapitalizado,
+        candidatos,
+      })
+      return 'PENDENTE_ESCOLHA'
+    }
+
+    return aplicarClienteAvulsoVendaPorVoz(nomeAvulsoCapitalizado) ? 'AVULSO_NOMEADO' : false
+  }
+
+
+  function numeroQuantidadePreVendaPorVoz(palavra) {
+    const normalizada = normalizarTexto(palavra || '')
+    const mapa = {
+      um: 1,
+      uma: 1,
+      hum: 1,
+      primeiro: 1,
+      dois: 2,
+      duas: 2,
+      tres: 3,
+      três: 3,
+      quatro: 4,
+      cinco: 5,
+      seis: 6,
+      sete: 7,
+      oito: 8,
+      nove: 9,
+      dez: 10,
+      onze: 11,
+      doze: 12,
+    }
+
+    if (/^\d+$/.test(normalizada)) return Number(normalizada)
+    return mapa[normalizada] || 0
+  }
+
+  function formatarQuantidadePreVenda(qtd) {
+    const quantidade = Math.max(1, Number(qtd || 1))
+    return String(quantidade).padStart(2, '0')
+  }
+
+  function limparNomeItemPreVenda(texto) {
+    return capitalizarNomeVendaAvulsa(
+      String(texto || '')
+        .replace(/\b(comprou|pegou|levou|ficou com|ficou|compras?|cliente|itens?)\b/gi, ' ')
+        .replace(/\b(o|a|e|de|do|da|por|valor|reais|real|r\$)\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    )
+  }
+
+  function interpretarItemPreVendaPorVoz(textoItem, valorInformado) {
+    let textoLimpo = String(textoItem || '')
+      .replace(/\b(comprou|pegou|levou|ficou com|ficou|compras?|cliente|itens?)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    const palavras = textoLimpo.split(/\s+/).filter(Boolean)
+    let quantidade = 1
+
+    if (palavras.length > 0) {
+      const qtdFalada = numeroQuantidadePreVendaPorVoz(palavras[0])
+      if (qtdFalada > 0) {
+        quantidade = qtdFalada
+        palavras.shift()
+      }
+    }
+
+    const nome = limparNomeItemPreVenda(palavras.join(' '))
+    const valorUnitario = numero(valorInformado)
+    const subtotal = quantidade * valorUnitario
+
+    return {
+      nome,
+      quantidade,
+      valorUnitario,
+      subtotal,
+      valor: subtotal,
+    }
+  }
+
+  function extrairClientePreVendaPorVoz(texto) {
+    const original = String(texto || '').trim()
+    const porMarcador = extrairTrechoMarcadoPreVenda(
+      original,
+      ['cliente'],
+      ['referência', 'referencia', 'itens adquiridos', 'itens', 'forma de pagamento', 'pagamento', 'comprou', 'pegou', 'levou', 'ficou com']
+    )
+
+    if (porMarcador) return capitalizarNomeVendaAvulsa(porMarcador.replace(/^cliente\s+/i, ''))
+
+    const encontrado = original.match(/^(.+?)(?:\s+(?:comprou|pegou|levou|ficou\s+com|ficou|compras?)\b|\s*[:：])/i)
+    if (encontrado?.[1]) return capitalizarNomeVendaAvulsa(encontrado[1])
+
+    const palavras = original
+      .replace(/[.,;:]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+
+    const parada = palavras.findIndex((palavra) => /^(refer[eê]ncia|referencia|itens|comprou|pegou|levou|ficou|um|uma|dois|duas|tres|três|quatro|cinco|seis|sete|oito|nove|dez|valor|total|r\$|\d)/i.test(palavra))
+    const nome = parada > 0 ? palavras.slice(0, parada).join(' ') : palavras.slice(0, 2).join(' ')
+    return capitalizarNomeVendaAvulsa(nome.replace(/^cliente\s+/i, ''))
+  }
+
+  function extrairTextoItensPreVendaPorVoz(texto) {
+    const original = String(texto || '')
+    const porMarcador = extrairTrechoMarcadoPreVenda(
+      original,
+      ['itens adquiridos', 'itens'],
+      ['forma de pagamento', 'pagamento']
+    )
+
+    if (porMarcador) return porMarcador
+    return removerMetadadosPreVendaPorVoz(original)
+  }
+
+  function extrairItensPreVendaPorVoz(texto, cliente) {
+    const original = String(texto || '')
+    const partes = []
+    const regex = /([^,;.\n]+?)\s+(?:r\$\s*)?(\d+(?:[,.]\d{1,2})?)\s*(?:reais?|real)?/gi
+    let match
+
+    while ((match = regex.exec(original)) !== null) {
+      let textoItem = match[1] || ''
+      const clienteNormalizado = normalizarTexto(cliente || '')
+      if (clienteNormalizado && normalizarTexto(textoItem).startsWith(clienteNormalizado)) {
+        textoItem = textoItem.slice(String(cliente || '').length)
+      }
+
+      const itemInterpretado = interpretarItemPreVendaPorVoz(textoItem, match[2])
+
+      if (itemInterpretado.nome && itemInterpretado.valorUnitario > 0) {
+        partes.push(itemInterpretado)
+      }
+    }
+
+    return partes
+  }
+
+  function interpretarPreVendaPorVoz(texto) {
+    const transcricao = String(texto || '').trim()
+    const referencia = extrairReferenciaPreVendaPorVoz(transcricao)
+    const pagamento = extrairPagamentoPreVendaPorVoz(transcricao)
+    const textoOperacional = removerMetadadosPreVendaPorVoz(transcricao)
+    const cliente = extrairClientePreVendaPorVoz(transcricao)
+    const textoItens = extrairTextoItensPreVendaPorVoz(transcricao)
+    const itens = extrairItensPreVendaPorVoz(textoItens || textoOperacional, cliente)
+    const totalItens = itens.reduce((acc, item) => acc + Number(item.valor || 0), 0)
+    const totalFallback = numero(extrairValorVendaPorVoz(textoItens || textoOperacional))
+    const total = totalItens > 0 ? totalItens : totalFallback
+
+    return {
+      id: `pv-${Date.now()}`,
+      cliente: cliente || 'Cliente não informado',
+      referencia,
+      pagamento,
+      itens,
+      total,
+      transcricao,
+      status: 'Pendente',
+      criadoEm: new Date().toISOString(),
+    }
+  }
+
+  async function salvarPreVendaPorTexto(texto) {
+    const interpretada = interpretarPreVendaPorVoz(texto)
+
+    if (!interpretada.transcricao) {
+      setAvisoPreVenda('Não ouvi nenhuma informação. Tente novamente.')
+      return
+    }
+
+    const payload = montarPayloadPreVenda(interpretada)
+    delete payload.updated_at
+
+    let { data, error } = await supabase
+      .from('prevendas')
+      .insert(payload)
+      .select('*')
+      .single()
+
+    if (error && erroColunaFormaPagamentoPreVenda(error)) {
+      const tentativa = await supabase
+        .from('prevendas')
+        .insert(payloadPreVendaSemFormaPagamento(payload))
+        .select('*')
+        .single()
+      data = tentativa.data
+      error = tentativa.error
+    }
+
+    if (error) {
+      console.error('Erro ao salvar pré-venda:', error)
+      if (!navigator.onLine) {
+        const registroOffline = adicionarFilaOffline({
+          tipo: 'prevenda',
+          payload: {
+            cliente: interpretada.cliente,
+            referencia: interpretada.referencia || '',
+            itensTexto: interpretada.itens?.map((item) => item.nome).join(', ') || interpretada.transcricao,
+            valor: interpretada.total,
+            observacao: interpretada.transcricao,
+          },
+        })
+        const local = { ...interpretada, id: registroOffline.idLocal, offline: true }
+        setPreVendas((listaAtual) => [local, ...listaAtual])
+        atualizarCacheOffline({ preVendas: [local, ...(preVendas || [])] })
+        setAvisoPreVenda('Sem internet. Pré-venda salva no modo offline.')
+        exibirToast('Pré-venda salva offline.')
+        return
+      }
+      setAvisoPreVenda(`Erro ao salvar pré-venda: ${error.message || 'verifique as permissões do Supabase.'}`)
+      exibirToast('Erro ao salvar pré-venda.', 'erro')
+      return
+    }
+
+    const novaPreVenda = normalizarPreVendaBanco(data)
+    setPreVendas((listaAtual) => [novaPreVenda, ...listaAtual.filter((item) => item.id !== novaPreVenda.id)])
+    setTextoPreVendaVoz(novaPreVenda.transcricao)
+    setAvisoPreVenda(`Pré-venda registrada para ${novaPreVenda.cliente}.`)
+    exibirToast('Pré-venda registrada.')
+  }
+
+  function iniciarPreVendaPorVoz() {
+    if (!speechVendaDisponivel) {
+      setAvisoPreVenda('Microfone por voz não disponível neste navegador. Use Chrome ou Edge.')
+      return
+    }
+
+    try {
+      reconhecimentoPreVendaRef.current?.abort?.()
+    } catch (erro) {
+      console.error(erro)
+    }
+
+    textoPreVendaAcumuladoRef.current = ''
+    deveSalvarPreVendaNoFimRef.current = true
+    setTextoPreVendaVoz('')
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'pt-BR'
+    recognition.continuous = true
+    recognition.interimResults = true
+
+    recognition.onstart = () => {
+      setOuvindoPreVendaVoz(true)
+      setAvisoPreVenda('Ouvindo pré-venda. Fale com calma e clique em parar quando terminar este cliente.')
+    }
+
+    recognition.onresult = (event) => {
+      const texto = Array.from(event.results || [])
+        .map((resultado) => resultado?.[0]?.transcript || '')
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+      textoPreVendaAcumuladoRef.current = texto
+      if (texto) setTextoPreVendaVoz(texto)
+    }
+
+    recognition.onerror = (event) => {
+      const mensagem = event?.error === 'not-allowed'
+        ? 'Permita o uso do microfone no navegador para registrar pré-vendas.'
+        : 'Não consegui ouvir a pré-venda. Tente novamente e clique em parar ao terminar.'
+      deveSalvarPreVendaNoFimRef.current = false
+      setAvisoPreVenda(mensagem)
+      setOuvindoPreVendaVoz(false)
+    }
+
+    recognition.onend = () => {
+      const textoFinal = textoPreVendaAcumuladoRef.current.trim()
+      if (deveSalvarPreVendaNoFimRef.current && textoFinal) {
+        salvarPreVendaPorTexto(textoFinal)
+      } else if (deveSalvarPreVendaNoFimRef.current && !textoFinal) {
+        setAvisoPreVenda('Não ouvi nenhuma informação. Tente novamente.')
+      }
+      deveSalvarPreVendaNoFimRef.current = false
+      setOuvindoPreVendaVoz(false)
+    }
+
+    reconhecimentoPreVendaRef.current = recognition
+
+    try {
+      recognition.start()
+    } catch (erro) {
+      console.error(erro)
+      setAvisoPreVenda('Não foi possível iniciar o microfone neste navegador.')
+      setOuvindoPreVendaVoz(false)
+    }
+  }
+
+  function pararPreVendaPorVoz() {
+    try {
+      reconhecimentoPreVendaRef.current?.stop?.()
+    } catch (erro) {
+      console.error(erro)
+    }
+    setOuvindoPreVendaVoz(false)
+  }
+
+  async function atualizarReferenciaPreVenda(id, referencia) {
+    setPreVendas((listaAtual) => listaAtual.map((item) => (
+      item.id === id ? { ...item, referencia } : item
+    )))
+
+    const { error } = await supabase
+      .from('prevendas')
+      .update({ referencia, updated_at: new Date().toISOString() })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Erro ao atualizar referência da pré-venda:', error)
+      exibirToast('Erro ao salvar referência.')
+    }
+  }
+
+  async function atualizarStatusPreVenda(id, statusNovo) {
+    setPreVendas((listaAtual) => listaAtual.map((item) => (
+      item.id === id ? { ...item, status: statusNovo, mensagemGerada: statusNovo === 'Mensagem gerada' || item.mensagemGerada } : item
+    )))
+
+    const { error } = await supabase
+      .from('prevendas')
+      .update({
+        status: statusNovo,
+        mensagem_gerada: statusNovo === 'Mensagem gerada',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Erro ao atualizar status da pré-venda:', error)
+      exibirToast('Erro ao salvar status.')
+    }
+  }
+
+  function abrirEdicaoPreVenda(preVenda) {
+    const copia = {
+      ...preVenda,
+      itens: (preVenda?.itens || []).map((item) => ({ ...item })),
+    }
+    setPreVendaEdicaoModal({ aberto: true, preVenda: copia })
+  }
+
+  function fecharEdicaoPreVenda() {
+    setPreVendaEdicaoModal({ aberto: false, preVenda: null })
+  }
+
+  function atualizarCampoEdicaoPreVenda(campo, valor) {
+    setPreVendaEdicaoModal((atual) => ({
+      ...atual,
+      preVenda: {
+        ...(atual.preVenda || {}),
+        [campo]: valor,
+      },
+    }))
+  }
+
+  function atualizarItemEdicaoPreVenda(index, campo, valor) {
+    setPreVendaEdicaoModal((atual) => {
+      const itens = [...(atual.preVenda?.itens || [])]
+      itens[index] = { ...(itens[index] || {}), [campo]: valor }
+      return {
+        ...atual,
+        preVenda: {
+          ...(atual.preVenda || {}),
+          itens,
+        },
+      }
+    })
+  }
+
+  function adicionarItemEdicaoPreVenda() {
+    setPreVendaEdicaoModal((atual) => ({
+      ...atual,
+      preVenda: {
+        ...(atual.preVenda || {}),
+        itens: [
+          ...(atual.preVenda?.itens || []),
+          { nome: '', quantidade: 1, valorUnitario: 0, subtotal: 0, valor: 0 },
+        ],
+      },
+    }))
+  }
+
+  function removerItemEdicaoPreVenda(index) {
+    setPreVendaEdicaoModal((atual) => ({
+      ...atual,
+      preVenda: {
+        ...(atual.preVenda || {}),
+        itens: (atual.preVenda?.itens || []).filter((_, itemIndex) => itemIndex !== index),
+      },
+    }))
+  }
+
+  async function salvarEdicaoPreVenda() {
+    const editada = preVendaEdicaoModal.preVenda
+    if (!editada?.id) return
+
+    const itensTratados = (editada.itens || []).map((item) => {
+      const quantidade = Math.max(1, Number(item.quantidade || 1))
+      const valorUnitario = numero(item.valorUnitario || item.valor || 0)
+      const subtotal = quantidade * valorUnitario
+      return {
+        ...item,
+        nome: capitalizarNomeVendaAvulsa(item.nome || 'Produto'),
+        quantidade,
+        valorUnitario,
+        subtotal,
+        valor: subtotal,
+      }
+    }).filter((item) => item.nome && item.valorUnitario > 0)
+
+    const total = itensTratados.reduce((acc, item) => acc + Number(item.subtotal || 0), 0)
+    const atualizada = {
+      ...editada,
+      cliente: capitalizarNomeVendaAvulsa(editada.cliente || 'Cliente não informado'),
+      referencia: editada.referencia || '',
+      pagamento: editada.pagamento || extrairPagamentoPreVendaPorVoz(editada.transcricao || ''),
+      itens: itensTratados,
+      total,
+      transcricao: editada.transcricao || '',
+      status: editada.status || 'Pendente',
+    }
+
+    const payloadAtualizacaoPreVenda = montarPayloadPreVenda(atualizada)
+    let { data, error } = await supabase
+      .from('prevendas')
+      .update(payloadAtualizacaoPreVenda)
+      .eq('id', editada.id)
+      .select('*')
+      .single()
+
+    if (error && erroColunaFormaPagamentoPreVenda(error)) {
+      const tentativa = await supabase
+        .from('prevendas')
+        .update(payloadPreVendaSemFormaPagamento(payloadAtualizacaoPreVenda))
+        .eq('id', editada.id)
+        .select('*')
+        .single()
+      data = tentativa.data
+      error = tentativa.error
+    }
+
+    if (error) {
+      console.error('Erro ao editar pré-venda:', error)
+      exibirToast('Erro ao salvar edição da pré-venda.')
+      return
+    }
+
+    const normalizada = normalizarPreVendaBanco(data)
+    setPreVendas((listaAtual) => listaAtual.map((item) => (
+      item.id === normalizada.id ? normalizada : item
+    )))
+
+    fecharEdicaoPreVenda()
+    exibirToast('Pré-venda atualizada.')
+  }
+
+  function textoMensagemRegistroPreVenda(preVenda) {
+    const data = preVenda?.criadoEm ? dataBR(preVenda.criadoEm) : dataBR(dataHoje())
+    const itens = (preVenda?.itens || []).length > 0
+      ? (preVenda.itens || []).map((produto) => {
+          const quantidade = formatarQuantidadePreVenda(produto.quantidade || 1)
+          const nome = produto.nome || 'Produto'
+          const valorUnitario = Number(produto.valorUnitario || produto.valor || 0)
+          const subtotal = Number(produto.subtotal || produto.valor || valorUnitario)
+          return `• ${quantidade} ${nome} — ${moeda(subtotal)}`
+        }).join('\n')
+      : `• ${preVenda?.transcricao || 'Itens não informados'}`
+
+    return `📌 Registro de Compra – Queijos Serra da Canastra 🇧🇷
+
+👤 Cliente: ${preVenda?.cliente || 'Cliente'}
+📍 Referência: ${preVenda?.referencia || 'Não informada'}
+📅 ${data}
+
+🛒 Itens adquiridos:
+${itens}
+
+💰 Valor total: ${moeda(preVenda?.total || 0)}
+📌 Status: Em aberto
+
+📲 Conforme combinado, no dia do pagamento enviarei uma mensagem para a realização da transferência via Pix.
+
+Se preferir, o pagamento pode ser realizado a qualquer momento via Pix:
+
+queijosserradacanastra@hotmail.com
+
+Delber Vilaça
+Queijos Serra da Canastra 🇧🇷`
+  }
+
+  function abrirMensagemPreVenda(preVenda) {
+    const texto = textoMensagemRegistroPreVenda(preVenda)
+    setMensagemPreVendaModal({ aberto: true, preVendaId: preVenda?.id || '', texto })
+  }
+
+  async function copiarMensagemPreVenda() {
+    try {
+      await navigator.clipboard.writeText(mensagemPreVendaModal.texto || '')
+      if (mensagemPreVendaModal.preVendaId) await atualizarStatusPreVenda(mensagemPreVendaModal.preVendaId, 'Mensagem gerada')
+      exibirToast('Mensagem copiada.')
+    } catch (erro) {
+      console.error(erro)
+      exibirToast('Não consegui copiar automaticamente. Selecione o texto e copie manualmente.')
+    }
+  }
+
+  async function excluirPreVenda(id) {
+    if (!window.confirm('Excluir esta pré-venda?')) return
+
+    const listaAnterior = preVendas
+    setPreVendas((listaAtual) => listaAtual.filter((item) => item.id !== id))
+
+    const { error } = await supabase
+      .from('prevendas')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Erro ao excluir pré-venda:', error)
+      setPreVendas(listaAnterior)
+      exibirToast('Erro ao excluir pré-venda.')
+      return
+    }
+
+    exibirToast('Pré-venda excluída.')
+  }
+
+  function converterPreVendaEmVenda(preVenda) {
+    limparVenda()
+    const nomeCliente = capitalizarNomeVendaAvulsa(preVenda?.cliente || '')
+    const candidatos = candidatosClienteVendaPorVoz(nomeCliente)
+    const pagamentoInformado = preVenda?.pagamento || extrairPagamentoPreVendaPorVoz(preVenda?.transcricao || '')
+
+    setModalVendaAberto(true)
+    setValorTotal(preVenda?.total ? moedaInput(preVenda.total) : '')
+    setDataVenda(dataHoje())
+    setTextoVendaVoz(preVenda?.transcricao || '')
+    setAvisoVendaVoz('Pré-venda carregada. Escolha cliente cadastrado, cliente avulso ou cadastre um novo cliente antes de salvar.')
+    setBuscaClienteVenda(nomeCliente)
+    setClienteId('')
+    setClienteAvulsoVendaNome('')
+    setClienteVozPendente({
+      aberto: true,
+      etapa: 'escolha',
+      nome: nomeCliente,
+      candidatos,
+    })
+
+    if (pagamentoInformado) selecionarPagamentoVendaPorVoz(pagamentoInformado)
+
+    setPreVendaConvertendoId(preVenda.id || '')
+    atualizarStatusPreVenda(preVenda.id, 'Em lançamento')
+    setPreVendaDetalheModal({ aberto: false, preVenda: null })
+    setPagina('vendas')
+    setTimeout(() => buscaClienteVendaInputRef.current?.focus(), 100)
+  }
+
+
+  function montarDescricaoDeliveryPorPreVenda(preVenda) {
+    const itens = Array.isArray(preVenda?.itens) ? preVenda.itens : []
+    const linhasItens = itens.map((produto) => {
+      const quantidade = Number(produto.quantidade || 1)
+      const valorUnitario = Number(produto.valorUnitario ?? produto.valor_unitario ?? produto.valor ?? 0)
+      const subtotal = Number(produto.subtotal ?? produto.total ?? produto.valor ?? (quantidade * valorUnitario))
+      return `${formatarQuantidadePreVenda(quantidade)} ${produto.nome || 'Item'} • ${moeda(valorUnitario)} und. • Total ${moeda(subtotal)}`
+    })
+
+    const linhas = [
+      'Origem: Pré-venda',
+      preVenda?.referencia ? `Referência: ${preVenda.referencia}` : '',
+      preVenda?.pagamento ? `Pagamento informado: ${preVenda.pagamento}` : '',
+      linhasItens.length ? 'Itens:' : '',
+      ...linhasItens,
+      preVenda?.transcricao ? `Transcrição: ${preVenda.transcricao}` : '',
+    ].filter(Boolean)
+
+    return linhas.join('\n')
+  }
+
+  function encontrarClienteParaDeliveryPorPreVenda(nomeCliente) {
+    const nomeNormalizado = normalizarTexto(nomeCliente || '')
+    if (!nomeNormalizado) return null
+
+    return (clientes || []).find((cliente) => {
+      if (cliente.ativo === false) return false
+      return normalizarTexto(cliente.nome || '') === nomeNormalizado
+    }) || (clientes || []).find((cliente) => {
+      if (cliente.ativo === false) return false
+      const clienteNormalizado = normalizarTexto(cliente.nome || '')
+      return clienteNormalizado.includes(nomeNormalizado) || nomeNormalizado.includes(clienteNormalizado)
+    }) || null
+  }
+
+  function criarDeliveryAPartirPreVenda(preVenda) {
+    if (!preVenda) return
+
+    const clienteEncontrado = encontrarClienteParaDeliveryPorPreVenda(preVenda.cliente)
+    const descricao = montarDescricaoDeliveryPorPreVenda(preVenda)
+
+    setEditandoDeliveryId(null)
+    setFormDelivery({
+      venda_id: '',
+      data_pedido: dataHoje(),
+      data_entrega: '',
+      cliente_id: clienteEncontrado?.id || '',
+      referencia: preVenda.referencia || clienteEncontrado?.referencia || '',
+      local_entrega: preVenda.referencia || clienteEncontrado?.referencia || '',
+      descricao,
+      valor_total: preVenda.total ? moedaInput(preVenda.total) : '',
+      status: 'Programado',
+    })
+
+    setPreVendaDeliveryOrigemId(preVenda.id || '')
+    atualizarStatusPreVenda(preVenda.id, 'Em delivery')
+    setPreVendaDetalheModal({ aberto: false, preVenda: null })
+    setPagina('delivery')
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80)
+
+    if (!clienteEncontrado) {
+      exibirToast('Delivery aberto. Selecione ou cadastre o cliente antes de salvar.')
+    } else {
+      exibirToast('Delivery aberto com os dados da pré-venda.')
+    }
+  }
+
+  function preVendasFiltradas() {
+    const termo = normalizarTexto(buscaPreVendas)
+    const prioridadeStatus = (statusItem) => {
+      const statusNormalizado = normalizarTexto(statusItem || 'Pendente')
+      if (statusNormalizado.includes('convertida') || statusNormalizado.includes('convertido') || statusNormalizado.includes('delivery programado')) return 3
+      if (statusNormalizado.includes('delivery') || statusNormalizado.includes('lancamento') || statusNormalizado.includes('lançamento')) return 2
+      if (statusNormalizado.includes('mensagem')) return 1
+      return 0
+    }
+
+    return preVendas
+      .filter((item) => {
+        if (!termo) return true
+        const texto = [
+          item.cliente,
+          item.referencia,
+          item.pagamento,
+          item.status,
+          item.transcricao,
+          ...(item.itens || []).map((produto) => produto.nome),
+        ].join(' ')
+        return normalizarTexto(texto).includes(termo)
+      })
+      .sort((a, b) => {
+        const prioridadeA = prioridadeStatus(a.status)
+        const prioridadeB = prioridadeStatus(b.status)
+        if (prioridadeA !== prioridadeB) return prioridadeA - prioridadeB
+        return new Date(b.criadoEm || b.created_at || 0).getTime() - new Date(a.criadoEm || a.created_at || 0).getTime()
+      })
+  }
+
+  function extrairDataVendaPorVoz(texto, usarHojeComoBase = true) {
+    const normalizado = limparPontuacaoTexto(texto)
+    const hoje = new Date()
+    const anoAtual = hoje.getFullYear()
+    const meses = {
+      janeiro: 1,
+      fevereiro: 2,
+      marco: 3,
+      abril: 4,
+      maio: 5,
+      junho: 6,
+      julho: 7,
+      agosto: 8,
+      setembro: 9,
+      outubro: 10,
+      novembro: 11,
+      dezembro: 12,
+    }
+
+    const dataNumerica = normalizado.match(/(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?/)
+    if (dataNumerica) {
+      const dia = String(dataNumerica[1]).padStart(2, '0')
+      const mes = String(dataNumerica[2]).padStart(2, '0')
+      const ano = dataNumerica[3]
+        ? String(dataNumerica[3].length === 2 ? `20${dataNumerica[3]}` : dataNumerica[3])
+        : String(anoAtual)
+      return `${ano}-${mes}-${dia}`
+    }
+
+    const dataComMes = normalizado.match(/(?:dia\s*)?(\d{1,2})\s*(?:de\s*)?(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)/)
+    if (dataComMes) {
+      const dia = String(dataComMes[1]).padStart(2, '0')
+      const mes = String(meses[dataComMes[2]]).padStart(2, '0')
+      return `${anoAtual}-${mes}-${dia}`
+    }
+
+    const apenasDia = normalizado.match(/(?:vencimento|vence|vencer|dia)\s*(?:dia\s*)?(\d{1,2})\b/)
+    if (apenasDia && usarHojeComoBase) {
+      const diaInformado = Number(apenasDia[1])
+      const dataBase = new Date(hoje.getFullYear(), hoje.getMonth(), diaInformado)
+      if (diaInformado < hoje.getDate() - 3) dataBase.setMonth(dataBase.getMonth() + 1)
+      return dataISO(dataBase)
+    }
+
+    return ''
+  }
+
+  function selecionarPagamentoVendaPorVoz(texto) {
+    const normalizado = limparPontuacaoTexto(texto)
+
+    let formaPreferida = ''
+    if (/\bfiado\b|em aberto|aberto|prazo/.test(normalizado)) formaPreferida = 'Fiado / Em aberto'
+    else if (/\bpix\b|\bpics\b|\bpic\b|\bpiques\b|\bpixx\b/.test(normalizado)) formaPreferida = 'Pix'
+    else if (/debito|cartao de debito/.test(normalizado)) formaPreferida = 'Débito'
+    else if (/mastercard|master card|master/.test(normalizado)) formaPreferida = 'Mastercard'
+    else if (/visa/.test(normalizado)) formaPreferida = 'Visa'
+    else if (/credito|cartao/.test(normalizado)) formaPreferida = 'Crédito'
+    else if (/dinheiro|especie/.test(normalizado)) formaPreferida = 'Dinheiro'
+
+    if (!formaPreferida) return
+
+    const taxaEncontrada = taxas.find((taxa) => normalizarTexto(taxa.forma_pagamento).includes(normalizarTexto(formaPreferida)))
+    if (taxaEncontrada) setTaxaSelecionadaId(taxaEncontrada.id)
+  }
+
+  function selecionarStatusVendaPorVoz(texto) {
+    const normalizado = limparPontuacaoTexto(texto)
+
+    if (/\bpago\b|pagou|recebido|quitado|\bpix\b|\bpics\b|\bpic\b|dinheiro|debito|credito|cartao|visa|master/.test(normalizado) && !/fiado|em aberto|aberto|prazo/.test(normalizado)) {
+      setStatus('PAGO')
+      setVencimento('')
+      return
+    }
+
+    if (/parcial|parte|entrada/.test(normalizado)) {
+      setStatus('PARCIAL')
+      return
+    }
+
+    if (/fiado|em aberto|aberto|prazo|vencimento|vence/.test(normalizado)) {
+      setStatus('EM ABERTO')
+    }
+  }
+
+  function aplicarTextoVendaPorVoz(texto) {
+    const textoLimpo = String(texto || '').trim()
+    if (!textoLimpo) return
+
+    const clienteTexto = extrairTextoClienteVendaPorVoz(textoLimpo)
+    const clienteSelecionado = selecionarClienteVendaPorVoz(clienteTexto, textoLimpo)
+    const valorExtraido = extrairValorVendaPorVoz(textoLimpo)
+    const vencimentoExtraido = extrairDataVendaPorVoz(textoLimpo, true)
+
+    if (valorExtraido) setValorTotal(valorExtraido)
+    selecionarPagamentoVendaPorVoz(textoLimpo)
+    selecionarStatusVendaPorVoz(textoLimpo)
+    if (vencimentoExtraido && /vencimento|vence|vencer|fiado|em aberto|aberto|prazo/.test(limparPontuacaoTexto(textoLimpo))) {
+      setVencimento(vencimentoExtraido)
+    }
+
+    const resumo = []
+    if (clienteTexto) {
+      if (clienteSelecionado === 'PENDENTE_ESCOLHA') resumo.push(`cliente ${capitalizarNomeVendaAvulsa(clienteTexto)} aguardando escolha: avulso ou cadastrado`)
+      else if (clienteSelecionado === 'AVULSO_NOMEADO') resumo.push(`cliente ${capitalizarNomeVendaAvulsa(clienteTexto)} registrado como venda avulsa`)
+      else resumo.push(clienteSelecionado ? 'cliente selecionado' : 'cliente pesquisado')
+    }
+    if (valorExtraido) resumo.push(`valor ${valorExtraido}`)
+    if (vencimentoExtraido) resumo.push('vencimento identificado')
+
+    setAvisoVendaVoz(resumo.length > 0
+      ? `Voz aplicada: ${resumo.join(', ')}. Confira os campos antes de salvar.`
+      : 'Não consegui identificar dados suficientes. Tente falar cliente, valor e pagamento. Exemplo: Ana Paula, 120, Pix.')
+  }
+
+  function iniciarLancamentoVendaPorVoz() {
+    if (!speechVendaDisponivel) {
+      setAvisoVendaVoz('Microfone por voz não disponível neste navegador. Use Chrome ou Edge.')
+      return
+    }
+
+    try {
+      const Reconhecimento = window.SpeechRecognition || window.webkitSpeechRecognition
+      const reconhecimento = new Reconhecimento()
+      reconhecimentoVendaRef.current = reconhecimento
+      reconhecimento.lang = 'pt-BR'
+      reconhecimento.interimResults = false
+      reconhecimento.continuous = false
+      reconhecimento.maxAlternatives = 1
+
+      reconhecimento.onstart = () => {
+        setOuvindoVendaVoz(true)
+        setAvisoVendaVoz('Ouvindo. Pode falar curto: cliente, valor e pagamento. Exemplo: Ana Paula, 120, Pix.')
+      }
+
+      reconhecimento.onerror = (evento) => {
+        setOuvindoVendaVoz(false)
+        setAvisoVendaVoz(evento?.error === 'not-allowed'
+          ? 'Permita o uso do microfone no navegador para lançar por voz.'
+          : 'Não consegui ouvir com clareza. Tente novamente em um ambiente mais silencioso.')
+      }
+
+      reconhecimento.onend = () => {
+        setOuvindoVendaVoz(false)
+      }
+
+      reconhecimento.onresult = (evento) => {
+        const textoFalado = Array.from(evento.results || [])
+          .map((resultado) => resultado?.[0]?.transcript || '')
+          .join(' ')
+          .trim()
+
+        setTextoVendaVoz(textoFalado)
+        aplicarTextoVendaPorVoz(textoFalado)
+      }
+
+      reconhecimento.start()
+    } catch (erro) {
+      console.error(erro)
+      setOuvindoVendaVoz(false)
+      setAvisoVendaVoz('Não foi possível iniciar o microfone neste navegador.')
+    }
+  }
+
+  function pararLancamentoVendaPorVoz() {
+    try {
+      reconhecimentoVendaRef.current?.stop?.()
+    } catch (erro) {
+      console.error(erro)
+    } finally {
+      setOuvindoVendaVoz(false)
+    }
   }
 
 
@@ -1031,28 +3024,61 @@ export default function App() {
     return String(nome || '').trim().split(/\s+/)[0] || 'Cliente'
   }
 
+  function criarDataSegura(data) {
+    if (!data) return null
+    if (data instanceof Date) return Number.isNaN(data.getTime()) ? null : data
+
+    const texto = String(data).trim()
+    if (!texto) return null
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+      const [ano, mes, dia] = texto.split('-').map(Number)
+      return new Date(ano, mes - 1, dia, 12, 0, 0)
+    }
+
+    const dataObj = new Date(texto)
+    return Number.isNaN(dataObj.getTime()) ? null : dataObj
+  }
+
+  function formatarDataBrasil(data) {
+    const dataObj = criarDataSegura(data)
+    if (!dataObj) return 'Sem data'
+
+    return new Intl.DateTimeFormat('pt-BR', {
+      timeZone: TIME_ZONE_BRASIL,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(dataObj)
+  }
+
+  function formatarHoraBrasil(data) {
+    const dataObj = criarDataSegura(data)
+    if (!dataObj) return '--:--'
+
+    return new Intl.DateTimeFormat('pt-BR', {
+      timeZone: TIME_ZONE_BRASIL,
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(dataObj)
+  }
+
+  function formatarDataHoraBrasil(data) {
+    const dataObj = criarDataSegura(data)
+    if (!dataObj) return 'Sem data'
+    return `${formatarDataBrasil(dataObj)} às ${formatarHoraBrasil(dataObj)}`
+  }
+
   function dataBR(data) {
-    if (!data) return 'Sem data'
-
-    const texto = String(data)
-    const apenasData = texto.includes('T') ? texto.split('T')[0] : texto.slice(0, 10)
-    const partes = apenasData.split('-')
-
-    if (partes.length !== 3) return texto
-
-    return `${partes[2]}/${partes[1]}/${partes[0]}`
+    return formatarDataBrasil(data)
   }
 
   function dataHoraBR(data) {
-    if (!data) return 'Sem data'
+    return formatarDataHoraBrasil(data)
+  }
 
-    const texto = String(data)
-    const dataFormatada = dataBR(texto)
-
-    if (!texto.includes('T')) return dataFormatada
-
-    const hora = texto.split('T')[1]?.slice(0, 5)
-    return hora ? `${dataFormatada} às ${hora}` : dataFormatada
+  function horaBR(data) {
+    return formatarHoraBrasil(data)
   }
 
   function diasDesdeData(data) {
@@ -1138,8 +3164,14 @@ export default function App() {
       .select('*')
       .order('nome', { ascending: true })
 
-    if (error) console.error(error)
+    if (error) {
+      console.error(error)
+      const cache = lerJsonLocal(CHAVE_CACHE_OFFLINE, {}) || {}
+      if (Array.isArray(cache.clientes)) setClientes(cache.clientes)
+      return
+    }
     setClientes(data || [])
+    atualizarCacheOffline({ clientes: data || [] })
   }
 
   async function buscarTaxas() {
@@ -1201,8 +3233,14 @@ export default function App() {
       `)
       .order('nome', { ascending: true })
 
-    if (error) console.error(error)
+    if (error) {
+      console.error(error)
+      const cache = lerJsonLocal(CHAVE_CACHE_OFFLINE, {}) || {}
+      if (Array.isArray(cache.produtos)) setProdutos(cache.produtos)
+      return
+    }
     setProdutos(data || [])
+    atualizarCacheOffline({ produtos: data || [] })
   }
 
   async function buscarFornecedores() {
@@ -1252,8 +3290,14 @@ export default function App() {
       `)
       .order('created_at', { ascending: false })
 
-    if (error) console.error(error)
+    if (error) {
+      console.error(error)
+      const cache = lerJsonLocal(CHAVE_CACHE_OFFLINE, {}) || {}
+      if (Array.isArray(cache.pendencias)) setPendencias(cache.pendencias)
+      return
+    }
     setPendencias(data || [])
+    atualizarCacheOffline({ pendencias: data || [] })
   }
 
   async function buscarPagamentos() {
@@ -1263,6 +3307,7 @@ export default function App() {
         *,
         vendas (
           numero_venda,
+          cliente_nome_avulso,
           clientes (
             nome,
             referencia,
@@ -1342,11 +3387,13 @@ export default function App() {
 
     if (error) {
       console.error(error)
-      setDeliveries([])
+      const cache = lerJsonLocal(CHAVE_CACHE_OFFLINE, {}) || {}
+      if (Array.isArray(cache.deliveries)) setDeliveries(cache.deliveries)
       return
     }
 
     setDeliveries(data || [])
+    atualizarCacheOffline({ deliveries: data || [] })
   }
 
 
@@ -1467,6 +3514,14 @@ export default function App() {
       status: statusFinal,
     }
 
+    const clienteSelecionadoVenda = clientes.find((cliente) => String(cliente.id) === String(clienteId))
+    const clienteSelecionadoEhAvulso = normalizarTexto(clienteSelecionadoVenda?.nome || '').includes('cliente avulso') || normalizarTexto(clienteSelecionadoVenda?.nome || '') === 'avulso'
+    const nomeAvulsoParaSalvar = capitalizarNomeVendaAvulsa(clienteAvulsoVendaNome || (clienteSelecionadoEhAvulso ? buscaClienteVenda : ''))
+
+    if (nomeAvulsoParaSalvar && normalizarTexto(nomeAvulsoParaSalvar) !== 'cliente avulso') {
+      dadosVenda.cliente_nome_avulso = nomeAvulsoParaSalvar
+    }
+
     if (editandoVendaId) {
       const { error } = await supabase
         .from('vendas')
@@ -1545,12 +3600,18 @@ export default function App() {
 
     await ajustarPendencia(vendaCriada.id, saldoPendencia, statusFinal)
 
+    const origemPreVendaId = preVendaConvertendoId
+    if (origemPreVendaId) {
+      await atualizarStatusPreVenda(origemPreVendaId, 'Venda convertida')
+      setPreVendaConvertendoId('')
+    }
+
     limparVenda()
-    setModalVendaAberto(true)
-    buscarTudo()
-    setPagina('vendas')
-    exibirToast('Venda lançada com sucesso.')
-    setTimeout(() => buscaClienteVendaInputRef.current?.focus(), 80)
+    setModalVendaAberto(false)
+    await buscarTudo()
+    setPagina(origemPreVendaId ? 'pre-vendas' : 'vendas')
+    exibirToast(origemPreVendaId ? 'Venda lançada e pré-venda convertida.' : 'Venda lançada com sucesso.')
+    if (!origemPreVendaId) setTimeout(() => buscaClienteVendaInputRef.current?.focus(), 80)
   }
 
   async function ajustarPendencia(vendaId, valor, statusVenda) {
@@ -1619,6 +3680,8 @@ export default function App() {
 
     setEditandoVendaId(venda.id)
     setClienteId(venda.cliente_id)
+    setClienteAvulsoVendaNome(venda.cliente_nome_avulso || '')
+    setBuscaClienteVenda(venda.cliente_nome_avulso || '')
     setValorTotal(String(venda.valor_total || ''))
     setValorPagoVenda('')
     setDataVenda(venda.data_venda || dataHoje())
@@ -1639,6 +3702,11 @@ export default function App() {
     setDataVenda(dataHoje())
     setStatus('EM ABERTO')
     setVencimento('')
+    setTextoVendaVoz('')
+    setAvisoVendaVoz('')
+    setClienteAvulsoVendaNome('')
+    setClienteVozPendente({ aberto: false, etapa: 'escolha', nome: '', candidatos: [] })
+    setOuvindoVendaVoz(false)
 
     const fiado = taxas.find((item) => item.forma_pagamento === 'Fiado / Em aberto')
     if (fiado) setTaxaSelecionadaId(fiado.id)
@@ -2076,7 +4144,7 @@ export default function App() {
       return
     }
 
-    const cliente = pagamento.vendas?.clientes?.nome || 'cliente não informado'
+    const cliente = nomeClientePagamento(pagamento)
     const numeroVenda = pagamento.vendas?.numero_venda ? `#${pagamento.vendas.numero_venda}` : 'sem número'
     const confirmar = window.confirm(
       `Deseja estornar o pagamento de ${moeda(pagamento.valor_pago)} do cliente ${cliente}, venda ${numeroVenda}?\n\nO pagamento ficará no histórico como ESTORNADO, sairá do total recebido e a venda será recalculada.`
@@ -2156,7 +4224,7 @@ export default function App() {
         vendaId: pagamento.venda_id,
         valorBruto: pagamento.valor_pago,
         formaPagamento: pagamento.forma_pagamento,
-        cliente: pagamento.vendas?.clientes?.nome || '',
+        cliente: nomeClientePagamento(pagamento),
         origem: 'Estorno forçado',
         observacao: pagamento.observacao_estorno || 'Saída automática por estorno forçado.',
       })
@@ -2195,7 +4263,7 @@ export default function App() {
         vendaId: pagamento.venda_id,
         valorBruto: pagamento.valor_pago,
         formaPagamento: pagamento.forma_pagamento,
-        cliente: pagamento.vendas?.clientes?.nome || '',
+        cliente: nomeClientePagamento(pagamento),
         origem: 'Reativação de pagamento',
         observacao: 'Entrada automática por reativação de pagamento.',
       })
@@ -2772,6 +4840,7 @@ Delber Vilaça`
   }
 
   function abrirModalNovoCliente() {
+    setClienteModalOrigemVenda(false)
     setClienteExpandidoId(null)
     setEditandoClienteId(null)
     setFormCliente({ nome: '', referencia: '', observacao: '', telefone: '' })
@@ -2786,7 +4855,26 @@ Delber Vilaça`
     })
   }
 
+  function abrirModalNovoClientePelaVenda() {
+    const nomeSugerido = capitalizarNomeVendaAvulsa(clienteAvulsoVendaNome || buscaClienteVenda || '')
+
+    setClienteModalOrigemVenda(true)
+    setClienteExpandidoId(null)
+    setEditandoClienteId(null)
+    setFormCliente({ nome: '', referencia: '', observacao: '', telefone: '' })
+    setModalEdicaoCliente({
+      aberto: true,
+      cliente: null,
+      nome: nomeSugerido,
+      referencia: '',
+      observacao: '',
+      telefone: '',
+      ativo: true,
+    })
+  }
+
   function editarCliente(cliente) {
+    setClienteModalOrigemVenda(false)
     setClienteExpandidoId(null)
     setModalEdicaoCliente({
       aberto: true,
@@ -2800,6 +4888,7 @@ Delber Vilaça`
   }
 
   function fecharModalEdicaoCliente() {
+    setClienteModalOrigemVenda(false)
     setModalEdicaoCliente({
       aberto: false,
       cliente: null,
@@ -2862,13 +4951,31 @@ Delber Vilaça`
       return
     }
 
-    const { error } = await supabase
+    const { data: clienteCriado, error } = await supabase
       .from('clientes')
       .insert(dadosCliente)
+      .select('*')
+      .single()
 
     if (error) {
       console.error(error)
       exibirToast('Erro ao cadastrar cliente.', 'erro')
+      return
+    }
+
+    if (clienteModalOrigemVenda && clienteCriado?.id) {
+      setClientes((listaAtual) => {
+        const jaExiste = listaAtual.some((cliente) => String(cliente.id) === String(clienteCriado.id))
+        return jaExiste ? listaAtual : [clienteCriado, ...listaAtual]
+      })
+      setClienteId(clienteCriado.id)
+      setBuscaClienteVenda('')
+      setClienteAvulsoVendaNome('')
+      setClienteVozPendente({ aberto: false, etapa: 'escolha', nome: '', candidatos: [] })
+      setClienteModalOrigemVenda(false)
+      fecharModalEdicaoCliente()
+      buscarTudo()
+      exibirToast('Cliente cadastrado e selecionado na venda.')
       return
     }
 
@@ -3597,8 +5704,17 @@ Delber Vilaça`
       }
     }
 
+    const origemPreVendaId = preVendaDeliveryOrigemId
+
     limparDelivery()
     buscarDelivery()
+
+    if (origemPreVendaId && !editandoDeliveryId) {
+      await atualizarStatusPreVenda(origemPreVendaId, 'Delivery programado')
+      setPreVendaDeliveryOrigemId('')
+      setPagina('pre-vendas')
+      exibirToast('Delivery criado e pré-venda atualizada.')
+    }
   }
 
   function editarDelivery(item) {
@@ -4209,11 +6325,14 @@ Delber Vilaça`
 
   const itensMenu = [
     { id: 'painel', icone: '📊', texto: 'Painel' },
+    { id: 'pre-vendas', icone: '🎙️', texto: 'Pré-vendas' },
     { id: 'vendas', icone: '🧾', texto: 'Vendas' },
     { id: 'clientes', icone: '👤', texto: 'Cadastro de Clientes' },
     { id: 'produtos', icone: '🧀', texto: 'Cadastro de Produtos' },
     { id: 'produtos-controle', icone: '📦', texto: 'Lançamentos de Produtos' },
     { id: 'delivery', icone: '🚚', texto: 'Delivery' },
+    { id: 'offline', icone: '🛡️', texto: 'Operação Offline' },
+    { id: 'diagnostico', icone: '🩺', texto: 'Diagnóstico do Sistema' },
     { id: 'roteiro-vendas', icone: '📍', texto: 'Locais e Clientes' },
     { id: 'pendencias', icone: '💰', texto: 'Pendências' },
     { id: 'cobrancas', icone: '🧾', texto: 'Cobranças' },
@@ -4812,14 +6931,494 @@ Delber Vilaça`
   }
 
 
+  function TelaPreVendas() {
+    const lista = preVendasFiltradas()
+    const totalPendente = preVendas.filter((item) => {
+      const st = normalizarTexto(item.status || '')
+      return !st.includes('convertida') && !st.includes('convertido') && !st.includes('delivery programado')
+    }).length
+    const detalhe = preVendaDetalheModal.preVenda
+
+    function abrirDetalhePreVenda(preVenda) {
+      setPreVendaDetalheModal({ aberto: true, preVenda })
+    }
+
+    function fecharDetalhePreVenda() {
+      setPreVendaDetalheModal({ aberto: false, preVenda: null })
+    }
+
+    function renderLinhaPreVenda(item) {
+      const itens = item.itens || []
+      const primeiroItem = itens[0]?.nome || ''
+      const resumoItens = itens.length > 1 ? `${itens.length} itens capturados` : primeiroItem || 'Itens pela transcrição'
+      const referencia = item.referencia || 'Sem referência'
+      const pagamento = item.pagamento || extrairPagamentoPreVendaPorVoz(item.transcricao || '')
+      const statusTexto = item.status || 'Pendente'
+      const statusNormalizado = normalizarTexto(statusTexto)
+      const estaConvertida = statusNormalizado.includes('convertida') || statusNormalizado.includes('convertido')
+      const estaDeliveryProgramado = statusNormalizado.includes('delivery programado')
+      const estaFinalizada = estaConvertida || estaDeliveryProgramado
+      const estaDelivery = statusNormalizado.includes('delivery') && !estaDeliveryProgramado
+      const estaEmLancamento = estaDelivery || statusNormalizado.includes('lancamento') || statusNormalizado.includes('lançamento')
+      const cardClass = estaFinalizada
+        ? estaDeliveryProgramado
+          ? 'w-full rounded-xl border border-amber-950/70 bg-amber-950/10 hover:border-amber-800/80 hover:bg-amber-950/20 px-3 py-2 text-left transition opacity-85'
+          : 'w-full rounded-xl border border-emerald-950/70 bg-emerald-950/10 hover:border-emerald-800/80 hover:bg-emerald-950/20 px-3 py-2 text-left transition opacity-85'
+        : estaEmLancamento
+          ? 'w-full rounded-2xl border border-orange-700/70 bg-orange-950/20 hover:border-orange-500 hover:bg-orange-950/30 px-4 py-3 text-left transition shadow-[0_0_0_1px_rgba(251,146,60,0.08)]'
+          : 'w-full rounded-2xl border border-zinc-900 bg-[#181410] hover:border-orange-900/80 hover:bg-[#211915] px-4 py-3 text-left transition'
+      const statusClass = estaFinalizada
+        ? estaDeliveryProgramado
+          ? 'rounded-full bg-amber-950/60 px-2.5 py-1 text-[10px] font-bold text-amber-200 border border-amber-900/70'
+          : 'rounded-full bg-emerald-950/60 px-2.5 py-1 text-[10px] font-bold text-emerald-200 border border-emerald-900/70'
+        : estaEmLancamento
+          ? 'rounded-full bg-orange-900/70 px-3 py-1 text-[11px] font-bold text-orange-100 border border-orange-700/70'
+          : 'rounded-full bg-black px-3 py-1 text-[11px] font-bold text-zinc-200 border border-zinc-800'
+
+      return (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => abrirDetalhePreVenda(item)}
+          className={cardClass}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className={`${estaFinalizada ? 'text-[9px]' : 'text-[10px]'} uppercase tracking-[0.22em] text-zinc-500 font-bold`}>
+                {estaFinalizada ? (estaDeliveryProgramado ? 'Delivery programado' : 'Venda convertida') : `Pré-venda #${String(item.id || '').slice(-4)} • ${horaBR(item.criadoEm)}`}
+              </p>
+              <div className={`mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 ${estaFinalizada ? 'opacity-90' : ''}`}>
+                <h3 className={`${estaFinalizada ? 'text-base' : 'text-lg'} font-black text-white leading-tight truncate`}>
+                  {estaFinalizada ? `${estaDeliveryProgramado ? '🚚' : '✓'} ${item.cliente}` : item.cliente}
+                </h3>
+                <span className={`${estaFinalizada ? (estaDeliveryProgramado ? 'text-base text-amber-200' : 'text-base text-emerald-200') : 'text-lg text-orange-300'} font-black leading-tight`}>
+                  {moeda(item.total)}
+                </span>
+              </div>
+              {!estaFinalizada && (
+                <p className="mt-1 text-sm text-zinc-400 leading-snug">
+                  📍 {referencia} <span className="text-zinc-600">•</span> 🛒 {resumoItens}
+                  {pagamento ? <><span className="text-zinc-600"> • </span>💳 {pagamento}</> : null}
+                </p>
+              )}
+              {estaFinalizada && (
+                <p className={`mt-0.5 text-xs ${estaDeliveryProgramado ? 'text-amber-300/80' : 'text-emerald-300/80'} leading-snug`}>
+                  Clique para abrir detalhes
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={statusClass}>
+                {estaFinalizada ? (estaDeliveryProgramado ? 'Delivery' : 'Convertida') : statusTexto}
+              </span>
+              <span className={`${estaFinalizada ? (estaDeliveryProgramado ? 'text-amber-500/70' : 'text-emerald-500/70') : 'text-zinc-500'} text-xl leading-none`}>›</span>
+            </div>
+          </div>
+        </button>
+      )
+    }
+
+    return (
+      <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-5 lg:p-8">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+          <div>
+            <p className="text-orange-400 uppercase tracking-[5px] text-xs mb-3">Pré-vendas</p>
+            <h2 className="text-3xl lg:text-5xl font-bold leading-tight">Pré-vendas</h2>
+            <p className="text-zinc-500 mt-3 max-w-2xl">
+              Registre pedidos por voz durante o recreio. Cada gravação vira um registro compacto. Clique para conferir, gerar mensagem ou converter em venda.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 px-4 py-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Pendentes</p>
+            <p className="text-3xl font-bold text-orange-300">{totalPendente}</p>
+          </div>
+        </div>
+
+        <div className="rounded-[26px] border border-orange-950/70 bg-[#15110f]/80 p-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-orange-400 font-bold">Nova pré-venda por voz</p>
+              <p className="text-xs text-zinc-500 mt-1">
+                Fale um cliente por vez. Pode pausar naturalmente e clique em parar para criar o registro.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={ouvindoPreVendaVoz ? pararPreVendaPorVoz : iniciarPreVendaPorVoz}
+              disabled={!speechVendaDisponivel}
+              className={`rounded-2xl px-5 py-4 text-sm font-bold transition ${
+                ouvindoPreVendaVoz
+                  ? 'bg-red-950 hover:bg-red-900 text-red-100'
+                  : 'bg-orange-950 hover:bg-orange-900 text-white'
+              } disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              {ouvindoPreVendaVoz ? '■ Parar e criar registro' : '🎙️ Nova pré-venda'}
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-2 text-xs">
+            <p className="text-zinc-400">
+              Exemplo: <span className="text-zinc-200">Rosângela EP 210 Norte, um Vila Caipira 79, uma cocada 49, pagamento crédito.</span>
+            </p>
+
+            {textoPreVendaVoz && (
+              <p className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-zinc-300">
+                Último registro ouvido: {textoPreVendaVoz}
+              </p>
+            )}
+
+            {avisoPreVenda && (
+              <p className="rounded-xl border border-orange-950 bg-orange-950/20 px-3 py-2 text-orange-200">
+                {avisoPreVenda}
+              </p>
+            )}
+
+            {!speechVendaDisponivel && (
+              <p className="text-red-300">Este navegador não liberou o microfone. No celular, teste preferencialmente no Chrome.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <input
+            value={buscaPreVendas}
+            onChange={(e) => setBuscaPreVendas(e.target.value)}
+            placeholder="Buscar por cliente, referência, produto ou texto falado"
+            className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
+          />
+        </div>
+
+        <div className="grid gap-2">
+          {lista.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/40 p-6 text-sm text-zinc-500">
+              Nenhuma pré-venda encontrada.
+            </div>
+          )}
+
+          {lista.map(renderLinhaPreVenda)}
+        </div>
+
+        {preVendaDetalheModal.aberto && detalhe && (
+          <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/85 p-3 pt-6 pb-[140px] backdrop-blur-sm md:items-center md:p-4">
+            <div className="w-full max-w-4xl rounded-[26px] border border-orange-950 bg-[#15110f] p-4 shadow-2xl md:p-6">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-orange-400 font-bold">Detalhe da pré-venda</p>
+                  <h3 className="mt-1 text-2xl font-black text-white leading-tight">{detalhe.cliente}</h3>
+                  <p className="text-sm text-zinc-400 mt-1">{dataBR(detalhe.criadoEm)}, {horaBR(detalhe.criadoEm)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fecharDetalhePreVenda}
+                  className="w-12 h-12 rounded-2xl bg-zinc-900 text-2xl font-black text-white hover:bg-zinc-800 shrink-0"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">Referência</p>
+                  <p className="mt-1 text-base font-bold text-white">{detalhe.referencia || 'Não informada'}</p>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">Pagamento</p>
+                  <p className="mt-1 text-base font-bold text-white">{detalhe.pagamento || extrairPagamentoPreVendaPorVoz(detalhe.transcricao || '') || 'Não informado'}</p>
+                </div>
+                <div className="rounded-2xl border border-orange-950 bg-orange-950/20 px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-orange-300 font-bold">Total</p>
+                  <p className="mt-1 text-xl font-black text-orange-200">{moeda(detalhe.total)}</p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-900 bg-black/70 p-4 mb-4">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold mb-3">Itens capturados</p>
+                <div className="grid gap-2">
+                  {(detalhe.itens || []).length > 0 ? (detalhe.itens || []).map((produto, idx) => {
+                    const quantidade = Number(produto.quantidade || 1)
+                    const valorUnitario = Number(produto.valorUnitario ?? produto.valor_unitario ?? produto.valor ?? 0)
+                    const subtotal = Number(produto.subtotal ?? produto.total ?? produto.valor ?? (quantidade * valorUnitario))
+                    return (
+                      <div key={`detalhe-prevenda-${idx}`} className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-200">
+                        <span className="font-bold text-white">{formatarQuantidadePreVenda(quantidade)} {produto.nome}</span>
+                        <span className="text-zinc-500"> • </span>
+                        <span className="text-orange-200">{moeda(valorUnitario)} und.</span>
+                        <span className="text-zinc-500"> • </span>
+                        <strong className="text-orange-100">Total {moeda(subtotal)}</strong>
+                      </div>
+                    )
+                  }) : (
+                    <p className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-300">
+                      {detalhe.transcricao || 'Itens não informados'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {detalhe.transcricao && (
+                <details className="mb-4 text-sm text-zinc-400">
+                  <summary className="cursor-pointer font-semibold text-zinc-300">Ver transcrição original</summary>
+                  <p className="mt-2 rounded-xl border border-zinc-800 bg-black p-3 text-zinc-300">{detalhe.transcricao}</p>
+                </details>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    abrirEdicaoPreVenda(detalhe)
+                    fecharDetalhePreVenda()
+                  }}
+                  className="rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 py-3 text-sm font-bold text-white"
+                >
+                  ✏️ Editar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => abrirMensagemPreVenda(detalhe)}
+                  className="rounded-xl bg-green-800 hover:bg-green-700 px-4 py-3 text-sm font-bold text-white"
+                >
+                  📲 Gerar mensagem
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => converterPreVendaEmVenda(detalhe)}
+                  className="rounded-xl bg-orange-950 hover:bg-orange-900 px-4 py-3 text-sm font-bold text-white"
+                >
+                  Converter em venda
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => criarDeliveryAPartirPreVenda(detalhe)}
+                  className="rounded-xl bg-amber-900 hover:bg-amber-800 px-4 py-3 text-sm font-bold text-white"
+                >
+                  Criar delivery
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    excluirPreVenda(detalhe.id)
+                    fecharDetalhePreVenda()
+                  }}
+                  className="rounded-xl border border-red-950 bg-red-950/20 hover:bg-red-950/40 px-4 py-3 text-sm font-semibold text-red-100"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {preVendaEdicaoModal.aberto && preVendaEdicaoModal.preVenda && (
+          <div className="mini-prevenda-edit-backdrop fixed inset-0 z-[999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="mini-prevenda-edit-modal w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-[28px] border border-orange-950 bg-[#15110f] p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Editar pré-venda</h3>
+                  <p className="text-xs text-zinc-500 mt-1">Corrija cliente, referência, itens, valores e transcrição antes de gerar mensagem ou converter.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fecharEdicaoPreVenda}
+                  className="w-10 h-10 rounded-full bg-zinc-900 text-white hover:bg-zinc-800"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <label className="block">
+                  <span className="block text-[11px] uppercase text-zinc-500 mb-2">Cliente</span>
+                  <input
+                    value={preVendaEdicaoModal.preVenda.cliente || ''}
+                    onChange={(e) => atualizarCampoEdicaoPreVenda('cliente', e.target.value)}
+                    className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="block text-[11px] uppercase text-zinc-500 mb-2">Referência</span>
+                  <input
+                    value={preVendaEdicaoModal.preVenda.referencia || ''}
+                    onChange={(e) => atualizarCampoEdicaoPreVenda('referencia', e.target.value)}
+                    placeholder="CEAN, Paulo Freire, Objetivo, SEB..."
+                    className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
+                  />
+                </label>
+
+                <label className="block md:col-span-2">
+                  <span className="block text-[11px] uppercase text-zinc-500 mb-2">Forma de pagamento</span>
+                  <select
+                    value={preVendaEdicaoModal.preVenda.pagamento || ''}
+                    onChange={(e) => atualizarCampoEdicaoPreVenda('pagamento', e.target.value)}
+                    className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
+                  >
+                    <option value="">Não informado</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Débito">Débito</option>
+                    <option value="Crédito">Crédito</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Fiado / Em aberto">Fiado / Em aberto</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-900 bg-black/50 p-4 mb-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-[11px] uppercase text-zinc-500">Itens</p>
+                  <button
+                    type="button"
+                    onClick={adicionarItemEdicaoPreVenda}
+                    className="rounded-xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-900 px-3 py-2 text-xs font-bold text-zinc-100"
+                  >
+                    + Adicionar item
+                  </button>
+                </div>
+
+                <div className="grid gap-3">
+                  {(preVendaEdicaoModal.preVenda.itens || []).map((produto, idx) => (
+                    <div key={`editar-prevenda-${idx}`} className="grid grid-cols-1 md:grid-cols-[80px_1fr_140px_44px] gap-2 items-end">
+                      <label className="block">
+                        <span className="block text-[10px] uppercase text-zinc-600 mb-1">Qtd.</span>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={produto.quantidade ?? ''}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => {
+                            const somenteNumeros = e.target.value.replace(/\D/g, '')
+                            atualizarItemEdicaoPreVenda(idx, 'quantidade', somenteNumeros)
+                          }}
+                          onBlur={(e) => {
+                            if (!e.target.value) atualizarItemEdicaoPreVenda(idx, 'quantidade', '1')
+                          }}
+                          className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-3 text-sm outline-none focus:border-orange-700"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="block text-[10px] uppercase text-zinc-600 mb-1">Produto</span>
+                        <input
+                          value={produto.nome || ''}
+                          onChange={(e) => atualizarItemEdicaoPreVenda(idx, 'nome', e.target.value)}
+                          className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-3 text-sm outline-none focus:border-orange-700"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="block text-[10px] uppercase text-zinc-600 mb-1">Valor und.</span>
+                        <input
+                          value={produto.valorUnitario || ''}
+                          onChange={(e) => atualizarItemEdicaoPreVenda(idx, 'valorUnitario', e.target.value)}
+                          className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-3 text-sm outline-none focus:border-orange-700"
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => removerItemEdicaoPreVenda(idx)}
+                        className="h-[46px] rounded-xl border border-red-950 bg-red-950/20 hover:bg-red-950/40 text-red-100 font-bold"
+                        title="Remover item"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <label className="block mb-4">
+                <span className="block text-[11px] uppercase text-zinc-500 mb-2">Transcrição original</span>
+                <textarea
+                  value={preVendaEdicaoModal.preVenda.transcricao || ''}
+                  onChange={(e) => atualizarCampoEdicaoPreVenda('transcricao', e.target.value)}
+                  rows={4}
+                  className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700 text-zinc-200"
+                />
+              </label>
+
+              <div className="mini-prevenda-edit-actions flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={salvarEdicaoPreVenda}
+                  className="flex-1 rounded-xl bg-orange-900 hover:bg-orange-800 px-4 py-3 text-sm font-bold text-white"
+                >
+                  Salvar alterações
+                </button>
+                <button
+                  type="button"
+                  onClick={fecharEdicaoPreVenda}
+                  className="flex-1 rounded-xl border border-zinc-800 bg-black hover:bg-zinc-950 px-4 py-3 text-sm font-bold text-white"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mensagemPreVendaModal.aberto && (
+          <div className="fixed inset-0 z-[999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl rounded-[28px] border border-orange-950 bg-[#15110f] p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Mensagem para cliente</h3>
+                  <p className="text-xs text-zinc-500 mt-1">Confira, copie e envie pelo WhatsApp. Depois converta a pré-venda com calma.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMensagemPreVendaModal({ aberto: false, preVendaId: '', texto: '' })}
+                  className="rounded-xl border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-300 hover:text-white"
+                >
+                  ×
+                </button>
+              </div>
+
+              <textarea
+                value={mensagemPreVendaModal.texto}
+                onChange={(e) => setMensagemPreVendaModal((atual) => ({ ...atual, texto: e.target.value }))}
+                rows={16}
+                className="w-full resize-none rounded-2xl border border-zinc-800 bg-black p-4 text-sm leading-relaxed text-zinc-100 outline-none focus:border-orange-700"
+              />
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={copiarMensagemPreVenda}
+                  className="rounded-xl bg-orange-950 hover:bg-orange-900 px-4 py-3 text-sm font-bold text-white"
+                >
+                  Copiar mensagem
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMensagemPreVendaModal({ aberto: false, preVendaId: '', texto: '' })}
+                  className="rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm font-semibold text-zinc-200 hover:text-white"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    )
+  }
+
   function TelaVendas() {
     const termo = normalizarTexto(buscaVendas)
 
     const vendasFiltradas = vendas.filter((venda) => {
       const texto = normalizarTexto(`
         ${venda.numero_venda}
-        ${venda.clientes?.nome}
-        ${venda.clientes?.referencia}
+        ${nomeClienteVenda(venda)}
+        ${referenciaClienteVenda(venda)}
         ${venda.clientes?.telefone}
         ${venda.forma_pagamento}
         ${normalizarStatus(venda.status)}
@@ -4878,7 +7477,7 @@ Delber Vilaça`
         </section>
 
         {modalVendaAberto && (
-          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
             <div className="mini-venda-modal-card w-full max-h-[92vh] overflow-y-auto bg-[#15110f] border border-orange-950 rounded-[28px] shadow-2xl">
               <div className="flex items-start justify-between gap-4 border-b border-orange-950/70 p-6">
                 <div>
@@ -4915,6 +7514,130 @@ Delber Vilaça`
                   </div>
                 </div>
 
+                {!editandoVendaId && (
+                  <div className="mb-5 rounded-2xl border border-orange-950/70 bg-black/40 p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-orange-400 font-bold">Lançamento por voz</p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Fale curto: cliente, valor e pagamento. Para fiado, fale também o vencimento.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={ouvindoVendaVoz ? pararLancamentoVendaPorVoz : iniciarLancamentoVendaPorVoz}
+                        disabled={!speechVendaDisponivel}
+                        className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                          ouvindoVendaVoz
+                            ? 'bg-red-950 hover:bg-red-900 text-red-100'
+                            : 'bg-orange-950 hover:bg-orange-900 text-white'
+                        } disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        {ouvindoVendaVoz ? '■ Parar escuta' : '🎙️ Lançar por voz'}
+                      </button>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 text-xs">
+                      <p className="text-zinc-400">
+                        Exemplo à vista: <span className="text-zinc-200">Ana Paula, 120, Pix.</span> Exemplo fiado: <span className="text-zinc-200">Cliente Ana Paula, 120, fiado, vence dia 20.</span>
+                      </p>
+
+                      {textoVendaVoz && (
+                        <p className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-zinc-300">
+                          Ouvido: {textoVendaVoz}
+                        </p>
+                      )}
+
+                      {avisoVendaVoz && (
+                        <p className="rounded-xl border border-orange-950 bg-orange-950/20 px-3 py-2 text-orange-200">
+                          {avisoVendaVoz}
+                        </p>
+                      )}
+
+                      {clienteVozPendente.aberto && (
+                        <div className="rounded-2xl border border-orange-900/70 bg-zinc-950/90 p-3 text-zinc-200">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-orange-300 font-bold">
+                            Como deseja registrar este cliente?
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-white">
+                            {clienteVozPendente.nome}
+                          </p>
+
+                          {clienteVozPendente.etapa === 'escolha' && (
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => aplicarClienteAvulsoVendaPorVoz(clienteVozPendente.nome)}
+                                className="rounded-xl border border-green-900 bg-green-950/40 px-3 py-3 text-left text-sm font-semibold text-green-100 hover:bg-green-900/50"
+                              >
+                                Registrar como avulso
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setClienteVozPendente((atual) => ({ ...atual, etapa: 'cadastro' }))}
+                                className="rounded-xl border border-orange-900 bg-orange-950/40 px-3 py-3 text-left text-sm font-semibold text-orange-100 hover:bg-orange-900/50"
+                              >
+                                Escolher cliente cadastrado
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBuscaClienteVenda(clienteVozPendente.nome)
+                                  setClienteAvulsoVendaNome('')
+                                  setClienteVozPendente({ aberto: false, etapa: 'escolha', nome: '', candidatos: [] })
+                                  abrirModalNovoClientePelaVenda()
+                                }}
+                                className="rounded-xl border border-blue-900 bg-blue-950/40 px-3 py-3 text-left text-sm font-semibold text-blue-100 hover:bg-blue-900/50"
+                              >
+                                Cadastrar novo cliente
+                              </button>
+                            </div>
+                          )}
+
+                          {clienteVozPendente.etapa === 'cadastro' && (
+                            <div className="mt-3 grid gap-2">
+                              {clienteVozPendente.candidatos.length === 0 && (
+                                <p className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm text-zinc-400">
+                                  Nenhum cliente cadastrado encontrado com esse nome. Volte e escolha avulso ou cadastre novo cliente.
+                                </p>
+                              )}
+
+                              {clienteVozPendente.candidatos.map((cliente) => (
+                                <button
+                                  key={cliente.id}
+                                  type="button"
+                                  onClick={() => aplicarClienteCadastradoVendaPorVoz(cliente)}
+                                  className="rounded-xl border border-zinc-800 bg-black px-3 py-2 text-left text-sm hover:border-orange-700"
+                                >
+                                  <span className="font-semibold text-white">{cliente.nome}</span>
+                                  <span className="text-zinc-400"> {' | '} {cliente.referencia || 'Sem referência'}</span>
+                                </button>
+                              ))}
+
+                              <button
+                                type="button"
+                                onClick={() => setClienteVozPendente((atual) => ({ ...atual, etapa: 'escolha' }))}
+                                className="rounded-xl border border-zinc-800 px-3 py-2 text-left text-sm text-zinc-300 hover:border-zinc-600"
+                              >
+                                Voltar para as opções
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {!speechVendaDisponivel && (
+                        <p className="text-red-300">
+                          Este navegador não liberou a Web Speech API. No celular, teste preferencialmente no Chrome.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={salvarVenda} className="mini-venda-modal-form grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                   <div className="md:col-span-2">
                     <label className="block text-[11px] uppercase text-zinc-500 mb-2">
@@ -4926,7 +7649,14 @@ Delber Vilaça`
                         ref={buscaClienteVendaInputRef}
                         type="text"
                         value={buscaClienteVenda}
-                        onChange={(e) => setBuscaClienteVenda(e.target.value)}
+                        onChange={(e) => {
+                          const valorDigitado = e.target.value
+                          setBuscaClienteVenda(valorDigitado)
+                          if (clienteAvulsoVendaNome) setClienteAvulsoVendaNome(capitalizarNomeVendaAvulsa(valorDigitado))
+                        }}
+                        onBlur={(e) => {
+                          if (clienteAvulsoVendaNome) setBuscaClienteVenda(capitalizarNomeVendaAvulsa(e.target.value))
+                        }}
                         placeholder="Pesquisar por nome, referência ou observação"
                         className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
                       />
@@ -4937,7 +7667,17 @@ Delber Vilaça`
                           setClienteId(e.target.value)
                           const clienteSelecionado = clientes.find((cliente) => String(cliente.id) === String(e.target.value))
                           if (clienteSelecionado) {
-                            setBuscaClienteVenda('')
+                            const nomeSelecionado = normalizarTexto(clienteSelecionado.nome || '')
+                            const selecionouClienteAvulso = nomeSelecionado === 'avulso' || nomeSelecionado.includes('cliente avulso')
+                            if (selecionouClienteAvulso) {
+                              const nomeBase = clienteAvulsoVendaNome || buscaClienteVenda || clienteVozPendente.nome || ''
+                              const nomeAvulsoCapitalizado = capitalizarNomeVendaAvulsa(nomeBase)
+                              setBuscaClienteVenda(nomeAvulsoCapitalizado)
+                              setClienteAvulsoVendaNome(nomeAvulsoCapitalizado)
+                            } else {
+                              setBuscaClienteVenda('')
+                              setClienteAvulsoVendaNome('')
+                            }
                           }
                         }}
                         className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm"
@@ -4950,9 +7690,22 @@ Delber Vilaça`
                         ))}
                       </select>
 
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-2xl border border-zinc-900 bg-zinc-950/55 px-3 py-3">
+                        <p className="text-xs text-zinc-500">
+                          Cliente novo para fiado ou controle recorrente? Cadastre sem sair da venda.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={abrirModalNovoClientePelaVenda}
+                          className="rounded-xl border border-orange-900 bg-orange-950/40 px-4 py-2 text-xs font-bold text-orange-100 hover:bg-orange-900/50"
+                        >
+                          + Cadastrar cliente
+                        </button>
+                      </div>
+
                       {buscaClienteVenda && clientesParaVendaFiltrados().length === 0 && (
                         <p className="text-[11px] text-orange-300">
-                          Nenhum cliente encontrado com esse termo.
+                          Nenhum cliente cadastrado encontrado. Você pode cadastrar agora, ou manter como venda avulsa quando for à vista.
                         </p>
                       )}
                     </div>
@@ -5155,7 +7908,7 @@ Delber Vilaça`
                   >
                     <div className="mini-venda-list-main">
                       <strong>#{venda.numero_venda}</strong>
-                      <span>{primeiroNome(venda.clientes?.nome)} • {venda.clientes?.referencia || 'Sem referência'}</span>
+                      <span>{primeiroNome(nomeClienteVenda(venda))} • {referenciaClienteVenda(venda)}</span>
                     </div>
 
                     <div className="mini-venda-list-meta">
@@ -5170,7 +7923,7 @@ Delber Vilaça`
                     <div className="mini-venda-list-detalhes">
                       <div>
                         <small>Cliente</small>
-                        <p>{venda.clientes?.nome || 'Cliente sem nome'}</p>
+                        <p>{nomeClienteVenda(venda)}</p>
                       </div>
 
                       <div>
@@ -5240,8 +7993,8 @@ Delber Vilaça`
                   <tr key={venda.id} className="border-t border-zinc-900">
                     <td className="p-5">#{venda.numero_venda}</td>
                     <td className="p-5 text-zinc-400">{dataBR(venda.data_venda)}</td>
-                    <td className="p-5 font-semibold">{venda.clientes?.nome}</td>
-                    <td className="p-5 text-zinc-400">{venda.clientes?.referencia || 'Sem referência'}</td>
+                    <td className="p-5 font-semibold">{nomeClienteVenda(venda)}</td>
+                    <td className="p-5 text-zinc-400">{referenciaClienteVenda(venda)}</td>
                     <td className="p-5">{moeda(venda.valor_total)}</td>
                     <td className="p-5 text-red-300">{moeda(venda.valor_taxa)}</td>
                     <td className="p-5 text-green-300">{moeda(venda.valor_liquido)}</td>
@@ -6765,9 +9518,9 @@ Delber Vilaça`
 
                 <div className="mini-pagamento-card-corpo">
                   <p>
-                    {pagamento.vendas?.clientes?.nome || 'Cliente não informado'}
-                    {pagamento.vendas?.clientes?.referencia
-                      ? ` • ${pagamento.vendas.clientes.referencia}`
+                    {nomeClientePagamento(pagamento)}
+                    {referenciaClientePagamento(pagamento)
+                      ? ` • ${referenciaClientePagamento(pagamento)}`
                       : ''}
                   </p>
                   <small>Venda #{pagamento.vendas?.numero_venda || 'sem número'}</small>
@@ -6853,7 +9606,7 @@ Delber Vilaça`
                 return (
                   <tr key={pagamento.id} className={`border-t border-zinc-900 ${pagamentoEstornado ? 'bg-red-950/20 opacity-80' : ''}`}>
                     <td className="p-5">{dataBR(pagamento.data_pagamento)}</td>
-                    <td className="p-5">{pagamento.vendas?.clientes?.nome}</td>
+                    <td className="p-5">{nomeClientePagamento(pagamento)}</td>
                     <td className="p-5">#{pagamento.vendas?.numero_venda}</td>
                     <td className={`p-5 ${pagamentoEstornado ? 'text-red-300 line-through' : 'text-green-300'}`}>{moeda(pagamento.valor_pago)}</td>
                     <td className="p-5">{pagamento.forma_pagamento}</td>
@@ -10350,11 +13103,307 @@ Delber Vilaça`
     )
   }
 
+
+  function TelaOperacaoOffline() {
+    const pendenciasAbertas = (pendencias || []).filter((item) => Number(item.saldo_restante || 0) > 0 && String(item.status || '').toUpperCase() !== 'PAGO')
+    const deliveriesAbertos = (deliveries || []).filter((item) => !['Entregue', 'Cancelado'].includes(item.status))
+
+    return (
+      <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-5 lg:p-8">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between mb-6">
+          <div>
+            <p className="text-orange-400 uppercase tracking-[5px] text-xs mb-3">Continuidade operacional</p>
+            <h2 className="text-3xl lg:text-4xl font-bold">Modo Operação Offline</h2>
+            <p className="text-zinc-500 mt-2">Pré-vendas, Delivery e Cobranças continuam consultáveis com os dados salvos neste aparelho.</p>
+          </div>
+          <button type="button" onClick={sincronizarFilaOffline} disabled={sincronizandoOffline || filaOffline.length === 0} className="rounded-2xl bg-orange-950 px-5 py-3 font-bold text-white disabled:opacity-50">
+            {sincronizandoOffline ? 'Sincronizando...' : 'Sincronizar agora'}
+          </button>
+        </div>
+
+        <div className="mini-offline-grid mb-6">
+          <div className="mini-offline-card">
+            <span>Status</span>
+            <strong>{online ? 'Online' : 'Offline'}</strong>
+            <p>{textoStatusConexao()}</p>
+          </div>
+          <div className="mini-offline-card">
+            <span>Pré-vendas</span>
+            <strong>{preVendas.length}</strong>
+            <p>Disponíveis para consulta e registro rápido.</p>
+          </div>
+          <div className="mini-offline-card">
+            <span>Delivery</span>
+            <strong>{deliveriesAbertos.length}</strong>
+            <p>Entregas programadas salvas no aparelho.</p>
+          </div>
+          <div className="mini-offline-card">
+            <span>Cobranças</span>
+            <strong>{pendenciasAbertas.length}</strong>
+            <p>Pendências disponíveis para consulta.</p>
+          </div>
+        </div>
+
+        <form onSubmit={registrarOfflineRapido} className="mini-offline-form mb-8">
+          <div className="mini-offline-form-head">
+            <div>
+              <h3>Registro rápido offline</h3>
+              <p>Use quando a internet cair ou quando quiser garantir a anotação no aparelho.</p>
+            </div>
+          </div>
+
+          <label>
+            <span>Tipo</span>
+            <select value={formOfflineRapido.tipo} onChange={(e) => setFormOfflineRapido({ ...formOfflineRapido, tipo: e.target.value })}>
+              <option value="prevenda">Pré-venda</option>
+              <option value="delivery-anotacao">Delivery, anotação</option>
+              <option value="cobranca-anotacao">Cobrança, anotação</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Cliente</span>
+            <input value={formOfflineRapido.cliente} onChange={(e) => setFormOfflineRapido({ ...formOfflineRapido, cliente: e.target.value })} placeholder="Nome do cliente" />
+          </label>
+
+          <label>
+            <span>Referência</span>
+            <input value={formOfflineRapido.referencia} onChange={(e) => setFormOfflineRapido({ ...formOfflineRapido, referencia: e.target.value })} placeholder="EP 210 Norte, CEAN, SEB..." />
+          </label>
+
+          <label>
+            <span>Itens ou resumo</span>
+            <textarea value={formOfflineRapido.itens} onChange={(e) => setFormOfflineRapido({ ...formOfflineRapido, itens: e.target.value })} placeholder="Ex.: 1 Vila Caipira 79, 1 Cocada 49" />
+          </label>
+
+          <label>
+            <span>Valor</span>
+            <input value={formOfflineRapido.valor} onChange={(e) => setFormOfflineRapido({ ...formOfflineRapido, valor: e.target.value })} placeholder="0,00" inputMode="decimal" />
+          </label>
+
+          <label>
+            <span>Observação</span>
+            <textarea value={formOfflineRapido.observacao} onChange={(e) => setFormOfflineRapido({ ...formOfflineRapido, observacao: e.target.value })} placeholder="Observação interna" />
+          </label>
+
+          <button type="submit">Salvar offline</button>
+        </form>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <div className="mini-offline-list">
+            <h3>Fila offline</h3>
+            {filaOffline.length === 0 ? <p>Nenhum registro pendente.</p> : filaOffline.map((item) => (
+              <article key={item.idLocal}>
+                <strong>{item.tipo}</strong>
+                <span>{item.payload?.cliente || 'Sem cliente'} · {moeda(item.payload?.valor || 0)}</span>
+                <small>{dataHoraBR(item.criadoEm)}</small>
+              </article>
+            ))}
+          </div>
+
+          <div className="mini-offline-list">
+            <h3>Delivery offline</h3>
+            {deliveriesAbertos.slice(0, 8).map((item) => (
+              <article key={item.id}>
+                <strong>{item.clientes?.nome || 'Cliente não informado'}</strong>
+                <span>{dataBR(item.data_entrega)} · {item.local_entrega || item.referencia || 'Sem local'}</span>
+                <small>{item.descricao || item.status}</small>
+                <button type="button" onClick={() => registrarEntregaOffline(item, 'Entregue')}>Marcar entregue offline</button>
+              </article>
+            ))}
+            {deliveriesAbertos.length === 0 && <p>Nenhuma entrega aberta no cache.</p>}
+          </div>
+
+          <div className="mini-offline-list">
+            <h3>Cobranças offline</h3>
+            {pendenciasAbertas.slice(0, 8).map((item) => (
+              <article key={item.id}>
+                <strong>{item.vendas?.clientes?.nome || 'Cliente não informado'}</strong>
+                <span>{moeda(item.saldo_restante)} · venc. {dataBR(item.vencimento)}</span>
+                <small>{item.vendas?.clientes?.referencia || 'Sem referência'}</small>
+                <button type="button" onClick={() => registrarCobrancaPagaOffline(item)}>Marcar paga offline</button>
+              </article>
+            ))}
+            {pendenciasAbertas.length === 0 && <p>Nenhuma cobrança aberta no cache.</p>}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+
+  function montarTextoDiagnostico() {
+    const atual = diagnosticoAtual || historicoDiagnostico[0] || registrarDiagnosticoSistema({ status: 'MANUAL' })
+    const historicoTexto = (historicoDiagnostico || [])
+      .slice(0, 10)
+      .map((item) => `${item.dataLocal} | local ${item.versaoAplicativo} | publicada ${item.versaoPublicada} | maior aceita ${item.maiorVersaoAceita} | ${item.status}`)
+      .join('\n')
+
+    return [
+      'MINI ERP, DIAGNÓSTICO DO SISTEMA',
+      '',
+      `Data: ${dataHoraDiagnostico()}`,
+      `Versão do aplicativo: ${APP_VERSION}`,
+      `Versão publicada: ${versaoPublicada || atual.versaoPublicada || APP_VERSION}`,
+      `Maior versão aceita: ${lerMaiorVersaoAceita()}`,
+      `Status da versão: ${downgradeBloqueado ? 'DIVERGÊNCIA, downgrade bloqueado' : novaVersaoDisponivel ? 'NOVA VERSÃO DISPONÍVEL' : 'OK'}`,
+      '',
+      `Service Worker disponível: ${typeof navigator !== 'undefined' && !!navigator.serviceWorker ? 'sim' : 'não'}`,
+      `Service Worker controlando a página: ${typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller ? 'sim' : 'não'}`,
+      `Online: ${online ? 'sim' : 'não'}`,
+      `Ambiente: ${detectarAmbienteMiniErp()}`,
+      `URL: ${typeof window === 'undefined' ? '' : window.location.href}`,
+      `Navegador: ${detectarNavegadorMiniErp()}`,
+      `Sistema: ${detectarSistemaMiniErp()}`,
+      '',
+      `Supabase: ${erroSincronizacaoDados ? 'erro' : 'conectado ou sem erro registrado'}`,
+      `Última atualização de dados: ${ultimaAtualizacaoDados ? dataHoraDiagnostico(ultimaAtualizacaoDados) : 'não registrada'}`,
+      `Erro de sincronização: ${erroSincronizacaoDados || 'nenhum erro registrado'}`,
+      '',
+      `Clientes carregados: ${clientes.length}`,
+      `Pré-vendas carregadas: ${preVendas.length}`,
+      `Cobranças carregadas: ${pendencias.length}`,
+      `Delivery carregados: ${deliveries.length}`,
+      `Vendas carregadas: ${vendas.length}`,
+      '',
+      'Últimas verificações:',
+      historicoTexto || 'Nenhuma verificação registrada.',
+    ].join('\n')
+  }
+
+  async function copiarDiagnosticoSistema() {
+    const texto = montarTextoDiagnostico()
+
+    try {
+      await navigator.clipboard.writeText(texto)
+      setDiagnosticoCopiado(true)
+      setTimeout(() => setDiagnosticoCopiado(false), 2500)
+    } catch (erro) {
+      console.error('Não foi possível copiar o diagnóstico.', erro)
+      alert(texto)
+    }
+  }
+
+  function TelaDiagnosticoSistema() {
+    const maiorVersao = lerMaiorVersaoAceita()
+    const versaoStatus = downgradeBloqueado
+      ? 'DIVERGÊNCIA, downgrade bloqueado'
+      : novaVersaoDisponivel
+        ? 'NOVA VERSÃO DISPONÍVEL'
+        : 'OK'
+
+    return (
+      <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-5 lg:p-8">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+          <div>
+            <p className="text-orange-400 uppercase tracking-[5px] text-xs mb-3">Diagnóstico</p>
+            <h2 className="text-3xl lg:text-5xl font-bold leading-tight">Diagnóstico do Sistema</h2>
+            <p className="text-zinc-500 mt-3 max-w-3xl">
+              Área técnica para conferir versão, atualização, Service Worker, conexão e sincronização.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => verificarVersaoPublicada()}
+              className="rounded-2xl bg-orange-950 hover:bg-orange-900 px-5 py-3 text-sm font-bold text-white"
+            >
+              Forçar verificação
+            </button>
+            <button
+              type="button"
+              onClick={copiarDiagnosticoSistema}
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 hover:bg-zinc-900 px-5 py-3 text-sm font-bold text-white"
+            >
+              {diagnosticoCopiado ? 'Diagnóstico copiado' : 'Copiar diagnóstico'}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950/40 p-4">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-2">Versão do aplicativo</p>
+            <strong className="text-2xl text-white">{APP_VERSION}</strong>
+          </div>
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950/40 p-4">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-2">Versão publicada</p>
+            <strong className="text-2xl text-white">{versaoPublicada || APP_VERSION}</strong>
+          </div>
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950/40 p-4">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 mb-2">Maior versão aceita</p>
+            <strong className="text-2xl text-white">{maiorVersao}</strong>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+          <div className="rounded-2xl border border-zinc-900 bg-black/60 p-4">
+            <h3 className="text-lg font-bold text-white mb-4">Estado técnico atual</h3>
+            <div className="grid gap-3 text-sm">
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Status da versão</span><strong className="text-orange-200">{versaoStatus}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Online</span><strong>{online ? 'Sim' : 'Não'}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Service Worker disponível</span><strong>{typeof navigator !== 'undefined' && !!navigator.serviceWorker ? 'Sim' : 'Não'}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Service Worker controlando</span><strong>{typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller ? 'Sim' : 'Não'}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Ambiente</span><strong>{detectarAmbienteMiniErp()}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Navegador</span><strong>{detectarNavegadorMiniErp()}</strong></p>
+              <p className="flex justify-between gap-4"><span className="text-zinc-500">Sistema</span><strong>{detectarSistemaMiniErp()}</strong></p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-900 bg-black/60 p-4">
+            <h3 className="text-lg font-bold text-white mb-4">Supabase e dados carregados</h3>
+            <div className="grid gap-3 text-sm">
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Supabase</span><strong>{erroSincronizacaoDados ? 'Erro' : 'Conectado ou sem erro'}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Última atualização</span><strong>{ultimaAtualizacaoDados ? dataHoraDiagnostico(ultimaAtualizacaoDados) : 'Não registrada'}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Clientes</span><strong>{clientes.length}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Pré-vendas</span><strong>{preVendas.length}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Cobranças</span><strong>{pendencias.length}</strong></p>
+              <p className="flex justify-between gap-4 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Delivery</span><strong>{deliveries.length}</strong></p>
+              <p className="flex justify-between gap-4"><span className="text-zinc-500">Vendas</span><strong>{vendas.length}</strong></p>
+            </div>
+            {erroSincronizacaoDados && (
+              <p className="mt-4 rounded-xl border border-red-950 bg-red-950/20 p-3 text-sm text-red-200">
+                {erroSincronizacaoDados}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-900 bg-black/60 p-4">
+          <h3 className="text-lg font-bold text-white mb-4">Últimas verificações de versão</h3>
+          <div className="grid gap-2">
+            {(historicoDiagnostico || []).length === 0 && (
+              <p className="text-sm text-zinc-500">Nenhuma verificação registrada ainda.</p>
+            )}
+            {(historicoDiagnostico || []).slice(0, 10).map((item) => (
+              <article key={item.id} className="rounded-xl border border-zinc-900 bg-zinc-950/50 px-4 py-3 text-sm">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                  <strong className="text-white">{item.dataLocal}</strong>
+                  <span className={item.status === 'OK' ? 'text-green-300' : item.status === 'ERRO' ? 'text-red-300' : 'text-orange-300'}>
+                    {item.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-zinc-400">
+                  Local {item.versaoAplicativo} · Publicada {item.versaoPublicada} · Maior aceita {item.maiorVersaoAceita}
+                </p>
+                <p className="mt-1 text-zinc-600">
+                  {item.online ? 'Online' : 'Offline'} · SW {item.serviceWorkerControlando ? 'controlando' : 'não controlando'} · {item.navegador} · {item.sistema}
+                </p>
+                {item.erro && <p className="mt-2 text-red-300">{item.erro}</p>}
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   function Conteudo() {
     if (pagina === 'painel') return TelaPainel()
     if (pagina === 'relatorios') return TelaRelatorios()
     if (pagina === 'ponto-equilibrio') return TelaPontoEquilibrio()
     if (pagina === 'clientes') return TelaClientes()
+    if (pagina === 'pre-vendas') return TelaPreVendas()
     if (pagina === 'vendas') return TelaVendas()
     if (pagina === 'pendencias') return TelaPendencias()
     if (pagina === 'cobrancas') return TelaCobrancas()
@@ -10365,6 +13414,8 @@ Delber Vilaça`
     if (pagina === 'pedidos-fornecedor') return TelaPedidosFornecedor()
     if (pagina === 'despesas') return TelaDespesas()
     if (pagina === 'delivery') return TelaDelivery()
+    if (pagina === 'offline') return TelaOperacaoOffline()
+    if (pagina === 'diagnostico') return TelaDiagnosticoSistema()
     if (pagina === 'roteiro-vendas') return TelaRoteiroVendas()
     if (pagina === 'taxas') return TelaTaxas()
 
@@ -10680,6 +13731,7 @@ Delber Vilaça`
           <p>Sistema</p>
           <h1>Queijos Serra da Canastra</h1>
           <span>Mini ERP Premium</span>
+          <small className="mini-version-pill">{APP_VERSION_LABEL}</small>
         </div>
 
         <button
@@ -10825,6 +13877,7 @@ Delber Vilaça`
                 <p>Sistema</p>
                 <h2>Menu</h2>
                 <span>Mini ERP Premium</span>
+                <small className="mini-version-pill">{APP_VERSION_LABEL}</small>
               </div>
 
               <button
@@ -10840,6 +13893,11 @@ Delber Vilaça`
             <nav className="mini-mobile-nav">
               {itensMenu.map((item) => botaoMenuMobile(item))}
             </nav>
+
+            <div className="mini-version-box">
+              <span>{APP_VERSION_LABEL}</span>
+              <button type="button" onClick={atualizarSistema}>Atualizar sistema</button>
+            </div>
           </aside>
         </div>
       )}
@@ -11177,6 +14235,10 @@ Delber Vilaça`
             </h1>
 
             <p className="text-zinc-500 mt-6">Mini ERP Premium</p>
+            <div className="mini-version-box mt-4">
+              <span>{APP_VERSION_LABEL}</span>
+              <button type="button" onClick={atualizarSistema}>Atualizar sistema</button>
+            </div>
           </div>
 
           <nav className="space-y-3 overflow-y-auto max-h-[75vh] pr-2">
@@ -11187,26 +14249,18 @@ Delber Vilaça`
         <div className="mini-bottom-nav lg:hidden">
           <button
             type="button"
-            onClick={() => setPagina('painel')}
-            className={pagina === 'painel' ? 'mini-bottom-active' : ''}
+            onClick={() => setPagina('pre-vendas')}
+            className={pagina === 'pre-vendas' ? 'mini-bottom-active' : ''}
           >
-            Painel
+            Pré-venda
           </button>
 
           <button
             type="button"
-            onClick={() => setPagina('vendas')}
-            className={pagina === 'vendas' ? 'mini-bottom-active' : ''}
+            onClick={() => setPagina('clientes')}
+            className={pagina === 'clientes' ? 'mini-bottom-active' : ''}
           >
-            Vendas
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setPagina('delivery')}
-            className={pagina === 'delivery' ? 'mini-bottom-active' : ''}
-          >
-            Delivery
+            Clientes
           </button>
 
           <button
@@ -11216,12 +14270,70 @@ Delber Vilaça`
           >
             Cobranças
           </button>
+
+          <button
+            type="button"
+            onClick={() => setPagina('delivery')}
+            className={pagina === 'delivery' ? 'mini-bottom-active' : ''}
+          >
+            Delivery
+          </button>
         </div>
 
         <main className="mini-app-main p-4 lg:p-8">
           <section className="mobile-panel-card bg-black border border-orange-950 rounded-[24px] lg:rounded-[28px] p-5 lg:p-8 mb-6">
-            <h2 className="text-3xl lg:text-5xl font-bold mb-3 lg:mb-4 leading-tight">Mini ERP Queijos Serra da Canastra</h2>
-            <p className="text-zinc-500">Sistema profissional conectado ao Supabase.</p>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-3xl lg:text-5xl font-bold mb-3 lg:mb-4 leading-tight">Mini ERP Queijos Serra da Canastra</h2>
+                <p className="text-zinc-500">Sistema profissional conectado ao Supabase.</p>
+              </div>
+              <div className="mini-version-box mini-version-box-inline">
+                <span>{APP_VERSION_LABEL}</span>
+                <button type="button" onClick={atualizarSistema}>Atualizar sistema</button>
+              </div>
+            </div>
+          </section>
+
+          {downgradeBloqueado && (
+            <section className="mini-update-alert mini-update-alert-danger">
+              <div>
+                <strong>Versão anterior bloqueada</strong>
+                <span>
+                  O sistema detectou uma versão publicada ou carregada anterior à última versão aceita. Não lance vendas até atualizar.
+                </span>
+              </div>
+              <button type="button" onClick={atualizarSistema}>Atualizar agora</button>
+            </section>
+          )}
+
+          {novaVersaoDisponivel && (
+            <section className="mini-update-alert">
+              <div>
+                <strong>Nova versão disponível</strong>
+                <span>Versão publicada: {versaoPublicada}. Atualize antes de continuar o atendimento.</span>
+              </div>
+              <button type="button" onClick={atualizarSistema}>Atualizar agora</button>
+            </section>
+          )}
+
+          <section className={`mini-sync-bar ${erroSincronizacaoDados ? 'mini-sync-bar-error' : ''}`}>
+            <div>
+              <strong>{sincronizandoDados ? 'Atualizando dados' : 'Sincronização automática'}</strong>
+              <span>{textoUltimaAtualizacaoDados()}</span>
+            </div>
+            <button type="button" onClick={() => sincronizarDados({ manual: true })} disabled={sincronizandoDados}>
+              {sincronizandoDados ? 'Atualizando...' : 'Atualizar dados'}
+            </button>
+          </section>
+
+          <section className={`mini-offline-bar ${online ? 'mini-offline-bar-online' : 'mini-offline-bar-offline'}`}>
+            <div>
+              <strong>{online ? 'Operação online' : 'Modo offline ativo'}</strong>
+              <span>{textoStatusConexao()} · {textoCacheOffline()}</span>
+            </div>
+            <button type="button" onClick={sincronizarFilaOffline} disabled={sincronizandoOffline || filaOffline.length === 0}>
+              {sincronizandoOffline ? 'Sincronizando...' : 'Sincronizar offline'}
+            </button>
           </section>
 
           {Conteudo()}
@@ -11230,9 +14342,6 @@ Delber Vilaça`
     </div>
   )
 }
-
-
-
 
 
 

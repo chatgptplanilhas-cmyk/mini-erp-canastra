@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Diagnóstico de Emergência Mini ERP</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #0b0b0c; color: #f4f4f5; }
+      body { max-width: 960px; margin: 0 auto; padding: 24px; }
+      h1 { margin-bottom: 6px; } p { color: #b4b4bd; } button { margin: 4px 8px 16px 0; padding: 10px 14px; border: 1px solid #4b5563; border-radius: 10px; background: #18181b; color: #fff; font-weight: 700; }
+      button:hover { background: #27272a; } .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; } .field, pre { border: 1px solid #27272a; border-radius: 10px; background: #111113; padding: 12px; overflow-wrap: anywhere; }
+      .field strong { display: block; color: #fb923c; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; } pre { white-space: pre-wrap; line-height: 1.45; } .ok { color: #86efac; } .error { color: #fca5a5; }
+    </style>
+  </head>
+  <body>
+    <h1>Diagnóstico de Emergência Mini ERP</h1>
+    <p>Página independente do React, menu lateral e rotas internas.</p>
+    <button id="verificar" type="button">Forçar verificação</button>
+    <button id="copiar" type="button">Copiar relatório técnico</button>
+    <button id="limpar" type="button">Limpar somente logs da Caixa Preta</button>
+    <p id="estado" aria-live="polite"></p>
+    <div id="campos" class="grid"></div>
+    <h2>Registros de Service Worker encontrados</h2><pre id="registros"></pre>
+    <h2>Nomes dos caches disponíveis</h2><pre id="caches"></pre>
+    <h2>Últimos boots gravados em miniErpBootBlackBox</h2><pre id="boots"></pre>
+    <h2>Capturas após carregamento</h2><pre id="after-load"></pre>
+    <h2>Scripts carregados</h2><pre id="scripts"></pre>
+    <h2>CSS carregados</h2><pre id="css"></pre>
+    <h2>Erros encontrados</h2><pre id="erros"></pre>
+    <script src="/mini-erp-boot-blackbox.js"></script>
+    <script>
+      (() => {
+        const VERSAO_ESPERADA = '2026.06.24.03'
+        const STORAGE_KEY = 'miniErpBootBlackBox'
+        let ultimoDiagnostico = null
+        const porId = (id) => document.getElementById(id)
+        const textoErro = (erro) => erro instanceof Error ? erro.message : String(erro || 'Erro desconhecido')
+        const formatar = (valor) => JSON.stringify(valor, null, 2)
+        const recursos = (seletor, propriedade) => Array.from(document.querySelectorAll(seletor)).map((item) => item[propriedade] || item.getAttribute(propriedade) || '').filter(Boolean)
+        const detectarNavegador = () => /Edg\//.test(navigator.userAgent) ? 'Microsoft Edge' : /Chrome|CriOS/.test(navigator.userAgent) ? 'Chrome' : /FxiOS/.test(navigator.userAgent) ? 'Firefox iOS' : /Safari/.test(navigator.userAgent) ? 'Safari' : 'Não identificado'
+        const detectarSistema = () => /iPhone|iPad|iPod/.test(navigator.userAgent) ? 'iOS' : /Android/.test(navigator.userAgent) ? 'Android' : /Windows/.test(navigator.userAgent) ? 'Windows' : /Mac OS/.test(navigator.userAgent) ? 'macOS' : 'Não identificado'
+
+        function lerBoots() {
+          try { const lista = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); return Array.isArray(lista) ? lista : [] } catch (erro) { return [] }
+        }
+
+        async function coletar() {
+          const erros = []
+          const controller = navigator.serviceWorker?.controller || null
+          const dados = {
+            'Versão esperada da página de emergência': VERSAO_ESPERADA,
+            'Versão publicada lida de /version.json': '',
+            'URL atual': location.href,
+            'Data e hora local': new Date().toLocaleString('pt-BR'),
+            'Online': navigator.onLine ? 'sim' : 'não',
+            'Navegador': detectarNavegador(),
+            'Sistema aproximado': detectarSistema(),
+            'Service Worker disponível': 'serviceWorker' in navigator ? 'sim' : 'não',
+            'Service Worker controlando': controller ? 'sim' : 'não',
+            'scriptURL do controller': controller?.scriptURL || 'não disponível',
+            registros: [], caches: [], boots: lerBoots(), scripts: recursos('script[src]', 'src'), css: recursos('link[rel="stylesheet"]', 'href'), erros,
+          }
+          try {
+            const resposta = await fetch(`/version.json?emergencia=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } })
+            if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`)
+            const versao = await resposta.json()
+            dados['Versão publicada lida de /version.json'] = String(versao?.version || 'vazia')
+          } catch (erro) { erros.push(`version.json: ${textoErro(erro)}`) }
+          try { if ('serviceWorker' in navigator) dados.registros = (await navigator.serviceWorker.getRegistrations()).map((item) => ({ scope: item.scope, active: item.active?.scriptURL || '', waiting: item.waiting?.scriptURL || '', installing: item.installing?.scriptURL || '' })) } catch (erro) { erros.push(`serviceWorker: ${textoErro(erro)}`) }
+          try { if ('caches' in window) dados.caches = await caches.keys() } catch (erro) { erros.push(`caches: ${textoErro(erro)}`) }
+          return dados
+        }
+
+        function renderizar(dados) {
+          ultimoDiagnostico = dados
+          porId('campos').replaceChildren(...Object.entries(dados).filter(([chave]) => !['registros', 'caches', 'boots', 'scripts', 'css', 'erros'].includes(chave)).map(([chave, valor]) => { const campo = document.createElement('div'); campo.className = 'field'; const titulo = document.createElement('strong'); titulo.textContent = chave; const conteudo = document.createElement('span'); conteudo.textContent = valor; campo.append(titulo, conteudo); return campo }))
+          porId('registros').textContent = formatar(dados.registros)
+          porId('caches').textContent = formatar(dados.caches)
+          porId('boots').textContent = formatar(dados.boots)
+          const capturasAfterLoad = dados.boots.filter((boot) => boot.afterLoadCapturado).map((boot) => ({
+            dataHoraIso: boot.dataHoraIso,
+            afterLoadCapturado: boot.afterLoadCapturado,
+            afterLoadDataHoraIso: boot.afterLoadDataHoraIso,
+            scriptsCarregadosAfterLoad: boot.scriptsCarregadosAfterLoad,
+            cssCarregadosAfterLoad: boot.cssCarregadosAfterLoad,
+          }))
+          porId('after-load').textContent = capturasAfterLoad.length ? formatar(capturasAfterLoad) : 'Nenhuma captura após carregamento encontrada.'
+          porId('scripts').textContent = formatar(dados.scripts)
+          porId('css').textContent = formatar(dados.css)
+          porId('erros').textContent = dados.erros.length ? dados.erros.join('\n') : 'Nenhum erro registrado.'
+          porId('estado').textContent = 'Verificação concluída.'
+          porId('estado').className = dados.erros.length ? 'error' : 'ok'
+        }
+
+        async function verificar() { porId('estado').textContent = 'Verificando…'; try { renderizar(await coletar()) } catch (erro) { porId('estado').textContent = `Falha na verificação: ${textoErro(erro)}`; porId('estado').className = 'error' } }
+        async function copiar() { const texto = `DIAGNÓSTICO DE EMERGÊNCIA MINI ERP\n\n${formatar(ultimoDiagnostico || await coletar())}`; try { await navigator.clipboard.writeText(texto); porId('estado').textContent = 'Relatório técnico copiado.' } catch (erro) { const area = document.createElement('textarea'); area.value = texto; document.body.append(area); area.select(); document.execCommand('copy'); area.remove(); porId('estado').textContent = 'Relatório técnico copiado.' } }
+        porId('verificar').addEventListener('click', verificar)
+        porId('copiar').addEventListener('click', copiar)
+        porId('limpar').addEventListener('click', () => { try { localStorage.removeItem(STORAGE_KEY); porId('estado').textContent = 'Somente os logs da Caixa Preta foram removidos.'; verificar() } catch (erro) { porId('estado').textContent = `Falha ao limpar logs: ${textoErro(erro)}`; porId('estado').className = 'error' } })
+        verificar()
+      })()
+    </script>
+  </body>
+</html>
