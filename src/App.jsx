@@ -754,12 +754,16 @@ export default function App() {
   const reconhecimentoVendaRef = useRef(null)
   const [preVendas, setPreVendas] = useState([])
   const [buscaPreVendas, setBuscaPreVendas] = useState('')
+  const [dataFiltroPreVendas, setDataFiltroPreVendas] = useState('')
+  const [paginaPreVendas, setPaginaPreVendas] = useState(1)
   const [ouvindoPreVendaVoz, setOuvindoPreVendaVoz] = useState(false)
   const [textoPreVendaVoz, setTextoPreVendaVoz] = useState('')
   const [avisoPreVenda, setAvisoPreVenda] = useState('')
   const [mensagemPreVendaModal, setMensagemPreVendaModal] = useState({ aberto: false, preVendaId: '', texto: '' })
+  const [resumoDiaPreVendasAberto, setResumoDiaPreVendasAberto] = useState(false)
   const [preVendaEdicaoModal, setPreVendaEdicaoModal] = useState({ aberto: false, preVenda: null })
   const [preVendaDetalheModal, setPreVendaDetalheModal] = useState({ aberto: false, preVenda: null })
+  const [confirmDeletePreVenda, setConfirmDeletePreVenda] = useState(false)
   const [preVendaConvertendoId, setPreVendaConvertendoId] = useState('')
   const [preVendaDeliveryOrigemId, setPreVendaDeliveryOrigemId] = useState('')
   const reconhecimentoPreVendaRef = useRef(null)
@@ -779,6 +783,21 @@ export default function App() {
   useEffect(() => {
     setPaginaPagamentos(1)
   }, [buscaPagamentos, filtroPagamentosInicio, filtroPagamentosFim])
+
+  useEffect(() => {
+    setPaginaPreVendas(1)
+  }, [buscaPreVendas, dataFiltroPreVendas])
+
+  useEffect(() => {
+    if (!resumoDiaPreVendasAberto) return undefined
+
+    const fecharComEsc = (evento) => {
+      if (evento.key === 'Escape') setResumoDiaPreVendasAberto(false)
+    }
+
+    window.addEventListener('keydown', fecharComEsc)
+    return () => window.removeEventListener('keydown', fecharComEsc)
+  }, [resumoDiaPreVendasAberto])
 
   useEffect(() => {
     return () => {
@@ -2436,8 +2455,6 @@ Queijos Serra da Canastra 🇧🇷`
   }
 
   async function excluirPreVenda(id) {
-    if (!window.confirm('Excluir esta pré-venda?')) return
-
     const listaAnterior = preVendas
     setPreVendas((listaAtual) => listaAtual.filter((item) => item.id !== id))
 
@@ -2566,6 +2583,7 @@ Queijos Serra da Canastra 🇧🇷`
 
     return preVendas
       .filter((item) => {
+        if (dataFiltroPreVendas && dataISO(item.criadoEm || item.created_at) !== dataFiltroPreVendas) return false
         if (!termo) return true
         const texto = [
           item.cliente,
@@ -6312,6 +6330,7 @@ Delber Vilaça`
 
     return (
       <button
+        key={id}
         onClick={() => { setPagina(id); setMenuMobileAberto(false) }}
         className={`shrink-0 rounded-2xl px-4 py-3 text-left transition lg:w-full lg:p-4 ${
           ativo ? 'bg-orange-950 text-white' : 'hover:bg-zinc-900 text-zinc-300'
@@ -6933,21 +6952,146 @@ Delber Vilaça`
 
   function TelaPreVendas() {
     const lista = preVendasFiltradas()
+    const preVendasPorPagina = 30
+    const totalPaginasPreVendas = Math.max(1, Math.ceil(lista.length / preVendasPorPagina))
+    const paginaAtualPreVendas = Math.min(paginaPreVendas, totalPaginasPreVendas)
+    const indiceInicialPreVendas = (paginaAtualPreVendas - 1) * preVendasPorPagina
+    const indiceFinalPreVendas = indiceInicialPreVendas + preVendasPorPagina
+    const listaPaginada = lista.slice(indiceInicialPreVendas, indiceFinalPreVendas)
+    const textoResumoPaginacaoPreVendas = lista.length === 0
+      ? 'Nenhuma pré-venda encontrada.'
+      : `Mostrando ${indiceInicialPreVendas + 1} a ${Math.min(indiceFinalPreVendas, lista.length)} de ${lista.length} pré-vendas.`
+    const dataResumoPreVendas = dataFiltroPreVendas || dataHoje()
+    const resumoPreVendasEhHoje = dataResumoPreVendas === dataHoje()
+    const tituloDataResumoPreVendas = resumoPreVendasEhHoje ? `hoje, ${dataBR(dataResumoPreVendas)}` : dataBR(dataResumoPreVendas)
+    const preVendasDoDia = preVendas.filter((item) => {
+      if (!item?.criadoEm && !item?.created_at) return false
+      return dataISO(item.criadoEm || item.created_at) === dataResumoPreVendas
+    })
+    const conferenciaProdutosPreVendas = Array.from(preVendasDoDia.reduce((mapa, preVenda) => {
+      ;(preVenda.itens || []).forEach((produto) => {
+        const nome = String(produto.nome || 'Produto').trim() || 'Produto'
+        const chave = normalizarTexto(nome)
+        const quantidade = Math.max(1, Number(produto.quantidade || 1))
+        const atual = mapa.get(chave) || { nome, quantidade: 0 }
+        atual.quantidade += quantidade
+        mapa.set(chave, atual)
+      })
+      return mapa
+    }, new Map()).values())
+    const quantidadeTotalProdutosPreVendas = conferenciaProdutosPreVendas.reduce((total, produto) => total + Number(produto.quantidade || 0), 0)
+    const valorTotalPrevistoPreVendas = preVendasDoDia.reduce((total, item) => total + Number(item.total || 0), 0)
+    const totaisPagamentoPreVendas = preVendasDoDia.reduce((totais, item) => {
+      const pagamento = item.pagamento || extrairPagamentoPreVendaPorVoz(item.transcricao || '')
+      const chave = normalizarTexto(pagamento)
+      if (chave.includes('pix')) totais.Pix += 1
+      else if (chave.includes('fiado') || chave.includes('em aberto')) totais['Fiado / Em aberto'] += 1
+      else if (chave.includes('credito')) totais['Crédito'] += 1
+      else if (chave.includes('debito')) totais['Débito'] += 1
+      else totais.Outros += 1
+      return totais
+    }, { Pix: 0, 'Fiado / Em aberto': 0, Crédito: 0, Débito: 0, Outros: 0 })
     const totalPendente = preVendas.filter((item) => {
       const st = normalizarTexto(item.status || '')
       return !st.includes('convertida') && !st.includes('convertido') && !st.includes('delivery programado')
     }).length
     const detalhe = preVendaDetalheModal.preVenda
 
+    function formatarQuantidadeResumoPreVenda(qtd) {
+      const quantidade = Math.max(0, Number(qtd || 0))
+      return Number.isInteger(quantidade)
+        ? String(quantidade)
+        : quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+    }
+
+    function chavePreVendaResumo(preVenda, indice = 0) {
+      return [
+        preVenda?.id || 'sem-id',
+        preVenda?.criadoEm || preVenda?.created_at || 'sem-data',
+        preVenda?.cliente || 'sem-cliente',
+        indice,
+      ].join('-')
+    }
+
+    function pagamentoResumoPreVenda(preVenda) {
+      return preVenda.pagamento || extrairPagamentoPreVendaPorVoz(preVenda.transcricao || '') || 'Não informado'
+    }
+
+    function moedaResumoPreVenda(valor) {
+      return moeda(valor).replace(/\s/g, ' ')
+    }
+
+    function linhasItensResumoPreVenda(preVenda) {
+      const itens = preVenda.itens || []
+      if (itens.length === 0) return [`- ${preVenda.transcricao || 'Itens não informados'}`]
+      return itens.map((produto) => `- ${formatarQuantidadeResumoPreVenda(produto.quantidade || 1)} ${produto.nome || 'Produto'}`)
+    }
+
+    function montarTextoResumoDiaPreVendas() {
+      const linhas = [
+        `RESUMO DO DIA - PRÉ-VENDAS`,
+        dataBR(dataResumoPreVendas),
+        '',
+      ]
+
+      if (preVendasDoDia.length === 0) {
+        linhas.push('Nenhuma pré-venda registrada na data do resumo.')
+      } else {
+        preVendasDoDia.forEach((preVenda, indice) => {
+          if (indice > 0) linhas.push('----------------------------------------')
+          linhas.push(preVenda.cliente || 'Cliente não informado')
+          linhas.push(horaBR(preVenda.criadoEm || preVenda.created_at))
+          linhas.push('')
+          linhas.push('Referência:')
+          linhas.push(preVenda.referencia || 'Não informada')
+          linhas.push('')
+          linhas.push(...linhasItensResumoPreVenda(preVenda))
+          linhas.push('')
+          linhas.push('Pagamento:')
+          linhas.push(pagamentoResumoPreVenda(preVenda))
+          linhas.push('')
+          linhas.push('Total:')
+          linhas.push(moedaResumoPreVenda(preVenda.total || 0))
+          linhas.push('')
+        })
+      }
+
+      linhas.push('----------------------------------------')
+      linhas.push('CONFERÊNCIA DOS PRODUTOS')
+      if (conferenciaProdutosPreVendas.length === 0) {
+        linhas.push('Nenhum produto capturado.')
+      } else {
+        conferenciaProdutosPreVendas.forEach((produto) => {
+          linhas.push(`${formatarQuantidadeResumoPreVenda(produto.quantidade)} ${produto.nome}`)
+        })
+      }
+      linhas.push('')
+      linhas.push('TOTAIS')
+      linhas.push(`Quantidade de pré-vendas: ${preVendasDoDia.length}`)
+      linhas.push(`Quantidade total de produtos: ${formatarQuantidadeResumoPreVenda(quantidadeTotalProdutosPreVendas)}`)
+      linhas.push(`Valor total previsto: ${moedaResumoPreVenda(valorTotalPrevistoPreVendas)}`)
+      linhas.push('')
+      linhas.push('Formas de pagamento:')
+      Object.entries(totaisPagamentoPreVendas).forEach(([forma, total]) => {
+        linhas.push(`${forma}: ${total}`)
+      })
+
+      return linhas.join('\n')
+    }
+
+    const textoResumoDiaPreVendas = montarTextoResumoDiaPreVendas()
+
     function abrirDetalhePreVenda(preVenda) {
+      setConfirmDeletePreVenda(false)
       setPreVendaDetalheModal({ aberto: true, preVenda })
     }
 
     function fecharDetalhePreVenda() {
+      setConfirmDeletePreVenda(false)
       setPreVendaDetalheModal({ aberto: false, preVenda: null })
     }
 
-    function renderLinhaPreVenda(item) {
+    function renderLinhaPreVenda(item, indice = 0) {
       const itens = item.itens || []
       const primeiroItem = itens[0]?.nome || ''
       const resumoItens = itens.length > 1 ? `${itens.length} itens capturados` : primeiroItem || 'Itens pela transcrição'
@@ -6977,7 +7121,7 @@ Delber Vilaça`
 
       return (
         <button
-          key={item.id}
+          key={`linha-prevenda-${chavePreVendaResumo(item, indice)}`}
           type="button"
           onClick={() => abrirDetalhePreVenda(item)}
           className={cardClass}
@@ -7045,18 +7189,28 @@ Delber Vilaça`
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={ouvindoPreVendaVoz ? pararPreVendaPorVoz : iniciarPreVendaPorVoz}
-              disabled={!speechVendaDisponivel}
-              className={`rounded-2xl px-5 py-4 text-sm font-bold transition ${
-                ouvindoPreVendaVoz
-                  ? 'bg-red-950 hover:bg-red-900 text-red-100'
-                  : 'bg-orange-950 hover:bg-orange-900 text-white'
-              } disabled:cursor-not-allowed disabled:opacity-50`}
-            >
-              {ouvindoPreVendaVoz ? '■ Parar e criar registro' : '🎙️ Nova pré-venda'}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={ouvindoPreVendaVoz ? pararPreVendaPorVoz : iniciarPreVendaPorVoz}
+                disabled={!speechVendaDisponivel}
+                className={`rounded-2xl px-5 py-4 text-sm font-bold transition ${
+                  ouvindoPreVendaVoz
+                    ? 'bg-red-950 hover:bg-red-900 text-red-100'
+                    : 'bg-orange-950 hover:bg-orange-900 text-white'
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                {ouvindoPreVendaVoz ? '■ Parar e criar registro' : '🎙️ Nova pré-venda'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setResumoDiaPreVendasAberto(true)}
+                className="rounded-2xl border border-orange-900 bg-black px-5 py-4 text-sm font-bold text-orange-100 transition hover:bg-orange-950/40"
+              >
+                Resumo do dia
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 grid gap-2 text-xs">
@@ -7082,13 +7236,38 @@ Delber Vilaça`
           </div>
         </div>
 
-        <div className="mb-5">
-          <input
-            value={buscaPreVendas}
-            onChange={(e) => setBuscaPreVendas(e.target.value)}
-            placeholder="Buscar por cliente, referência, produto ou texto falado"
-            className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
-          />
+        <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+          <label className="block">
+            <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Buscar</span>
+            <input
+              value={buscaPreVendas}
+              onChange={(e) => setBuscaPreVendas(e.target.value)}
+              placeholder="Buscar por cliente, referência, produto ou texto falado"
+              className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
+            />
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(180px,220px)_auto] gap-2">
+            <label className="block">
+              <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Data</span>
+              <input
+                type="date"
+                value={dataFiltroPreVendas}
+                onChange={(e) => setDataFiltroPreVendas(e.target.value)}
+                onInput={(e) => setDataFiltroPreVendas(e.currentTarget.value)}
+                className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setDataFiltroPreVendas('')}
+              disabled={!dataFiltroPreVendas}
+              className="self-end rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-200 transition hover:border-orange-900 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Limpar data
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-2">
@@ -7098,8 +7277,161 @@ Delber Vilaça`
             </div>
           )}
 
-          {lista.map(renderLinhaPreVenda)}
+          {listaPaginada.map(renderLinhaPreVenda)}
         </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-zinc-900 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-300">
+          <span className="text-xs text-zinc-500">{textoResumoPaginacaoPreVendas}</span>
+
+          <div className="flex items-center justify-between sm:justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPaginaPreVendas(Math.max(1, paginaAtualPreVendas - 1))}
+              disabled={paginaAtualPreVendas <= 1}
+              className="rounded-xl border border-zinc-800 bg-black px-4 py-2 text-xs font-bold text-zinc-200 transition hover:border-orange-900 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Anterior
+            </button>
+
+            <span className="min-w-[110px] text-center text-xs font-bold text-zinc-400">
+              Página {paginaAtualPreVendas} de {totalPaginasPreVendas}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setPaginaPreVendas(Math.min(totalPaginasPreVendas, paginaAtualPreVendas + 1))}
+              disabled={paginaAtualPreVendas >= totalPaginasPreVendas}
+              className="rounded-xl border border-zinc-800 bg-black px-4 py-2 text-xs font-bold text-zinc-200 transition hover:border-orange-900 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
+
+        {resumoDiaPreVendasAberto && (
+          <div
+            className="fixed inset-0 z-[999] flex items-stretch justify-center bg-black/85 p-0 backdrop-blur-sm md:items-center md:p-4"
+            onClick={() => setResumoDiaPreVendasAberto(false)}
+          >
+            <div
+              className="flex h-full w-full flex-col overflow-hidden bg-[#15110f] shadow-2xl md:h-auto md:max-h-[90vh] md:w-[80vw] md:max-w-6xl md:rounded-[26px] md:border md:border-orange-950"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-orange-950/60 p-4 md:p-6">
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setResumoDiaPreVendasAberto(false)}
+                    className="mb-3 inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-black px-3 py-2 text-sm font-bold text-zinc-100 hover:border-orange-900 md:hidden"
+                  >
+                    ← Voltar
+                  </button>
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-orange-400 font-bold">Resumo do dia</p>
+                  <h3 className="mt-1 text-2xl font-black text-white leading-tight">Resumo do dia, {tituloDataResumoPreVendas}</h3>
+                  <p className="text-sm text-zinc-500 mt-1">{preVendasDoDia.length} registro{preVendasDoDia.length === 1 ? '' : 's'} na data do resumo</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setResumoDiaPreVendasAberto(false)}
+                    className="w-12 h-12 rounded-2xl bg-zinc-900 text-2xl font-black text-white hover:bg-zinc-800"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:p-6 lg:grid-cols-[1.35fr_0.65fr]">
+                <div className="grid gap-3">
+                  {preVendasDoDia.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-zinc-800 bg-black/60 p-6 text-sm text-zinc-500">
+                      Nenhuma pré-venda registrada na data do resumo.
+                    </div>
+                  )}
+
+                  {preVendasDoDia.map((preVenda, indice) => {
+                    const chavePreVenda = chavePreVendaResumo(preVenda, indice)
+                    return (
+                    <div key={`resumo-dia-prevenda-${chavePreVenda}`} className="rounded-2xl border border-zinc-900 bg-black/70 p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div>
+                          <h4 className="text-lg font-black text-white">{preVenda.cliente || 'Cliente não informado'}</h4>
+                          <p className="text-sm font-bold text-orange-200">{horaBR(preVenda.criadoEm || preVenda.created_at)}</p>
+                        </div>
+                        <p className="text-lg font-black text-orange-300">{moedaResumoPreVenda(preVenda.total || 0)}</p>
+                      </div>
+
+                      <div className="mt-3 grid gap-3 text-sm">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">Referência</p>
+                          <p className="mt-1 text-zinc-100">{preVenda.referencia || 'Não informada'}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">Itens</p>
+                          <div className="mt-1 grid gap-1 text-zinc-200">
+                            {linhasItensResumoPreVenda(preVenda).map((linha, idx) => (
+                              <p key={`resumo-dia-item-${chavePreVenda}-${idx}`}>{linha}</p>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">Pagamento</p>
+                          <p className="mt-1 text-zinc-100">{pagamentoResumoPreVenda(preVenda)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    )
+                  })}
+                </div>
+
+                <aside className="grid gap-3">
+                  <div className="rounded-2xl border border-zinc-900 bg-black/70 p-4">
+                    <h4 className="text-sm font-black uppercase tracking-[0.18em] text-orange-300">Conferência dos produtos</h4>
+                    <div className="mt-3 grid gap-2 text-sm text-zinc-200">
+                      {conferenciaProdutosPreVendas.length === 0 ? (
+                        <p className="text-zinc-500">Nenhum produto capturado.</p>
+                      ) : conferenciaProdutosPreVendas.map((produto, indice) => (
+                        <p key={`conferencia-prevenda-${normalizarTexto(produto.nome)}-${indice}`} className="flex justify-between gap-3 border-b border-zinc-900 pb-2 last:border-b-0 last:pb-0">
+                          <span>{produto.nome}</span>
+                          <strong className="text-white">{formatarQuantidadeResumoPreVenda(produto.quantidade)}</strong>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-900 bg-black/70 p-4">
+                    <h4 className="text-sm font-black uppercase tracking-[0.18em] text-orange-300">Totais</h4>
+                    <div className="mt-3 grid gap-2 text-sm">
+                      <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Pré-vendas</span><strong className="text-white">{preVendasDoDia.length}</strong></p>
+                      <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Produtos</span><strong className="text-white">{formatarQuantidadeResumoPreVenda(quantidadeTotalProdutosPreVendas)}</strong></p>
+                      <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2"><span className="text-zinc-500">Valor previsto</span><strong className="text-orange-200">{moedaResumoPreVenda(valorTotalPrevistoPreVendas)}</strong></p>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 text-sm">
+                      {Object.entries(totaisPagamentoPreVendas).map(([forma, total]) => (
+                        <p key={`pagamento-prevenda-${forma}`} className="flex justify-between gap-3 text-zinc-300">
+                          <span>{forma}</span>
+                          <strong className="text-white">{total}</strong>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-900 bg-black/70 p-4">
+                    <textarea
+                      value={textoResumoDiaPreVendas}
+                      readOnly
+                      rows={10}
+                      className="w-full resize-none rounded-2xl border border-zinc-800 bg-zinc-950 p-3 text-xs leading-relaxed text-zinc-200 outline-none"
+                    />
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        )}
 
         {preVendaDetalheModal.aberto && detalhe && (
           <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/85 p-3 pt-6 pb-[140px] backdrop-blur-sm md:items-center md:p-4">
@@ -7202,15 +7534,45 @@ Delber Vilaça`
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    excluirPreVenda(detalhe.id)
-                    fecharDetalhePreVenda()
-                  }}
+                  onClick={() => setConfirmDeletePreVenda(true)}
                   className="rounded-xl border border-red-950 bg-red-950/20 hover:bg-red-950/40 px-4 py-3 text-sm font-semibold text-red-100"
                 >
                   Excluir
                 </button>
               </div>
+
+              {confirmDeletePreVenda && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+                  <div className="w-full max-w-md rounded-2xl border border-red-950 bg-[#15110f] p-5 shadow-2xl">
+                    <h3 className="text-xl font-black text-white leading-tight">
+                      Excluir pré-venda de {detalhe.cliente || 'cliente'}?
+                    </h3>
+                    <p className="mt-2 text-sm text-zinc-300">Essa ação não poderá ser desfeita.</p>
+
+                    <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeletePreVenda(false)}
+                        className="rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 py-3 text-sm font-bold text-white"
+                      >
+                        Cancelar
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmDeletePreVenda(false)
+                          excluirPreVenda(detalhe.id)
+                          fecharDetalhePreVenda()
+                        }}
+                        className="rounded-xl border border-red-700 bg-red-700 hover:bg-red-600 px-4 py-3 text-sm font-bold text-white"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
