@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 
 const APP_VERSION = '2026.06.24.03'
 const APP_VERSION_LABEL = `Mini ERP v${APP_VERSION}`
+const PWA_SPLASH_DURATION_MS = 1600
 const TIME_ZONE_BRASIL = 'America/Sao_Paulo'
 
 const MINI_ERP_HIGHEST_VERSION_KEY = 'miniErpHighestAcceptedVersion'
@@ -157,6 +158,7 @@ function detectarSistemaMiniErp() {
 
 
 export default function App() {
+  const [mostrarAberturaPwa, setMostrarAberturaPwa] = useState(true)
   const [pagina, setPagina] = useState('painel')
   const [resumoDiaAberto, setResumoDiaAberto] = useState(false)
   const [menuMobileAberto, setMenuMobileAberto] = useState(false)
@@ -208,6 +210,14 @@ export default function App() {
   const [historicoDiagnostico, setHistoricoDiagnostico] = useState(() => lerHistoricoDiagnostico())
   const [diagnosticoAtual, setDiagnosticoAtual] = useState(null)
   const [diagnosticoCopiado, setDiagnosticoCopiado] = useState(false)
+
+  useEffect(() => {
+    const tempo = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      ? 900
+      : PWA_SPLASH_DURATION_MS
+    const timer = window.setTimeout(() => setMostrarAberturaPwa(false), tempo)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   function registrarDiagnosticoSistema({ versaoRemota = versaoPublicada, status = 'OK', erro = '' } = {}) {
     const maiorVersao = lerMaiorVersaoAceita()
@@ -13802,6 +13812,20 @@ Delber Vilaça`
 
   return (
     <div className="min-h-screen bg-[#15110f] text-white overflow-x-hidden">
+      {mostrarAberturaPwa && (
+        <div className="mini-pwa-splash" aria-hidden="true">
+          <div className="mini-pwa-splash-content">
+            <img
+              src="/brand/logo-queijos-serra-da-canastra.png"
+              alt=""
+              className="mini-pwa-splash-logo"
+              draggable="false"
+            />
+            <span>ERP Canastra</span>
+          </div>
+        </div>
+      )}
+
       {toast.visivel && (
         <div className={`mini-toast mini-toast-${toast.tipo}`} role="status" aria-live="polite">
           <span>{toast.tipo === 'sucesso' ? '✓' : '!'}</span>
