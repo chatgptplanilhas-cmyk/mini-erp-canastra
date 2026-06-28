@@ -7103,10 +7103,9 @@ Delber Vilaça`
 
     function renderLinhaPreVenda(item, indice = 0) {
       const itens = item.itens || []
-      const primeiroItem = itens[0]?.nome || ''
-      const resumoItens = itens.length > 1 ? `${itens.length} itens capturados` : primeiroItem || 'Itens pela transcrição'
       const referencia = item.referencia || 'Sem referência'
-      const pagamento = item.pagamento || extrairPagamentoPreVendaPorVoz(item.transcricao || '')
+      const dataPreVenda = dataBR(item.criadoEm || item.created_at)
+      const quantidadeItens = itens.length === 1 ? '1 item' : `${itens.length} itens`
       const statusTexto = item.status || 'Pendente'
       const statusNormalizado = normalizarTexto(statusTexto)
       const estaConvertida = statusNormalizado.includes('convertida') || statusNormalizado.includes('convertido')
@@ -7121,53 +7120,32 @@ Delber Vilaça`
         : estaEmLancamento
           ? 'w-full rounded-2xl border border-orange-700/70 bg-orange-950/20 hover:border-orange-500 hover:bg-orange-950/30 px-4 py-3 text-left transition shadow-[0_0_0_1px_rgba(251,146,60,0.08)]'
           : 'w-full rounded-2xl border border-zinc-900 bg-[#181410] hover:border-orange-900/80 hover:bg-[#211915] px-4 py-3 text-left transition'
-      const statusClass = estaFinalizada
-        ? estaDeliveryProgramado
-          ? 'rounded-full bg-amber-950/60 px-2.5 py-1 text-[10px] font-bold text-amber-200 border border-amber-900/70'
-          : 'rounded-full bg-emerald-950/60 px-2.5 py-1 text-[10px] font-bold text-emerald-200 border border-emerald-900/70'
-        : estaEmLancamento
-          ? 'rounded-full bg-orange-900/70 px-3 py-1 text-[11px] font-bold text-orange-100 border border-orange-700/70'
-          : 'rounded-full bg-black px-3 py-1 text-[11px] font-bold text-zinc-200 border border-zinc-800'
-
       return (
         <button
           key={`linha-prevenda-${chavePreVendaResumo(item, indice)}`}
           type="button"
           onClick={() => abrirDetalhePreVenda(item)}
+          aria-label={`Abrir detalhes da pré-venda de ${item.cliente || 'cliente'}`}
           className={cardClass}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className={`${estaFinalizada ? 'text-[9px]' : 'text-[10px]'} uppercase tracking-[0.22em] text-zinc-500 font-bold`}>
-                {estaFinalizada ? (estaDeliveryProgramado ? 'Delivery programado' : 'Venda convertida') : `Pré-venda #${String(item.id || '').slice(-4)} • ${horaBR(item.criadoEm)}`}
-              </p>
-              <div className={`mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 ${estaFinalizada ? 'opacity-90' : ''}`}>
-                <h3 className={`${estaFinalizada ? 'text-base' : 'text-lg'} font-black text-white leading-tight truncate`}>
-                  {estaFinalizada ? `${estaDeliveryProgramado ? '🚚' : '✓'} ${item.cliente}` : item.cliente}
-                </h3>
-                <span className={`${estaFinalizada ? (estaDeliveryProgramado ? 'text-base text-amber-200' : 'text-base text-emerald-200') : 'text-lg text-orange-300'} font-black leading-tight`}>
-                  {moeda(item.total)}
-                </span>
-              </div>
-              {!estaFinalizada && (
-                <p className="mt-1 text-sm text-zinc-400 leading-snug">
-                  📍 {referencia} <span className="text-zinc-600">•</span> 🛒 {resumoItens}
-                  {pagamento ? <><span className="text-zinc-600"> • </span>💳 {pagamento}</> : null}
-                </p>
-              )}
-              {estaFinalizada && (
-                <p className={`mt-0.5 text-xs ${estaDeliveryProgramado ? 'text-amber-300/80' : 'text-emerald-300/80'} leading-snug`}>
-                  Clique para abrir detalhes
-                </p>
-              )}
-            </div>
+          <div className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 ${estaFinalizada ? 'opacity-90' : ''}`}>
+            <h3 className={`${estaFinalizada ? 'text-[15px]' : 'text-base'} col-span-2 font-black text-white leading-tight truncate`}>
+              {estaFinalizada ? `${estaDeliveryProgramado ? '🚚' : '✓'} ${item.cliente}` : item.cliente}
+            </h3>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <span className={statusClass}>
-                {estaFinalizada ? (estaDeliveryProgramado ? 'Delivery' : 'Convertida') : statusTexto}
-              </span>
-              <span className={`${estaFinalizada ? (estaDeliveryProgramado ? 'text-amber-500/70' : 'text-emerald-500/70') : 'text-zinc-500'} text-xl leading-none`}>›</span>
-            </div>
+            <p className="min-w-0 truncate text-[13px] font-bold leading-tight text-zinc-300">
+              {referencia}
+            </p>
+            <span className={`${estaFinalizada ? (estaDeliveryProgramado ? 'text-amber-300' : 'text-emerald-300') : 'text-orange-300'} text-[15px] font-black leading-tight text-right whitespace-nowrap`}>
+              Total {moeda(item.total)}
+            </span>
+
+            <p className="text-[12px] font-semibold leading-tight text-zinc-500">
+              {dataPreVenda}
+            </p>
+            <p className="text-right text-[12px] font-bold leading-tight text-zinc-400 whitespace-nowrap">
+              {quantidadeItens}
+            </p>
           </div>
         </button>
       )
@@ -7507,48 +7485,53 @@ Delber Vilaça`
                 </details>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    abrirEdicaoPreVenda(detalhe)
-                    fecharDetalhePreVenda()
-                  }}
-                  className="rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 py-3 text-sm font-bold text-white"
-                >
-                  ✏️ Editar
-                </button>
+              <div className="grid gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => abrirMensagemPreVenda(detalhe)}
+                    className="rounded-2xl bg-green-800 hover:bg-green-700 px-5 py-4 text-sm font-black text-white shadow-[0_12px_32px_rgba(22,101,52,0.24)]"
+                  >
+                    📲 Gerar mensagem
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => abrirMensagemPreVenda(detalhe)}
-                  className="rounded-xl bg-green-800 hover:bg-green-700 px-4 py-3 text-sm font-bold text-white"
-                >
-                  📲 Gerar mensagem
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => converterPreVendaEmVenda(detalhe)}
+                    className="rounded-2xl bg-orange-900 hover:bg-orange-800 px-5 py-4 text-sm font-black text-white border border-orange-700/70"
+                  >
+                    Converter em venda
+                  </button>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => converterPreVendaEmVenda(detalhe)}
-                  className="rounded-xl bg-orange-950 hover:bg-orange-900 px-4 py-3 text-sm font-bold text-white"
-                >
-                  Converter em venda
-                </button>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      abrirEdicaoPreVenda(detalhe)
+                      fecharDetalhePreVenda()
+                    }}
+                    className="rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-3 py-2.5 text-xs font-bold text-white"
+                  >
+                    ✏️ Editar
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => criarDeliveryAPartirPreVenda(detalhe)}
-                  className="rounded-xl bg-amber-900 hover:bg-amber-800 px-4 py-3 text-sm font-bold text-white"
-                >
-                  Criar delivery
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmDeletePreVenda(true)}
-                  className="rounded-xl border border-red-950 bg-red-950/20 hover:bg-red-950/40 px-4 py-3 text-sm font-semibold text-red-100"
-                >
-                  Excluir
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => criarDeliveryAPartirPreVenda(detalhe)}
+                    className="rounded-xl bg-amber-900/80 hover:bg-amber-800 px-3 py-2.5 text-xs font-bold text-white"
+                  >
+                    Criar delivery
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeletePreVenda(true)}
+                    className="rounded-xl border border-red-950 bg-red-950/20 hover:bg-red-950/40 px-3 py-2.5 text-xs font-semibold text-red-100"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
 
               {confirmDeletePreVenda && (
