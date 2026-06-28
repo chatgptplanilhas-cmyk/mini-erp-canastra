@@ -1,6 +1,6 @@
 {
-  "name": "Mini ERP Queijos Serra da Canastra",
-  "short_name": "Mini ERP",
+  "name": "ERP Queijos Serra da Canastra",
+  "short_name": "ERP Canastra",
   "description": "Mini ERP operacional da Queijos Serra da Canastra",
   "start_url": "/",
   "scope": "/",
@@ -10,17 +10,19 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "/pwa-icon-192.png",
+      "src": "/pwa/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/pwa-icon-512.png",
+      "src": "/pwa/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/pwa-maskable-512.png",
+      "src": "/pwa/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
