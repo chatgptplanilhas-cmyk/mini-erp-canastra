@@ -7118,8 +7118,8 @@ Delber Vilaça`
           ? 'w-full rounded-xl border border-amber-950/70 bg-amber-950/10 hover:border-amber-800/80 hover:bg-amber-950/20 px-3 py-2 text-left transition opacity-85'
           : 'w-full rounded-xl border border-emerald-950/70 bg-emerald-950/10 hover:border-emerald-800/80 hover:bg-emerald-950/20 px-3 py-2 text-left transition opacity-85'
         : estaEmLancamento
-          ? 'w-full rounded-2xl border border-orange-700/70 bg-orange-950/20 hover:border-orange-500 hover:bg-orange-950/30 px-4 py-3 text-left transition shadow-[0_0_0_1px_rgba(251,146,60,0.08)]'
-          : 'w-full rounded-2xl border border-zinc-900 bg-[#181410] hover:border-orange-900/80 hover:bg-[#211915] px-4 py-3 text-left transition'
+          ? 'w-full rounded-xl border border-orange-700/70 bg-orange-950/20 hover:border-orange-500 hover:bg-orange-950/30 px-3 py-2 text-left transition shadow-[0_0_0_1px_rgba(251,146,60,0.08)]'
+          : 'w-full rounded-xl border border-zinc-900 bg-[#181410] hover:border-orange-900/80 hover:bg-[#211915] px-3 py-2 text-left transition'
       return (
         <button
           key={`linha-prevenda-${chavePreVendaResumo(item, indice)}`}
@@ -7128,24 +7128,28 @@ Delber Vilaça`
           aria-label={`Abrir detalhes da pré-venda de ${item.cliente || 'cliente'}`}
           className={cardClass}
         >
-          <div className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 ${estaFinalizada ? 'opacity-90' : ''}`}>
-            <h3 className={`${estaFinalizada ? 'text-[15px]' : 'text-base'} col-span-2 font-black text-white leading-tight truncate`}>
-              {estaFinalizada ? `${estaDeliveryProgramado ? '🚚' : '✓'} ${item.cliente}` : item.cliente}
-            </h3>
-
-            <p className="min-w-0 truncate text-[13px] font-bold leading-tight text-zinc-300">
-              {referencia}
-            </p>
-            <span className={`${estaFinalizada ? (estaDeliveryProgramado ? 'text-amber-300' : 'text-emerald-300') : 'text-orange-300'} text-[15px] font-black leading-tight text-right whitespace-nowrap`}>
-              Total {moeda(item.total)}
-            </span>
-
-            <p className="text-[12px] font-semibold leading-tight text-zinc-500">
+          <div className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 ${estaFinalizada ? 'opacity-90' : ''}`}>
+            <div className="min-w-0 flex items-baseline gap-1.5 text-left">
+              <h3 className={`${estaFinalizada ? 'text-[14px]' : 'text-[15px]'} min-w-0 font-black text-left text-white leading-tight truncate`}>
+                {estaFinalizada ? `${estaDeliveryProgramado ? '🚚' : '✓'} ${item.cliente}` : item.cliente}
+              </h3>
+              <span className="shrink-0 text-left text-[12px] font-semibold leading-tight text-zinc-400">
+                |
+              </span>
+              <span className="min-w-0 truncate text-left text-[12px] font-semibold leading-tight text-zinc-300">
+                {referencia}
+              </span>
+            </div>
+            <p className="text-right text-[12px] font-semibold leading-tight text-zinc-500 whitespace-nowrap">
               {dataPreVenda}
             </p>
-            <p className="text-right text-[12px] font-bold leading-tight text-zinc-400 whitespace-nowrap">
+
+            <p className="text-left text-[12px] font-semibold leading-tight text-zinc-500">
               {quantidadeItens}
             </p>
+            <span className={`${estaFinalizada ? (estaDeliveryProgramado ? 'text-amber-300' : 'text-emerald-300') : 'text-orange-300'} text-[14px] font-black leading-tight text-right whitespace-nowrap`}>
+              Total {moeda(item.total)}
+            </span>
           </div>
         </button>
       )
