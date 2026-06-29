@@ -7126,9 +7126,12 @@ Delber Vilaça`
           type="button"
           onClick={() => abrirDetalhePreVenda(item)}
           aria-label={`Abrir detalhes da pré-venda de ${item.cliente || 'cliente'}`}
-          className={cardClass}
+          className={`${cardClass} min-w-0 max-w-full box-border overflow-hidden`}
         >
-          <div className={`flex w-full items-start justify-between gap-2 overflow-visible pr-1 ${estaFinalizada ? 'opacity-90' : ''}`}>
+          <div
+            className={`grid w-full max-w-full items-start gap-x-1.5 overflow-hidden ${estaFinalizada ? 'opacity-90' : ''}`}
+            style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}
+          >
             <div className="min-w-0 flex-1 text-left">
               <div className="flex min-w-0 items-baseline gap-1.5">
                 <h3 className={`${estaFinalizada ? 'text-[14px]' : 'text-[15px]'} min-w-0 font-black text-white leading-tight truncate`}>
@@ -7146,7 +7149,7 @@ Delber Vilaça`
               </p>
             </div>
 
-            <div className="min-w-[112px] shrink-0 pr-1 text-right">
+            <div className="shrink-0 justify-self-end pl-1 text-right">
               <p className="text-[12px] font-semibold leading-tight text-zinc-500 whitespace-nowrap">
                 {dataPreVenda}
               </p>
