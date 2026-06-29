@@ -7128,7 +7128,7 @@ Delber Vilaça`
           aria-label={`Abrir detalhes da pré-venda de ${item.cliente || 'cliente'}`}
           className={cardClass}
         >
-          <div className={`flex w-full items-start justify-between gap-3 ${estaFinalizada ? 'opacity-90' : ''}`}>
+          <div className={`flex w-full items-start justify-between gap-2 overflow-visible pr-1 ${estaFinalizada ? 'opacity-90' : ''}`}>
             <div className="min-w-0 flex-1 text-left">
               <div className="flex min-w-0 items-baseline gap-1.5">
                 <h3 className={`${estaFinalizada ? 'text-[14px]' : 'text-[15px]'} min-w-0 font-black text-white leading-tight truncate`}>
@@ -7146,12 +7146,12 @@ Delber Vilaça`
               </p>
             </div>
 
-            <div className="shrink-0 text-right">
+            <div className="min-w-[112px] shrink-0 pr-1 text-right">
               <p className="text-[12px] font-semibold leading-tight text-zinc-500 whitespace-nowrap">
                 {dataPreVenda}
               </p>
-              <span className="mt-0.5 block text-[14px] font-black leading-tight text-amber-300 whitespace-nowrap">
-                Total {moeda(item.total)}
+              <span className="mt-0.5 block text-[13px] sm:text-[14px] font-black leading-tight text-amber-300 whitespace-nowrap">
+                {moeda(item.total)}
               </span>
             </div>
           </div>
