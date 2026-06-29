@@ -7128,28 +7128,32 @@ Delber Vilaça`
           aria-label={`Abrir detalhes da pré-venda de ${item.cliente || 'cliente'}`}
           className={cardClass}
         >
-          <div className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 ${estaFinalizada ? 'opacity-90' : ''}`}>
-            <div className="min-w-0 flex items-baseline gap-1.5 text-left">
-              <h3 className={`${estaFinalizada ? 'text-[14px]' : 'text-[15px]'} min-w-0 font-black text-left text-white leading-tight truncate`}>
-                {estaFinalizada ? `${estaDeliveryProgramado ? '🚚' : '✓'} ${item.cliente}` : item.cliente}
-              </h3>
-              <span className="shrink-0 text-left text-[12px] font-semibold leading-tight text-zinc-400">
-                |
-              </span>
-              <span className="min-w-0 truncate text-left text-[12px] font-semibold leading-tight text-zinc-300">
-                {referencia}
+          <div className={`flex w-full items-start justify-between gap-3 ${estaFinalizada ? 'opacity-90' : ''}`}>
+            <div className="min-w-0 flex-1 text-left">
+              <div className="flex min-w-0 items-baseline gap-1.5">
+                <h3 className={`${estaFinalizada ? 'text-[14px]' : 'text-[15px]'} min-w-0 font-black text-white leading-tight truncate`}>
+                  {estaFinalizada ? `${estaDeliveryProgramado ? '🚚' : '✓'} ${item.cliente}` : item.cliente}
+                </h3>
+                <span className="shrink-0 text-[12px] font-semibold leading-tight text-zinc-400">
+                  |
+                </span>
+                <span className="min-w-0 truncate text-[12px] font-semibold leading-tight text-zinc-300">
+                  {referencia}
+                </span>
+              </div>
+              <p className="mt-0.5 text-[12px] font-semibold leading-tight text-zinc-500">
+                {quantidadeItens}
+              </p>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <p className="text-[12px] font-semibold leading-tight text-zinc-500 whitespace-nowrap">
+                {dataPreVenda}
+              </p>
+              <span className="mt-0.5 block text-[14px] font-black leading-tight text-amber-300 whitespace-nowrap">
+                Total {moeda(item.total)}
               </span>
             </div>
-            <p className="text-right text-[12px] font-semibold leading-tight text-zinc-500 whitespace-nowrap">
-              {dataPreVenda}
-            </p>
-
-            <p className="text-left text-[12px] font-semibold leading-tight text-zinc-500">
-              {quantidadeItens}
-            </p>
-            <span className={`${estaFinalizada ? (estaDeliveryProgramado ? 'text-amber-300' : 'text-emerald-300') : 'text-orange-300'} text-[14px] font-black leading-tight text-right whitespace-nowrap`}>
-              Total {moeda(item.total)}
-            </span>
           </div>
         </button>
       )
