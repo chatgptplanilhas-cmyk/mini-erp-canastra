@@ -775,6 +775,7 @@ export default function App() {
   const [preVendaDetalheModal, setPreVendaDetalheModal] = useState({ aberto: false, preVenda: null })
   const [confirmDeletePreVenda, setConfirmDeletePreVenda] = useState(false)
   const [preVendaConvertendoId, setPreVendaConvertendoId] = useState('')
+  const [preVendaDeliveryOrigemId, setPreVendaDeliveryOrigemId] = useState('')
   const reconhecimentoPreVendaRef = useRef(null)
   const textoPreVendaAcumuladoRef = useRef('')
   const deveSalvarPreVendaNoFimRef = useRef(false)
@@ -2567,6 +2568,7 @@ Queijos Serra da Canastra 🇧🇷`
       status: 'Programado',
     })
 
+    setPreVendaDeliveryOrigemId(preVenda.id || '')
     setPreVendaDetalheModal({ aberto: false, preVenda: null })
     setPagina('delivery')
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80)
@@ -5706,6 +5708,8 @@ Delber Vilaça`
       status: editandoDeliveryId ? formDelivery.status || 'Programado' : 'Programado',
     }
 
+    const origemPreVendaId = preVendaDeliveryOrigemId
+
     if (editandoDeliveryId) {
       const { error } = await supabase
         .from('delivery')
@@ -5727,6 +5731,14 @@ Delber Vilaça`
         console.error(error)
         return
       }
+    }
+
+    if (origemPreVendaId && !editandoDeliveryId) {
+      const statusDelivery = dados.data_entrega
+        ? `Delivery programado ${dados.data_entrega}`
+        : 'Delivery programado'
+      await atualizarStatusPreVenda(origemPreVendaId, statusDelivery)
+      setPreVendaDeliveryOrigemId('')
     }
 
     limparDelivery()
@@ -7015,6 +7027,11 @@ Delber Vilaça`
       return preVenda.pagamento || extrairPagamentoPreVendaPorVoz(preVenda.transcricao || '') || 'Não informado'
     }
 
+    function dataEntregaStatusPreVenda(statusItem) {
+      const encontrada = String(statusItem || '').match(/\b(\d{4}-\d{2}-\d{2})\b/)
+      return encontrada?.[1] || ''
+    }
+
     function moedaResumoPreVenda(valor) {
       return moeda(valor).replace(/\s/g, ' ')
     }
@@ -7102,9 +7119,7 @@ Delber Vilaça`
       const estaDelivery = statusNormalizado.includes('delivery') && !estaDeliveryProgramado
       const estaEmLancamento = estaDelivery || statusNormalizado.includes('lancamento') || statusNormalizado.includes('lançamento')
       const cardClass = estaFinalizada
-        ? estaDeliveryProgramado
-          ? 'w-full rounded-xl border border-amber-950/70 bg-amber-950/10 hover:border-amber-800/80 hover:bg-amber-950/20 px-3 py-2 text-left transition opacity-85'
-          : 'w-full rounded-xl border border-emerald-950/70 bg-emerald-950/10 hover:border-emerald-800/80 hover:bg-emerald-950/20 px-3 py-2 text-left transition opacity-85'
+        ? 'w-full rounded-xl border border-emerald-950/70 bg-emerald-950/10 hover:border-emerald-800/80 hover:bg-emerald-950/20 px-3 py-2 text-left transition opacity-85'
         : estaEmLancamento
           ? 'w-full rounded-xl border border-orange-700/70 bg-orange-950/20 hover:border-orange-500 hover:bg-orange-950/30 px-3 py-2 text-left transition shadow-[0_0_0_1px_rgba(251,146,60,0.08)]'
           : 'w-full rounded-xl border border-zinc-900 bg-[#181410] hover:border-orange-900/80 hover:bg-[#211915] px-3 py-2 text-left transition'
@@ -7123,7 +7138,7 @@ Delber Vilaça`
             <div className="min-w-0 flex-1 text-left">
               <div className="flex min-w-0 items-baseline gap-1.5">
                 <h3 className={`${estaFinalizada ? 'text-[14px]' : 'text-[15px]'} min-w-0 font-black text-white leading-tight truncate`}>
-                  {estaFinalizada ? `${estaDeliveryProgramado ? '🚚' : '✓'} ${item.cliente}` : item.cliente}
+                  {estaFinalizada ? `✓ ${item.cliente}` : item.cliente}
                 </h3>
                 <span className="shrink-0 text-[12px] font-semibold leading-tight text-zinc-400">
                   |
@@ -7135,6 +7150,11 @@ Delber Vilaça`
               <p className="mt-0.5 text-[12px] font-semibold leading-tight text-zinc-500">
                 {quantidadeItens}
               </p>
+              {estaDeliveryProgramado && (
+                <span className="mt-1 inline-flex rounded-full border border-emerald-900/70 bg-emerald-950/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-200">
+                  📦 No Delivery
+                </span>
+              )}
             </div>
 
             <div className="shrink-0 justify-self-end pl-1 text-right">
@@ -7421,6 +7441,11 @@ Delber Vilaça`
         )}
 
         {preVendaDetalheModal.aberto && detalhe && (
+          (() => {
+            const detalheStatusNormalizado = normalizarTexto(detalhe.status || '')
+            const detalheNoDelivery = detalheStatusNormalizado.includes('delivery programado')
+            const detalheEntregaPrevista = dataEntregaStatusPreVenda(detalhe.status)
+            return (
           <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/85 p-3 pt-6 pb-[140px] backdrop-blur-sm md:items-center md:p-4">
             <div className="w-full max-w-4xl rounded-[26px] border border-orange-950 bg-[#15110f] p-4 shadow-2xl md:p-6">
               <div className="flex items-start justify-between gap-4 mb-4">
@@ -7437,6 +7462,17 @@ Delber Vilaça`
                   ×
                 </button>
               </div>
+
+              {detalheNoDelivery && (
+                <div className="mb-4 rounded-2xl border border-emerald-950/80 bg-emerald-950/20 px-4 py-3">
+                  <p className="text-sm font-black text-emerald-100">📦 Programada para Delivery</p>
+                  {detalheEntregaPrevista && (
+                    <p className="mt-1 text-xs font-semibold text-emerald-200">
+                      Entrega prevista: {dataBR(detalheEntregaPrevista)}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                 <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-3">
@@ -7567,6 +7603,8 @@ Delber Vilaça`
               )}
             </div>
           </div>
+            )
+          })()
         )}
 
         {preVendaEdicaoModal.aberto && preVendaEdicaoModal.preVenda && (
