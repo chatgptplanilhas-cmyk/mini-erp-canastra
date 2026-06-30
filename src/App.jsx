@@ -2456,7 +2456,6 @@ Queijos Serra da Canastra 🇧🇷`
   async function copiarMensagemPreVenda() {
     try {
       await navigator.clipboard.writeText(mensagemPreVendaModal.texto || '')
-      if (mensagemPreVendaModal.preVendaId) await atualizarStatusPreVenda(mensagemPreVendaModal.preVendaId, 'Mensagem gerada')
       exibirToast('Mensagem copiada.')
     } catch (erro) {
       console.error(erro)
