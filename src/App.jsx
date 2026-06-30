@@ -775,7 +775,6 @@ export default function App() {
   const [preVendaDetalheModal, setPreVendaDetalheModal] = useState({ aberto: false, preVenda: null })
   const [confirmDeletePreVenda, setConfirmDeletePreVenda] = useState(false)
   const [preVendaConvertendoId, setPreVendaConvertendoId] = useState('')
-  const [preVendaDeliveryOrigemId, setPreVendaDeliveryOrigemId] = useState('')
   const reconhecimentoPreVendaRef = useRef(null)
   const textoPreVendaAcumuladoRef = useRef('')
   const deveSalvarPreVendaNoFimRef = useRef(false)
@@ -2515,6 +2514,7 @@ Queijos Serra da Canastra 🇧🇷`
 
   function montarDescricaoDeliveryPorPreVenda(preVenda) {
     const itens = Array.isArray(preVenda?.itens) ? preVenda.itens : []
+    const pagamento = preVenda?.pagamento || extrairPagamentoPreVendaPorVoz(preVenda?.transcricao || '')
     const linhasItens = itens.map((produto) => {
       const quantidade = Number(produto.quantidade || 1)
       const valorUnitario = Number(produto.valorUnitario ?? produto.valor_unitario ?? produto.valor ?? 0)
@@ -2525,7 +2525,7 @@ Queijos Serra da Canastra 🇧🇷`
     const linhas = [
       'Origem: Pré-venda',
       preVenda?.referencia ? `Referência: ${preVenda.referencia}` : '',
-      preVenda?.pagamento ? `Pagamento informado: ${preVenda.pagamento}` : '',
+      pagamento ? `Pagamento informado: ${pagamento}` : '',
       linhasItens.length ? 'Itens:' : '',
       ...linhasItens,
       preVenda?.transcricao ? `Transcrição: ${preVenda.transcricao}` : '',
@@ -2557,7 +2557,7 @@ Queijos Serra da Canastra 🇧🇷`
     setEditandoDeliveryId(null)
     setFormDelivery({
       venda_id: '',
-      data_pedido: dataHoje(),
+      data_pedido: dataISO(preVenda.criadoEm || preVenda.created_at || dataHoje()),
       data_entrega: '',
       cliente_id: clienteEncontrado?.id || '',
       referencia: preVenda.referencia || clienteEncontrado?.referencia || '',
@@ -2567,8 +2567,6 @@ Queijos Serra da Canastra 🇧🇷`
       status: 'Programado',
     })
 
-    setPreVendaDeliveryOrigemId(preVenda.id || '')
-    atualizarStatusPreVenda(preVenda.id, 'Em delivery')
     setPreVendaDetalheModal({ aberto: false, preVenda: null })
     setPagina('delivery')
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80)
@@ -5731,17 +5729,8 @@ Delber Vilaça`
       }
     }
 
-    const origemPreVendaId = preVendaDeliveryOrigemId
-
     limparDelivery()
     buscarDelivery()
-
-    if (origemPreVendaId && !editandoDeliveryId) {
-      await atualizarStatusPreVenda(origemPreVendaId, 'Delivery programado')
-      setPreVendaDeliveryOrigemId('')
-      setPagina('pre-vendas')
-      exibirToast('Delivery criado e pré-venda atualizada.')
-    }
   }
 
   function editarDelivery(item) {
@@ -7531,7 +7520,7 @@ Delber Vilaça`
                     onClick={() => criarDeliveryAPartirPreVenda(detalhe)}
                     className="rounded-xl bg-amber-900/80 hover:bg-amber-800 px-3 py-2.5 text-xs font-bold text-white"
                   >
-                    Criar delivery
+                    Adicionar ao delivery
                   </button>
 
                   <button
