@@ -2512,7 +2512,9 @@ Queijos Serra da Canastra 🇧🇷`
 
     setModalVendaAberto(true)
     setValorTotal(preVenda?.total ? moedaInput(preVenda.total) : '')
-    setDataVenda(dataISO(preVenda?.criadoEm || preVenda?.created_at || dataHoje()))
+    const dataOriginalPreVenda = dataISO(preVenda?.criadoEm || preVenda?.created_at || dataHoje())
+
+    setDataVenda(dataOriginalPreVenda)
     setTextoVendaVoz(preVenda?.transcricao || '')
     setAvisoVendaVoz('Pré-venda carregada. Escolha cliente cadastrado, cliente avulso ou cadastre um novo cliente antes de salvar.')
     setBuscaClienteVenda(nomeCliente)
@@ -2525,7 +2527,7 @@ Queijos Serra da Canastra 🇧🇷`
       candidatos,
     })
 
-    if (pagamentoInformado) selecionarPagamentoVendaPorVoz(pagamentoInformado)
+    if (pagamentoInformado) selecionarPagamentoVendaPorVoz(pagamentoInformado, dataOriginalPreVenda)
 
     setPreVendaConvertendoId(preVenda.id || '')
     atualizarStatusPreVenda(preVenda.id, 'Em lançamento')
@@ -2670,7 +2672,7 @@ Queijos Serra da Canastra 🇧🇷`
     return ''
   }
 
-  function selecionarPagamentoVendaPorVoz(texto) {
+  function selecionarPagamentoVendaPorVoz(texto, dataBaseVenda = dataVenda) {
     const normalizado = limparPontuacaoTexto(texto)
 
     let formaPreferida = ''
@@ -2685,22 +2687,16 @@ Queijos Serra da Canastra 🇧🇷`
     if (!formaPreferida) return
 
     const taxaEncontrada = taxas.find((taxa) => normalizarTexto(taxa.forma_pagamento).includes(normalizarTexto(formaPreferida)))
-    const statusSugerido = statusPorFormaPagamentoVenda(taxaEncontrada?.forma_pagamento || formaPreferida)
-
     if (taxaEncontrada) setTaxaSelecionadaId(taxaEncontrada.id)
-    if (statusSugerido) {
-      setStatus(statusSugerido)
-      setValorPagoVenda('')
-      if (statusSugerido === 'PAGO') setVencimento('')
-    }
+    aplicarStatusPorFormaPagamentoVenda(taxaEncontrada?.forma_pagamento || formaPreferida, dataBaseVenda)
   }
 
-  function selecionarStatusVendaPorVoz(texto) {
+  function selecionarStatusVendaPorVoz(texto, dataBaseVenda = dataVenda) {
     const normalizado = limparPontuacaoTexto(texto)
 
     if (/\bpago\b|pagou|recebido|quitado|\bpix\b|\bpics\b|\bpic\b|dinheiro|debito|credito|cartao|visa|master/.test(normalizado) && !/fiado|em aberto|aberto|prazo/.test(normalizado)) {
       setStatus('PAGO')
-      setVencimento('')
+      setVencimento(dataBaseVenda || dataVenda || dataHoje())
       return
     }
 
@@ -2722,11 +2718,13 @@ Queijos Serra da Canastra 🇧🇷`
     const clienteSelecionado = selecionarClienteVendaPorVoz(clienteTexto, textoLimpo)
     const valorExtraido = extrairValorVendaPorVoz(textoLimpo)
     const vencimentoExtraido = extrairDataVendaPorVoz(textoLimpo, true)
+    const textoNormalizado = limparPontuacaoTexto(textoLimpo)
+    const pagamentoPagoInformado = /\bpago\b|pagou|recebido|quitado|\bpix\b|\bpics\b|\bpic\b|dinheiro|debito|credito|cartao|visa|master/.test(textoNormalizado) && !/fiado|em aberto|aberto|prazo/.test(textoNormalizado)
 
     if (valorExtraido) setValorTotal(valorExtraido)
-    selecionarPagamentoVendaPorVoz(textoLimpo)
-    selecionarStatusVendaPorVoz(textoLimpo)
-    if (vencimentoExtraido && /vencimento|vence|vencer|fiado|em aberto|aberto|prazo/.test(limparPontuacaoTexto(textoLimpo))) {
+    selecionarPagamentoVendaPorVoz(textoLimpo, dataVenda)
+    selecionarStatusVendaPorVoz(textoLimpo, dataVenda)
+    if (vencimentoExtraido && !pagamentoPagoInformado && /vencimento|vence|vencer|fiado|em aberto|aberto|prazo/.test(textoNormalizado)) {
       setVencimento(vencimentoExtraido)
     }
 
@@ -2957,6 +2955,19 @@ Queijos Serra da Canastra 🇧🇷`
     ) return 'PAGO'
 
     return ''
+  }
+
+  function aplicarStatusPorFormaPagamentoVenda(formaPagamento, dataBaseVenda = dataVenda) {
+    const statusSugerido = statusPorFormaPagamentoVenda(formaPagamento)
+
+    if (!statusSugerido) return
+
+    setStatus(statusSugerido)
+    setValorPagoVenda('')
+
+    if (statusSugerido === 'PAGO') {
+      setVencimento(dataBaseVenda || dataVenda || dataHoje())
+    }
   }
 
   function calcularResumoPagamentosDelivery(pagamentosModal = [], valorTotal = 0) {
@@ -8333,13 +8344,9 @@ Delber Vilaça`
                       onChange={(e) => {
                         const novaTaxaId = e.target.value
                         const taxaSelecionada = taxas.find((taxa) => String(taxa.id) === String(novaTaxaId))
-                        const statusSugerido = statusPorFormaPagamentoVenda(taxaSelecionada?.forma_pagamento || '')
 
                         setTaxaSelecionadaId(novaTaxaId)
-                        if (statusSugerido) {
-                          setStatus(statusSugerido)
-                          setValorPagoVenda('')
-                        }
+                        aplicarStatusPorFormaPagamentoVenda(taxaSelecionada?.forma_pagamento || '', dataVenda)
                       }}
                       className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm"
                     >
