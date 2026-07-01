@@ -510,6 +510,7 @@ export default function App() {
   const [avisoClienteVoz, setAvisoClienteVoz] = useState('')
 
   const [clienteModalOrigemVenda, setClienteModalOrigemVenda] = useState(false)
+  const [clienteModalOrigemDelivery, setClienteModalOrigemDelivery] = useState(false)
 
   const [modalEdicaoProduto, setModalEdicaoProduto] = useState({
     aberto: false,
@@ -956,6 +957,7 @@ export default function App() {
     valor_total: '',
     status: 'Programado',
   })
+  const [clienteDeliveryNomeSugerido, setClienteDeliveryNomeSugerido] = useState('')
 
   const [formPedidoFornecedor, setFormPedidoFornecedor] = useState({
     produto_id: '',
@@ -2569,6 +2571,7 @@ Queijos Serra da Canastra 🇧🇷`
     const descricao = montarDescricaoDeliveryPorPreVenda(preVenda)
 
     setEditandoDeliveryId(null)
+    setClienteDeliveryNomeSugerido(preVenda.cliente || '')
     setFormDelivery({
       venda_id: '',
       data_pedido: dataISO(preVenda.criadoEm || preVenda.created_at || dataHoje()),
@@ -5062,6 +5065,7 @@ Delber Vilaça`
 
   function abrirModalNovoCliente() {
     setClienteModalOrigemVenda(false)
+    setClienteModalOrigemDelivery(false)
     setAvisoClienteVoz('')
     setTextoClienteVoz('')
     setClienteExpandidoId(null)
@@ -5082,6 +5086,7 @@ Delber Vilaça`
     const nomeSugerido = capitalizarNomeVendaAvulsa(clienteAvulsoVendaNome || buscaClienteVenda || '')
 
     setClienteModalOrigemVenda(true)
+    setClienteModalOrigemDelivery(false)
     setAvisoClienteVoz('')
     setTextoClienteVoz('')
     setClienteExpandidoId(null)
@@ -5098,8 +5103,31 @@ Delber Vilaça`
     })
   }
 
+  function abrirModalNovoClientePeloDelivery() {
+    const nomeSugerido = capitalizarNomeVendaAvulsa(clienteDeliveryNomeSugerido || '')
+    const referenciaSugerida = formDelivery.local_entrega || formDelivery.referencia || ''
+
+    setClienteModalOrigemVenda(false)
+    setClienteModalOrigemDelivery(true)
+    setAvisoClienteVoz('')
+    setTextoClienteVoz('')
+    setClienteExpandidoId(null)
+    setEditandoClienteId(null)
+    setFormCliente({ nome: '', referencia: '', observacao: '', telefone: '' })
+    setModalEdicaoCliente({
+      aberto: true,
+      cliente: null,
+      nome: nomeSugerido,
+      referencia: referenciaSugerida,
+      observacao: '',
+      telefone: '',
+      ativo: true,
+    })
+  }
+
   function editarCliente(cliente) {
     setClienteModalOrigemVenda(false)
+    setClienteModalOrigemDelivery(false)
     setAvisoClienteVoz('')
     setTextoClienteVoz('')
     setClienteExpandidoId(null)
@@ -5119,6 +5147,7 @@ Delber Vilaça`
     setAvisoClienteVoz('')
     setTextoClienteVoz('')
     setClienteModalOrigemVenda(false)
+    setClienteModalOrigemDelivery(false)
     setModalEdicaoCliente({
       aberto: false,
       cliente: null,
@@ -5206,6 +5235,24 @@ Delber Vilaça`
       fecharModalEdicaoCliente()
       buscarTudo()
       exibirToast('Cliente cadastrado e selecionado na venda.')
+      return
+    }
+
+    if (clienteModalOrigemDelivery && clienteCriado?.id) {
+      setClientes((listaAtual) => {
+        const jaExiste = listaAtual.some((cliente) => String(cliente.id) === String(clienteCriado.id))
+        return jaExiste ? listaAtual : [clienteCriado, ...listaAtual]
+      })
+      setFormDelivery((deliveryAtual) => ({
+        ...deliveryAtual,
+        cliente_id: clienteCriado.id,
+        referencia: deliveryAtual.referencia || clienteCriado.referencia || '',
+        local_entrega: deliveryAtual.local_entrega || deliveryAtual.referencia || clienteCriado.referencia || '',
+      }))
+      setClienteModalOrigemDelivery(false)
+      fecharModalEdicaoCliente()
+      buscarTudo()
+      exibirToast('Cliente cadastrado e vinculado ao Delivery.')
       return
     }
 
@@ -5942,6 +5989,7 @@ Delber Vilaça`
         : 'Delivery programado'
       await atualizarStatusPreVenda(origemPreVendaId, statusDelivery)
       setPreVendaDeliveryOrigemId('')
+      setClienteDeliveryNomeSugerido('')
     }
 
     limparDelivery()
@@ -5950,6 +5998,7 @@ Delber Vilaça`
 
   function editarDelivery(item) {
     setEditandoDeliveryId(item.id)
+    setClienteDeliveryNomeSugerido('')
 
     setFormDelivery({
       venda_id: item.venda_id || '',
@@ -5968,6 +6017,7 @@ Delber Vilaça`
 
   function limparDelivery() {
     setEditandoDeliveryId(null)
+    setClienteDeliveryNomeSugerido('')
     setFormDelivery({
       venda_id: '',
       data_pedido: dataHoje(),
@@ -5984,6 +6034,7 @@ Delber Vilaça`
   function cancelarDeliveryPreVenda() {
     limparDelivery()
     setPreVendaDeliveryOrigemId('')
+    setClienteDeliveryNomeSugerido('')
     setPagina('pre-vendas')
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80)
     exibirToast('Delivery cancelado. A pre-venda original foi preservada.')
@@ -12351,6 +12402,16 @@ Delber Vilaça`
                 </option>
               ))}
           </select>
+
+          {preVendaDeliveryOrigemId && !formDelivery.cliente_id && clienteDeliveryNomeSugerido && (
+            <button
+              type="button"
+              onClick={abrirModalNovoClientePeloDelivery}
+              className="bg-green-950 hover:bg-green-900 rounded-2xl p-3 font-semibold"
+            >
+              + Cadastrar cliente
+            </button>
+          )}
 
           <div>
             <label className="block text-xs uppercase text-zinc-500 mb-2">
