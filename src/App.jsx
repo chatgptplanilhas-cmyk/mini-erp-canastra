@@ -2000,11 +2000,11 @@ export default function App() {
       String(texto || '')
         .replace(/^\s*(?:e\s+)?(?:um|uma|dois|duas)\s+/i, ' ')
         .replace(/\b(comprou|pegou|levou|ficou com|ficou|compras?|cliente|itens?)\b/gi, ' ')
-        .replace(/\b(o|a|e|de|do|da|por|valor|reais|real|r\$)\b/gi, ' ')
+        .replace(/\b(o|a|e|por|valor|reais|real|r\$)\b/gi, ' ')
         .replace(/\b(cada|unidade|unit[aá]rio)\b/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-    )
+    ).replace(/\b(De|Do|Da|Dos|Das)\b/g, (parte) => parte.toLowerCase())
   }
 
   function interpretarItemPreVendaPorVoz(textoItem, valorInformado) {
@@ -2040,6 +2040,7 @@ export default function App() {
 
   function separarTrechosItensPreVendaPorVoz(texto) {
     return String(texto || '')
+      .replace(/(\d+(?:[,.]\d{1,2})?\s*(?:reais?|real|cada|unidade|unit[aá]rio)?)\s+(?=(?:um|uma|dois|duas|tres|três|\d+)\b)/gi, '$1; ')
       .replace(/\s+(?:e|é)\s+(?=(?:um|uma|dois|duas|tres|três|\d+)\b)/gi, '; ')
       .split(/[,;\n]+/g)
       .map((parte) => parte.replace(/[.]+$/g, '').trim())
@@ -2085,7 +2086,7 @@ export default function App() {
     const original = String(texto || '')
     const partes = []
     const trechos = separarTrechosItensPreVendaPorVoz(original)
-    const regexItem = /(.+?)\s+(?:r\$\s*)?(\d+(?:[,.]\d{1,2})?)\s*(?:reais?|real|cada|unidade|unit[aá]rio)?(?=\s*(?:[,;.]|\s+(?:e|é)\s+(?:um|uma|dois|duas|tres|três|\d+)\b|$))/gi
+    const regexItem = /(.+?)\s+(?:r\$\s*)?(\d+(?:[,.]\d{1,2})?)\s*(?:reais?|real|cada|unidade|unit[aá]rio)?(?=\s*(?:[,;.]|\s+(?:(?:e|é)\s+)?(?:um|uma|dois|duas|tres|três|\d+)\b|$))/gi
     const clienteNormalizado = normalizarTexto(cliente || '')
 
     trechos.forEach((trecho) => {
