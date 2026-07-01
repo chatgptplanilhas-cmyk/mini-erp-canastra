@@ -1998,8 +1998,10 @@ export default function App() {
   function limparNomeItemPreVenda(texto) {
     return capitalizarNomeVendaAvulsa(
       String(texto || '')
+        .replace(/^\s*(?:e\s+)?(?:um|uma|dois|duas)\s+/i, ' ')
         .replace(/\b(comprou|pegou|levou|ficou com|ficou|compras?|cliente|itens?)\b/gi, ' ')
         .replace(/\b(o|a|e|de|do|da|por|valor|reais|real|r\$)\b/gi, ' ')
+        .replace(/\b(cada|unidade|unit[aá]rio)\b/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim()
     )
@@ -2007,6 +2009,7 @@ export default function App() {
 
   function interpretarItemPreVendaPorVoz(textoItem, valorInformado) {
     let textoLimpo = String(textoItem || '')
+      .replace(/^\s*e\s+/i, ' ')
       .replace(/\b(comprou|pegou|levou|ficou com|ficou|compras?|cliente|itens?)\b/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim()
@@ -2033,6 +2036,14 @@ export default function App() {
       subtotal,
       valor: subtotal,
     }
+  }
+
+  function separarTrechosItensPreVendaPorVoz(texto) {
+    return String(texto || '')
+      .replace(/\s+e\s+(?=(?:um|uma|dois|duas|tres|três|\d+)\b)/gi, '; ')
+      .split(/[,;\n]+/g)
+      .map((parte) => parte.trim())
+      .filter(Boolean)
   }
 
   function extrairClientePreVendaPorVoz(texto) {
@@ -2073,12 +2084,15 @@ export default function App() {
   function extrairItensPreVendaPorVoz(texto, cliente) {
     const original = String(texto || '')
     const partes = []
-    const regex = /([^,;.\n]+?)\s+(?:r\$\s*)?(\d+(?:[,.]\d{1,2})?)\s*(?:reais?|real)?/gi
-    let match
+    const trechos = separarTrechosItensPreVendaPorVoz(original)
+    const regex = /(.+?)\s+(?:r\$\s*)?(\d+(?:[,.]\d{1,2})?)\s*(?:reais?|real|cada|unidade|unit[aá]rio)?\s*$/i
+    const clienteNormalizado = normalizarTexto(cliente || '')
 
-    while ((match = regex.exec(original)) !== null) {
+    trechos.forEach((trecho) => {
+      const match = trecho.match(regex)
+      if (!match) return
+
       let textoItem = match[1] || ''
-      const clienteNormalizado = normalizarTexto(cliente || '')
       if (clienteNormalizado && normalizarTexto(textoItem).startsWith(clienteNormalizado)) {
         textoItem = textoItem.slice(String(cliente || '').length)
       }
@@ -2088,7 +2102,7 @@ export default function App() {
       if (itemInterpretado.nome && itemInterpretado.valorUnitario > 0) {
         partes.push(itemInterpretado)
       }
-    }
+    })
 
     return partes
   }
