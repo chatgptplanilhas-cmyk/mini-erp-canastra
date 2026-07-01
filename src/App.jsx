@@ -2512,7 +2512,7 @@ Queijos Serra da Canastra 🇧🇷`
 
     setModalVendaAberto(true)
     setValorTotal(preVenda?.total ? moedaInput(preVenda.total) : '')
-    setDataVenda(dataHoje())
+    setDataVenda(dataISO(preVenda?.criadoEm || preVenda?.created_at || dataHoje()))
     setTextoVendaVoz(preVenda?.transcricao || '')
     setAvisoVendaVoz('Pré-venda carregada. Escolha cliente cadastrado, cliente avulso ou cadastre um novo cliente antes de salvar.')
     setBuscaClienteVenda(nomeCliente)
