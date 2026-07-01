@@ -7201,7 +7201,7 @@ Delber Vilaça`
                 className={`rounded-2xl px-5 py-4 text-sm font-bold transition ${
                   ouvindoPreVendaVoz
                     ? 'bg-red-950 hover:bg-red-900 text-red-100'
-                    : 'bg-orange-950 hover:bg-orange-900 text-white'
+                    : 'bg-green-800 hover:bg-green-700 text-white'
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {ouvindoPreVendaVoz ? '■ Parar e criar registro' : '🎙️ Nova pré-venda'}
@@ -7210,7 +7210,7 @@ Delber Vilaça`
               <button
                 type="button"
                 onClick={() => setResumoDiaPreVendasAberto(true)}
-                className="rounded-2xl border border-orange-900 bg-black px-5 py-4 text-sm font-bold text-orange-100 transition hover:bg-orange-950/40"
+                className="rounded-2xl border border-orange-800 bg-orange-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-orange-900"
               >
                 Resumo do dia
               </button>
