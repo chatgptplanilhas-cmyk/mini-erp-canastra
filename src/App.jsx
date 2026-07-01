@@ -2040,9 +2040,9 @@ export default function App() {
 
   function separarTrechosItensPreVendaPorVoz(texto) {
     return String(texto || '')
-      .replace(/\s+e\s+(?=(?:um|uma|dois|duas|tres|três|\d+)\b)/gi, '; ')
+      .replace(/\s+(?:e|é)\s+(?=(?:um|uma|dois|duas|tres|três|\d+)\b)/gi, '; ')
       .split(/[,;\n]+/g)
-      .map((parte) => parte.trim())
+      .map((parte) => parte.replace(/[.]+$/g, '').trim())
       .filter(Boolean)
   }
 
@@ -2085,22 +2085,23 @@ export default function App() {
     const original = String(texto || '')
     const partes = []
     const trechos = separarTrechosItensPreVendaPorVoz(original)
-    const regex = /(.+?)\s+(?:r\$\s*)?(\d+(?:[,.]\d{1,2})?)\s*(?:reais?|real|cada|unidade|unit[aá]rio)?\s*$/i
+    const regexItem = /(.+?)\s+(?:r\$\s*)?(\d+(?:[,.]\d{1,2})?)\s*(?:reais?|real|cada|unidade|unit[aá]rio)?(?=\s*(?:[,;.]|\s+(?:e|é)\s+(?:um|uma|dois|duas|tres|três|\d+)\b|$))/gi
     const clienteNormalizado = normalizarTexto(cliente || '')
 
     trechos.forEach((trecho) => {
-      const match = trecho.match(regex)
-      if (!match) return
+      let match
 
-      let textoItem = match[1] || ''
-      if (clienteNormalizado && normalizarTexto(textoItem).startsWith(clienteNormalizado)) {
-        textoItem = textoItem.slice(String(cliente || '').length)
-      }
+      while ((match = regexItem.exec(trecho)) !== null) {
+        let textoItem = match[1] || ''
+        if (clienteNormalizado && normalizarTexto(textoItem).startsWith(clienteNormalizado)) {
+          textoItem = textoItem.slice(String(cliente || '').length)
+        }
 
-      const itemInterpretado = interpretarItemPreVendaPorVoz(textoItem, match[2])
+        const itemInterpretado = interpretarItemPreVendaPorVoz(textoItem, match[2])
 
-      if (itemInterpretado.nome && itemInterpretado.valorUnitario > 0) {
-        partes.push(itemInterpretado)
+        if (itemInterpretado.nome && itemInterpretado.valorUnitario > 0) {
+          partes.push(itemInterpretado)
+        }
       }
     })
 
