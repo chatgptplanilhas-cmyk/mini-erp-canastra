@@ -2685,7 +2685,14 @@ Queijos Serra da Canastra 🇧🇷`
     if (!formaPreferida) return
 
     const taxaEncontrada = taxas.find((taxa) => normalizarTexto(taxa.forma_pagamento).includes(normalizarTexto(formaPreferida)))
+    const statusSugerido = statusPorFormaPagamentoVenda(taxaEncontrada?.forma_pagamento || formaPreferida)
+
     if (taxaEncontrada) setTaxaSelecionadaId(taxaEncontrada.id)
+    if (statusSugerido) {
+      setStatus(statusSugerido)
+      setValorPagoVenda('')
+      if (statusSugerido === 'PAGO') setVencimento('')
+    }
   }
 
   function selecionarStatusVendaPorVoz(texto) {
@@ -2939,7 +2946,15 @@ Queijos Serra da Canastra 🇧🇷`
     const chave = chaveFormaPagamento(formaPagamento)
 
     if (chave.includes('fiado') || chave.includes('emaberto')) return 'EM ABERTO'
-    if (chave.includes('pix') || chave.includes('debito') || chave.includes('credito') || chave.includes('dinheiro')) return 'PAGO'
+    if (
+      chave.includes('pix') ||
+      chave.includes('debito') ||
+      chave.includes('credito') ||
+      chave.includes('dinheiro') ||
+      chave.includes('cartao') ||
+      chave.includes('master') ||
+      chave.includes('visa')
+    ) return 'PAGO'
 
     return ''
   }
