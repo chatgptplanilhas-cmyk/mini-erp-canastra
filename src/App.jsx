@@ -9,6 +9,13 @@ const TIME_ZONE_BRASIL = 'America/Sao_Paulo'
 const MINI_ERP_HIGHEST_VERSION_KEY = 'miniErpHighestAcceptedVersion'
 const MINI_ERP_DOWNGRADE_BLOCK_KEY = 'miniErpDowngradeBlocked'
 const MINI_ERP_DIAGNOSTICO_KEY = 'miniErpDiagnosticoHistorico'
+const MENUS_ACOES_SELECTOR = [
+  'details.delivery-menu-grid-final',
+  'details.mini-delivery-acoes-menu',
+  'details.mini-cobrancas-menu',
+  'details.mini-clientes-menu',
+  'details.produto-acoes-menu',
+].join(',')
 
 function normalizarVersao(valor) {
   return String(valor || '')
@@ -2047,6 +2054,25 @@ export default function App() {
       valor: subtotal,
     }
   }
+
+  useEffect(() => {
+    function aoClicarForaMenuAcoes(event) {
+      if (event.target?.closest?.(MENUS_ACOES_SELECTOR)) return
+      fecharMenusAcoesAbertos()
+    }
+
+    function aoPressionarTeclaMenuAcoes(event) {
+      if (event.key === 'Escape') fecharMenusAcoesAbertos()
+    }
+
+    document.addEventListener('pointerdown', aoClicarForaMenuAcoes)
+    document.addEventListener('keydown', aoPressionarTeclaMenuAcoes)
+
+    return () => {
+      document.removeEventListener('pointerdown', aoClicarForaMenuAcoes)
+      document.removeEventListener('keydown', aoPressionarTeclaMenuAcoes)
+    }
+  }, [])
 
   function separarTrechosItensPreVendaPorVoz(texto) {
     return String(texto || '')
@@ -6002,18 +6028,23 @@ Delber Vilaça`
     buscarDelivery()
   }
 
-  function fecharMenusDeliveryAbertos() {
+  function fecharMenusAcoesAbertos(menuAtual = null) {
     if (typeof document === 'undefined') return
 
     document
-      .querySelectorAll('details.delivery-menu-grid-final[open], details.mini-delivery-acoes-menu[open]')
+      .querySelectorAll(MENUS_ACOES_SELECTOR)
       .forEach((menu) => {
-        menu.open = false
+        if (menu !== menuAtual) menu.open = false
       })
   }
 
+  function aoAlternarMenuAcoes(event) {
+    const menuAtual = event.currentTarget
+    if (menuAtual.open) fecharMenusAcoesAbertos(menuAtual)
+  }
+
   function editarDelivery(item) {
-    fecharMenusDeliveryAbertos()
+    fecharMenusAcoesAbertos()
     setDeliveryExpandidoId(null)
     setEditandoDeliveryId(item.id)
     setClienteDeliveryNomeSugerido('')
@@ -8906,9 +8937,9 @@ Delber Vilaça`
                         Editar
                       </button>
 
-                      <details className="mini-clientes-menu">
+                      <details className="mini-clientes-menu" onToggle={aoAlternarMenuAcoes}>
                         <summary aria-label="Mais ações">⋮</summary>
-                        <div className="mini-clientes-menu-list">
+                        <div className="mini-clientes-menu-list" onClick={() => fecharMenusAcoesAbertos()}>
                           <button type="button" onClick={() => alternarStatusCliente(cliente)}>
                             {cliente.ativo === false ? 'Reativar' : 'Inativar'}
                           </button>
@@ -9276,9 +9307,9 @@ Delber Vilaça`
                               >
                                 Confirmar
                               </button>
-                              <details className="mini-cobrancas-menu">
+                              <details className="mini-cobrancas-menu" onToggle={aoAlternarMenuAcoes}>
                                 <summary aria-label="Mais ações">⋮</summary>
-                                <div className="mini-cobrancas-menu-list">
+                                <div className="mini-cobrancas-menu-list" onClick={() => fecharMenusAcoesAbertos()}>
                                   <button onClick={() => resumoPixWhatsAppConsolidado(clientePendencia, itensCliente)}>Resumo</button>
                                   <button onClick={() => cobrarWhatsApp(pendencia)}>Só este item</button>
                                   <button onClick={() => editarPendenciaFinanceira(pendencia)}>Editar</button>
@@ -11366,9 +11397,9 @@ Delber Vilaça`
                           {produto.ativo ? 'Inativar' : 'Ativar'}
                         </button>
 
-                        <details className="produto-acoes-menu">
+                        <details className="produto-acoes-menu" onToggle={aoAlternarMenuAcoes}>
                           <summary aria-label="Mais ações">⋮</summary>
-                          <div className="produto-acoes-menu-list">
+                          <div className="produto-acoes-menu-list" onClick={() => fecharMenusAcoesAbertos()}>
                             {produto.ativo && (
                               <button type="button" onClick={() => arquivarProduto(produto)}>
                                 Arquivar
