@@ -169,6 +169,8 @@ export default function App() {
   const buscaClienteVendaInputRef = useRef(null)
   const clienteNomeInputRef = useRef(null)
   const reconhecimentoClienteRef = useRef(null)
+  const textoClienteAcumuladoRef = useRef('')
+  const deveAplicarClienteNoFimRef = useRef(false)
   const [modalConferenciaProdutosAberto, setModalConferenciaProdutosAberto] = useState(false)
   const [conferenciaProdutoExpandido, setConferenciaProdutoExpandido] = useState(null)
   const resolverFormaPagamentoRef = useRef(null)
@@ -504,6 +506,7 @@ export default function App() {
     ativo: true,
   })
   const [ouvindoClienteVoz, setOuvindoClienteVoz] = useState(false)
+  const [textoClienteVoz, setTextoClienteVoz] = useState('')
   const [avisoClienteVoz, setAvisoClienteVoz] = useState('')
 
   const [clienteModalOrigemVenda, setClienteModalOrigemVenda] = useState(false)
@@ -4880,6 +4883,12 @@ Delber Vilaça`
 
     const marcador = marcadores.join('|')
     const parada = paradas.join('|')
+    if (!parada) {
+      const regexAteOFim = new RegExp(`(?:^|[\\s,;.])(?:${marcador})\\s*[:\\-]?\\s*(.+)$`, 'i')
+      const encontradoAteOFim = fonte.match(regexAteOFim)
+      return encontradoAteOFim?.[1]?.trim() || ''
+    }
+
     const regex = new RegExp(`(?:^|[\\s,;.])(?:${marcador})\\s*[:\\-]?\\s*(.+?)(?=\\s+(?:${parada})\\b|[,;.]|$)`, 'i')
     const encontrado = fonte.match(regex)
 
@@ -4890,23 +4899,49 @@ Delber Vilaça`
     const nome = extrairCampoClientePorVoz(
       texto,
       ['nome', 'cliente'],
-      ['refer[eê]ncia', 'referencia', 'ref', 'telefone', 'tel', 'fone', 'contato']
+      ['refer[eê]ncia', 'referencia', 'ref', 'telefone', 'tel', 'fone', 'contato', 'observa[cç][aã]o', 'observacao', 'obs']
     )
     const referencia = extrairCampoClientePorVoz(
       texto,
       ['refer[eê]ncia', 'referencia', 'ref'],
-      ['nome', 'cliente', 'telefone', 'tel', 'fone', 'contato']
+      ['nome', 'cliente', 'telefone', 'tel', 'fone', 'contato', 'observa[cç][aã]o', 'observacao', 'obs']
     )
     const telefone = limparTelefone(extrairCampoClientePorVoz(
       texto,
       ['telefone', 'tel', 'fone', 'contato'],
-      ['nome', 'cliente', 'refer[eê]ncia', 'referencia', 'ref']
+      ['nome', 'cliente', 'refer[eê]ncia', 'referencia', 'ref', 'observa[cç][aã]o', 'observacao', 'obs']
     ))
+    const observacao = extrairCampoClientePorVoz(
+      texto,
+      ['observa[cç][aã]o', 'observacao', 'obs'],
+      []
+    )
 
-    return { nome, referencia, telefone }
+    return { nome, referencia, telefone, observacao }
   }
 
-  function pararClientePorVoz() {
+  function aplicarTextoClientePorVoz(texto) {
+    const dadosCliente = interpretarClientePorVoz(texto)
+    const temDados = dadosCliente.nome || dadosCliente.referencia || dadosCliente.telefone || dadosCliente.observacao
+
+    if (!temDados) {
+      setAvisoClienteVoz('Não identifiquei nome, referência, telefone ou observação. Fale usando esses marcadores.')
+      return
+    }
+
+    setModalEdicaoCliente((atual) => ({
+      ...atual,
+      nome: dadosCliente.nome || atual.nome,
+      referencia: dadosCliente.referencia || atual.referencia,
+      telefone: dadosCliente.telefone || atual.telefone,
+      observacao: dadosCliente.observacao || '',
+    }))
+    setAvisoClienteVoz('Dados preenchidos por voz. Confira e clique em Cadastrar cliente.')
+  }
+
+  function pararClientePorVoz({ aplicar = true } = {}) {
+    deveAplicarClienteNoFimRef.current = aplicar
+
     if (!ouvindoClienteVoz) {
       setOuvindoClienteVoz(false)
       return
@@ -4922,7 +4957,7 @@ Delber Vilaça`
 
   function cadastrarClientePorVoz() {
     if (ouvindoClienteVoz) {
-      pararClientePorVoz()
+      pararClientePorVoz({ aplicar: true })
       return
     }
 
@@ -4936,16 +4971,21 @@ Delber Vilaça`
       const reconhecimento = new Reconhecimento()
       reconhecimentoClienteRef.current = reconhecimento
       reconhecimento.lang = 'pt-BR'
-      reconhecimento.interimResults = false
-      reconhecimento.continuous = false
+      reconhecimento.interimResults = true
+      reconhecimento.continuous = true
       reconhecimento.maxAlternatives = 1
+
+      textoClienteAcumuladoRef.current = ''
+      deveAplicarClienteNoFimRef.current = false
+      setTextoClienteVoz('')
 
       reconhecimento.onstart = () => {
         setOuvindoClienteVoz(true)
-        setAvisoClienteVoz('Ouvindo cliente. Exemplo: nome Ana, referência CEAN, telefone 61 99999 0000.')
+        setAvisoClienteVoz('Ouvindo cliente. Exemplo: nome Ana, referência CEAN, telefone 61 99999 0000, observação entregar parte da manhã.')
       }
 
       reconhecimento.onerror = (evento) => {
+        deveAplicarClienteNoFimRef.current = false
         setOuvindoClienteVoz(false)
         reconhecimentoClienteRef.current = null
         setAvisoClienteVoz(evento?.error === 'not-allowed'
@@ -4954,6 +4994,13 @@ Delber Vilaça`
       }
 
       reconhecimento.onend = () => {
+        const textoFinal = textoClienteAcumuladoRef.current.trim()
+        if (deveAplicarClienteNoFimRef.current && textoFinal) {
+          aplicarTextoClientePorVoz(textoFinal)
+        } else if (deveAplicarClienteNoFimRef.current && !textoFinal) {
+          setAvisoClienteVoz('Não ouvi nenhuma informação. Tente novamente.')
+        }
+        deveAplicarClienteNoFimRef.current = false
         setOuvindoClienteVoz(false)
         reconhecimentoClienteRef.current = null
       }
@@ -4962,27 +5009,17 @@ Delber Vilaça`
         const textoFalado = Array.from(evento.results || [])
           .map((resultado) => resultado?.[0]?.transcript || '')
           .join(' ')
+          .replace(/\s+/g, ' ')
           .trim()
-        const dadosCliente = interpretarClientePorVoz(textoFalado)
-        const temDados = dadosCliente.nome || dadosCliente.referencia || dadosCliente.telefone
 
-        if (!temDados) {
-          setAvisoClienteVoz('Não identifiquei nome, referência ou telefone. Fale usando esses marcadores.')
-          return
-        }
-
-        setModalEdicaoCliente((atual) => ({
-          ...atual,
-          nome: dadosCliente.nome || atual.nome,
-          referencia: dadosCliente.referencia || atual.referencia,
-          telefone: dadosCliente.telefone || atual.telefone,
-        }))
-        setAvisoClienteVoz('Dados preenchidos por voz. Confira e clique em Cadastrar cliente.')
+        textoClienteAcumuladoRef.current = textoFalado
+        if (textoFalado) setTextoClienteVoz(textoFalado)
       }
 
       reconhecimento.start()
     } catch (erro) {
       console.error(erro)
+      deveAplicarClienteNoFimRef.current = false
       setOuvindoClienteVoz(false)
       setAvisoClienteVoz('Não foi possível iniciar o microfone neste navegador.')
     }
@@ -4991,6 +5028,7 @@ Delber Vilaça`
   function abrirModalNovoCliente() {
     setClienteModalOrigemVenda(false)
     setAvisoClienteVoz('')
+    setTextoClienteVoz('')
     setClienteExpandidoId(null)
     setEditandoClienteId(null)
     setFormCliente({ nome: '', referencia: '', observacao: '', telefone: '' })
@@ -5010,6 +5048,7 @@ Delber Vilaça`
 
     setClienteModalOrigemVenda(true)
     setAvisoClienteVoz('')
+    setTextoClienteVoz('')
     setClienteExpandidoId(null)
     setEditandoClienteId(null)
     setFormCliente({ nome: '', referencia: '', observacao: '', telefone: '' })
@@ -5027,6 +5066,7 @@ Delber Vilaça`
   function editarCliente(cliente) {
     setClienteModalOrigemVenda(false)
     setAvisoClienteVoz('')
+    setTextoClienteVoz('')
     setClienteExpandidoId(null)
     setModalEdicaoCliente({
       aberto: true,
@@ -5040,8 +5080,9 @@ Delber Vilaça`
   }
 
   function fecharModalEdicaoCliente() {
-    pararClientePorVoz()
+    pararClientePorVoz({ aplicar: false })
     setAvisoClienteVoz('')
+    setTextoClienteVoz('')
     setClienteModalOrigemVenda(false)
     setModalEdicaoCliente({
       aberto: false,
@@ -14110,8 +14151,13 @@ Delber Vilaça`
                   onClick={cadastrarClientePorVoz}
                   className="w-full rounded-2xl border border-orange-900 bg-orange-950 px-4 py-3 text-sm font-bold text-orange-100 hover:bg-orange-900"
                 >
-                  {ouvindoClienteVoz ? 'Parar voz' : 'Cadastrar por voz'}
+                  {ouvindoClienteVoz ? 'Parar cadastro' : 'Cadastrar por voz'}
                 </button>
+                {textoClienteVoz && (
+                  <p className="mt-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300">
+                    {textoClienteVoz}
+                  </p>
+                )}
                 {avisoClienteVoz && (
                   <p className="mt-2 text-xs text-zinc-400">{avisoClienteVoz}</p>
                 )}
