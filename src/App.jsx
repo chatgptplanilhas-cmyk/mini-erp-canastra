@@ -168,6 +168,7 @@ export default function App() {
   const [modalVendaAberto, setModalVendaAberto] = useState(false)
   const buscaClienteVendaInputRef = useRef(null)
   const clienteNomeInputRef = useRef(null)
+  const reconhecimentoClienteRef = useRef(null)
   const [modalConferenciaProdutosAberto, setModalConferenciaProdutosAberto] = useState(false)
   const [conferenciaProdutoExpandido, setConferenciaProdutoExpandido] = useState(null)
   const resolverFormaPagamentoRef = useRef(null)
@@ -502,6 +503,8 @@ export default function App() {
     telefone: '',
     ativo: true,
   })
+  const [ouvindoClienteVoz, setOuvindoClienteVoz] = useState(false)
+  const [avisoClienteVoz, setAvisoClienteVoz] = useState('')
 
   const [clienteModalOrigemVenda, setClienteModalOrigemVenda] = useState(false)
 
@@ -4871,8 +4874,123 @@ Delber Vilaça`
     }, 80)
   }
 
+  function extrairCampoClientePorVoz(texto, marcadores, paradas) {
+    const fonte = String(texto || '').replace(/\s+/g, ' ').trim()
+    if (!fonte) return ''
+
+    const marcador = marcadores.join('|')
+    const parada = paradas.join('|')
+    const regex = new RegExp(`(?:^|[\\s,;.])(?:${marcador})\\s*[:\\-]?\\s*(.+?)(?=\\s+(?:${parada})\\b|[,;.]|$)`, 'i')
+    const encontrado = fonte.match(regex)
+
+    return encontrado?.[1]?.trim() || ''
+  }
+
+  function interpretarClientePorVoz(texto) {
+    const nome = extrairCampoClientePorVoz(
+      texto,
+      ['nome', 'cliente'],
+      ['refer[eê]ncia', 'referencia', 'ref', 'telefone', 'tel', 'fone', 'contato']
+    )
+    const referencia = extrairCampoClientePorVoz(
+      texto,
+      ['refer[eê]ncia', 'referencia', 'ref'],
+      ['nome', 'cliente', 'telefone', 'tel', 'fone', 'contato']
+    )
+    const telefone = limparTelefone(extrairCampoClientePorVoz(
+      texto,
+      ['telefone', 'tel', 'fone', 'contato'],
+      ['nome', 'cliente', 'refer[eê]ncia', 'referencia', 'ref']
+    ))
+
+    return { nome, referencia, telefone }
+  }
+
+  function pararClientePorVoz() {
+    if (!ouvindoClienteVoz) {
+      setOuvindoClienteVoz(false)
+      return
+    }
+
+    try {
+      reconhecimentoClienteRef.current?.stop()
+    } catch (erro) {
+      console.error(erro)
+    }
+    setOuvindoClienteVoz(false)
+  }
+
+  function cadastrarClientePorVoz() {
+    if (ouvindoClienteVoz) {
+      pararClientePorVoz()
+      return
+    }
+
+    if (typeof window === 'undefined' || !(window.SpeechRecognition || window.webkitSpeechRecognition)) {
+      setAvisoClienteVoz('Microfone por voz não disponível neste navegador. Use Chrome ou Edge.')
+      return
+    }
+
+    try {
+      const Reconhecimento = window.SpeechRecognition || window.webkitSpeechRecognition
+      const reconhecimento = new Reconhecimento()
+      reconhecimentoClienteRef.current = reconhecimento
+      reconhecimento.lang = 'pt-BR'
+      reconhecimento.interimResults = false
+      reconhecimento.continuous = false
+      reconhecimento.maxAlternatives = 1
+
+      reconhecimento.onstart = () => {
+        setOuvindoClienteVoz(true)
+        setAvisoClienteVoz('Ouvindo cliente. Exemplo: nome Ana, referência CEAN, telefone 61 99999 0000.')
+      }
+
+      reconhecimento.onerror = (evento) => {
+        setOuvindoClienteVoz(false)
+        reconhecimentoClienteRef.current = null
+        setAvisoClienteVoz(evento?.error === 'not-allowed'
+          ? 'Permita o uso do microfone no navegador para cadastrar cliente por voz.'
+          : 'Não consegui ouvir com clareza. Tente novamente em um ambiente mais silencioso.')
+      }
+
+      reconhecimento.onend = () => {
+        setOuvindoClienteVoz(false)
+        reconhecimentoClienteRef.current = null
+      }
+
+      reconhecimento.onresult = (evento) => {
+        const textoFalado = Array.from(evento.results || [])
+          .map((resultado) => resultado?.[0]?.transcript || '')
+          .join(' ')
+          .trim()
+        const dadosCliente = interpretarClientePorVoz(textoFalado)
+        const temDados = dadosCliente.nome || dadosCliente.referencia || dadosCliente.telefone
+
+        if (!temDados) {
+          setAvisoClienteVoz('Não identifiquei nome, referência ou telefone. Fale usando esses marcadores.')
+          return
+        }
+
+        setModalEdicaoCliente((atual) => ({
+          ...atual,
+          nome: dadosCliente.nome || atual.nome,
+          referencia: dadosCliente.referencia || atual.referencia,
+          telefone: dadosCliente.telefone || atual.telefone,
+        }))
+        setAvisoClienteVoz('Dados preenchidos por voz. Confira e clique em Cadastrar cliente.')
+      }
+
+      reconhecimento.start()
+    } catch (erro) {
+      console.error(erro)
+      setOuvindoClienteVoz(false)
+      setAvisoClienteVoz('Não foi possível iniciar o microfone neste navegador.')
+    }
+  }
+
   function abrirModalNovoCliente() {
     setClienteModalOrigemVenda(false)
+    setAvisoClienteVoz('')
     setClienteExpandidoId(null)
     setEditandoClienteId(null)
     setFormCliente({ nome: '', referencia: '', observacao: '', telefone: '' })
@@ -4891,6 +5009,7 @@ Delber Vilaça`
     const nomeSugerido = capitalizarNomeVendaAvulsa(clienteAvulsoVendaNome || buscaClienteVenda || '')
 
     setClienteModalOrigemVenda(true)
+    setAvisoClienteVoz('')
     setClienteExpandidoId(null)
     setEditandoClienteId(null)
     setFormCliente({ nome: '', referencia: '', observacao: '', telefone: '' })
@@ -4907,6 +5026,7 @@ Delber Vilaça`
 
   function editarCliente(cliente) {
     setClienteModalOrigemVenda(false)
+    setAvisoClienteVoz('')
     setClienteExpandidoId(null)
     setModalEdicaoCliente({
       aberto: true,
@@ -4920,6 +5040,8 @@ Delber Vilaça`
   }
 
   function fecharModalEdicaoCliente() {
+    pararClientePorVoz()
+    setAvisoClienteVoz('')
     setClienteModalOrigemVenda(false)
     setModalEdicaoCliente({
       aberto: false,
@@ -13980,6 +14102,21 @@ Delber Vilaça`
               </div>
               <button type="button" onClick={fecharModalEdicaoCliente} aria-label="Fechar">×</button>
             </div>
+
+            {!modalEdicaoCliente.cliente && (
+              <div className="px-6 pt-4">
+                <button
+                  type="button"
+                  onClick={cadastrarClientePorVoz}
+                  className="w-full rounded-2xl border border-orange-900 bg-orange-950 px-4 py-3 text-sm font-bold text-orange-100 hover:bg-orange-900"
+                >
+                  {ouvindoClienteVoz ? 'Parar voz' : 'Cadastrar por voz'}
+                </button>
+                {avisoClienteVoz && (
+                  <p className="mt-2 text-xs text-zinc-400">{avisoClienteVoz}</p>
+                )}
+              </div>
+            )}
 
             <div className="mini-cliente-modal-form">
               <label>
