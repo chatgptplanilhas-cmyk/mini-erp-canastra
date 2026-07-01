@@ -2515,24 +2515,13 @@ Queijos Serra da Canastra 🇧🇷`
 
   function montarDescricaoDeliveryPorPreVenda(preVenda) {
     const itens = Array.isArray(preVenda?.itens) ? preVenda.itens : []
-    const pagamento = preVenda?.pagamento || extrairPagamentoPreVendaPorVoz(preVenda?.transcricao || '')
     const linhasItens = itens.map((produto) => {
       const quantidade = Number(produto.quantidade || 1)
       const valorUnitario = Number(produto.valorUnitario ?? produto.valor_unitario ?? produto.valor ?? 0)
-      const subtotal = Number(produto.subtotal ?? produto.total ?? produto.valor ?? (quantidade * valorUnitario))
-      return `${formatarQuantidadePreVenda(quantidade)} ${produto.nome || 'Item'} • ${moeda(valorUnitario)} und. • Total ${moeda(subtotal)}`
+      return `${formatarQuantidadePreVenda(quantidade)} ${produto.nome || 'Item'} • ${moeda(valorUnitario)}`
     })
 
-    const linhas = [
-      'Origem: Pré-venda',
-      preVenda?.referencia ? `Referência: ${preVenda.referencia}` : '',
-      pagamento ? `Pagamento informado: ${pagamento}` : '',
-      linhasItens.length ? 'Itens:' : '',
-      ...linhasItens,
-      preVenda?.transcricao ? `Transcrição: ${preVenda.transcricao}` : '',
-    ].filter(Boolean)
-
-    return linhas.join('\n')
+    return linhasItens.join('\n')
   }
 
   function encontrarClienteParaDeliveryPorPreVenda(nomeCliente) {
