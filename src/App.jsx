@@ -486,6 +486,7 @@ export default function App() {
     pagamentos: [pagamentoDeliveryInicial],
     vencimento: '',
   })
+  const [modalEdicaoDelivery, setModalEdicaoDelivery] = useState({ aberto: false, item: null })
 
 
   const [modalEdicaoPendencia, setModalEdicaoPendencia] = useState({
@@ -1069,6 +1070,7 @@ export default function App() {
         modalFormaPagamento.aberto ||
         modalSelecaoCobrancas.aberto ||
         modalDeliveryVenda.aberto ||
+        modalEdicaoDelivery.aberto ||
         modalEdicaoPendencia.aberto ||
         modalConferenciaProdutosAberto ||
         modalEdicaoProduto.aberto ||
@@ -5935,6 +5937,7 @@ Delber Vilaça`
 
   async function salvarDelivery(e) {
     e.preventDefault()
+    const estavaEditandoDelivery = Boolean(editandoDeliveryId)
 
     if (!formDelivery.cliente_id) {
       alert('Selecione um cliente para a entrega.')
@@ -5993,12 +5996,28 @@ Delber Vilaça`
     }
 
     limparDelivery()
+    if (estavaEditandoDelivery) {
+      setModalEdicaoDelivery({ aberto: false, item: null })
+    }
     buscarDelivery()
   }
 
+  function fecharMenusDeliveryAbertos() {
+    if (typeof document === 'undefined') return
+
+    document
+      .querySelectorAll('details.delivery-menu-grid-final[open], details.mini-delivery-acoes-menu[open]')
+      .forEach((menu) => {
+        menu.open = false
+      })
+  }
+
   function editarDelivery(item) {
+    fecharMenusDeliveryAbertos()
+    setDeliveryExpandidoId(null)
     setEditandoDeliveryId(item.id)
     setClienteDeliveryNomeSugerido('')
+    setModalEdicaoDelivery({ aberto: true, item })
 
     setFormDelivery({
       venda_id: item.venda_id || '',
@@ -6011,8 +6030,11 @@ Delber Vilaça`
       valor_total: String(item.valor_total || ''),
       status: item.status || 'Programado',
     })
+  }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  function fecharModalEdicaoDelivery() {
+    setModalEdicaoDelivery({ aberto: false, item: null })
+    limparDelivery()
   }
 
   function limparDelivery() {
@@ -14623,6 +14645,134 @@ Delber Vilaça`
               <button type="button" onClick={atualizarSistema}>Atualizar sistema</button>
             </div>
           </aside>
+        </div>
+      )}
+
+      {modalEdicaoDelivery.aberto && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4">
+          <form
+            onSubmit={salvarDelivery}
+            className="w-full max-w-[760px] max-h-[92vh] overflow-y-auto rounded-[28px] border border-orange-950 bg-[#120f0d] p-6 shadow-2xl"
+          >
+            <div className="mb-5">
+              <p className="text-xs uppercase tracking-[4px] text-orange-400 mb-2">Delivery</p>
+              <h2 className="text-2xl font-bold">Editar entrega</h2>
+              <p className="text-sm text-zinc-500 mt-2">
+                Atualize os dados da entrega e salve as alterações.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <select
+                value={formDelivery.venda_id}
+                onChange={(e) => preencherDeliveryPorVenda(e.target.value)}
+                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+              >
+                <option value="">Vincular venda, opcional</option>
+                {vendas.map((venda) => (
+                  <option key={venda.id} value={venda.id}>
+                    Venda #{venda.numero_venda} | {venda.clientes?.nome} | {moeda(venda.valor_total)}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={formDelivery.cliente_id}
+                onChange={(e) => {
+                  const cliente = clientes.find((item) => String(item.id) === String(e.target.value))
+                  setFormDelivery({
+                    ...formDelivery,
+                    cliente_id: e.target.value,
+                    referencia: cliente?.referencia || formDelivery.referencia,
+                  })
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+              >
+                <option value="">Selecionar cliente</option>
+                {clientes
+                  .filter((cliente) => cliente.ativo !== false || String(cliente.id) === String(formDelivery.cliente_id))
+                  .map((cliente) => (
+                    <option key={cliente.id} value={cliente.id}>
+                      {cliente.nome} | {cliente.referencia || 'Sem referência'}
+                    </option>
+                  ))}
+              </select>
+
+              <div>
+                <label className="block text-xs uppercase text-zinc-500 mb-2">
+                  Data do pedido
+                </label>
+                <input
+                  type="date"
+                  onClick={abrirCalendario}
+                  onFocus={abrirCalendario}
+                  value={formDelivery.data_pedido}
+                  onChange={(e) => setFormDelivery({ ...formDelivery, data_pedido: e.target.value })}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase text-zinc-500 mb-2">
+                  Data da entrega
+                </label>
+                <input
+                  type="date"
+                  onClick={abrirCalendario}
+                  onFocus={abrirCalendario}
+                  value={formDelivery.data_entrega}
+                  onChange={(e) => setFormDelivery({ ...formDelivery, data_entrega: e.target.value })}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+                />
+              </div>
+
+              <input
+                value={formDelivery.referencia}
+                onChange={(e) => setFormDelivery({ ...formDelivery, referencia: e.target.value })}
+                placeholder="Referência"
+                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+              />
+
+              <input
+                value={formDelivery.local_entrega}
+                onChange={(e) => setFormDelivery({ ...formDelivery, local_entrega: e.target.value })}
+                placeholder="Local de entrega"
+                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+              />
+
+              <textarea
+                value={formDelivery.descricao}
+                onChange={(e) => setFormDelivery({ ...formDelivery, descricao: e.target.value })}
+                placeholder="Itens do pedido"
+                rows={3}
+                className="sm:col-span-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-y min-h-[74px] leading-relaxed"
+              />
+
+              <input
+                value={formDelivery.valor_total}
+                onChange={(e) => setFormDelivery({ ...formDelivery, valor_total: e.target.value })}
+                placeholder="Valor total"
+                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+              />
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={fecharModalEdicaoDelivery}
+                className="bg-zinc-800 hover:bg-zinc-700 rounded-2xl p-3 font-semibold"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="submit"
+                className="bg-orange-950 hover:bg-orange-900 rounded-2xl p-3 font-semibold"
+              >
+                Salvar alterações
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
