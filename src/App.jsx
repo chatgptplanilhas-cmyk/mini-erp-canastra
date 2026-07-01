@@ -2935,6 +2935,15 @@ Queijos Serra da Canastra 🇧🇷`
       || null
   }
 
+  function statusPorFormaPagamentoVenda(formaPagamento) {
+    const chave = chaveFormaPagamento(formaPagamento)
+
+    if (chave.includes('fiado') || chave.includes('emaberto')) return 'EM ABERTO'
+    if (chave.includes('pix') || chave.includes('debito') || chave.includes('credito') || chave.includes('dinheiro')) return 'PAGO'
+
+    return ''
+  }
+
   function calcularResumoPagamentosDelivery(pagamentosModal = [], valorTotal = 0) {
     const existePagamentoEmAberto = (pagamentosModal || []).some((pagamento) => {
       const chave = chaveFormaPagamento(pagamento.forma_pagamento || '')
@@ -8306,7 +8315,17 @@ Delber Vilaça`
                     <label className="block text-[11px] uppercase text-zinc-500 mb-2">Pagamento</label>
                     <select
                       value={taxaSelecionadaId}
-                      onChange={(e) => setTaxaSelecionadaId(e.target.value)}
+                      onChange={(e) => {
+                        const novaTaxaId = e.target.value
+                        const taxaSelecionada = taxas.find((taxa) => String(taxa.id) === String(novaTaxaId))
+                        const statusSugerido = statusPorFormaPagamentoVenda(taxaSelecionada?.forma_pagamento || '')
+
+                        setTaxaSelecionadaId(novaTaxaId)
+                        if (statusSugerido) {
+                          setStatus(statusSugerido)
+                          setValorPagoVenda('')
+                        }
+                      }}
                       className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm"
                     >
                       {taxas.map((taxa) => (
