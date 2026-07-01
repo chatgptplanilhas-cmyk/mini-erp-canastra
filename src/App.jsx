@@ -8714,7 +8714,7 @@ Delber Vilaça`
                     {cliente.created_at && (
                       <div>
                         <small>Cadastro</small>
-                        <p>Cadastrado em: {dataBR(cliente.created_at)}</p>
+                        <p>{dataBR(cliente.created_at)}</p>
                       </div>
                     )}
 
@@ -14148,7 +14148,7 @@ Delber Vilaça`
                 <h3 id="titulo-editar-cliente">{modalEdicaoCliente.cliente ? 'Editar cliente' : 'Cadastrar cliente'}</h3>
                 <span>{modalEdicaoCliente.cliente ? 'Atualize os dados com leitura limpa e segura.' : 'Cadastre o cliente com leitura limpa e segura.'}</span>
                 {modalEdicaoCliente.cliente?.created_at && (
-                  <span>Cadastrado em: {dataBR(modalEdicaoCliente.cliente.created_at)}</span>
+                  <span>{dataBR(modalEdicaoCliente.cliente.created_at)}</span>
                 )}
               </div>
               <button type="button" onClick={fecharModalEdicaoCliente} aria-label="Fechar">×</button>
