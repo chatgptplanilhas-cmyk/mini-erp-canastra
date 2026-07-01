@@ -15975,6 +15975,26 @@ span[class*="rounded-full"] {
   }
 }
 
+/* Correção isolada: textarea de itens do Delivery no iPhone */
+@media (max-width: 767px) {
+  .delivery-refino-final .delivery-form-compact textarea.delivery-itens-textarea {
+    -webkit-overflow-scrolling: touch !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 118px !important;
+    max-height: 42dvh !important;
+    overflow-y: auto !important;
+    padding: 13px !important;
+    line-height: 1.35 !important;
+    resize: vertical !important;
+    touch-action: pan-y !important;
+    user-select: text !important;
+    white-space: pre-wrap !important;
+  }
+}
+
 /* Tela de abertura visual do PWA */
 .mini-pwa-splash {
   pointer-events: none;

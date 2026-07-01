@@ -5778,6 +5778,14 @@ Delber Vilaça`
     })
   }
 
+  function cancelarDeliveryPreVenda() {
+    limparDelivery()
+    setPreVendaDeliveryOrigemId('')
+    setPagina('pre-vendas')
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80)
+    exibirToast('Delivery cancelado. A pre-venda original foi preservada.')
+  }
+
   async function alterarStatusDelivery(item, novoStatus) {
     const confirmar = window.confirm(
       `Alterar a entrega de ${item.clientes?.nome || 'cliente'} para ${novoStatus}?`
@@ -12177,7 +12185,7 @@ Delber Vilaça`
             onChange={(e) => setFormDelivery({ ...formDelivery, descricao: e.target.value })}
             placeholder="Itens do pedido" 
             rows={3}
-            className="lg:col-span-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-y min-h-[74px] leading-relaxed"
+            className="delivery-itens-textarea lg:col-span-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-y min-h-[74px] leading-relaxed"
           />
 
           <input
@@ -12198,6 +12206,16 @@ Delber Vilaça`
               className="lg:col-span-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl p-3 font-semibold"
             >
               Cancelar edição
+            </button>
+          )}
+
+          {preVendaDeliveryOrigemId && !editandoDeliveryId && (
+            <button
+              type="button"
+              onClick={cancelarDeliveryPreVenda}
+              className="lg:col-span-4 bg-zinc-800 hover:bg-zinc-700 rounded-2xl p-3 font-semibold"
+            >
+              Cancelar e voltar para pré-venda
             </button>
           )}
         </form>
