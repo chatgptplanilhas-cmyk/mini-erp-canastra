@@ -442,6 +442,7 @@ export default function App() {
   const [paginaItensProdutosControle, setPaginaItensProdutosControle] = useState(1)
   const [buscaProdutoLancamento, setBuscaProdutoLancamento] = useState('')
   const [dataControleProdutos, setDataControleProdutos] = useState(dataHoje())
+  const [periodoLancamentosProdutos, setPeriodoLancamentosProdutos] = useState('mesAtual')
   const [buscaDespesas, setBuscaDespesas] = useState('')
   const [periodoCardsDespesas, setPeriodoCardsDespesas] = useState('mesAtual')
   const [periodoCardsPainel, setPeriodoCardsPainel] = useState('mesAtual')
@@ -1038,7 +1039,7 @@ export default function App() {
   useEffect(() => {
     setPaginaResumoProdutosControle(1)
     setPaginaItensProdutosControle(1)
-  }, [buscaProdutosControle])
+  }, [buscaProdutosControle, periodoLancamentosProdutos])
 
   useEffect(() => {
     setPaginaDespesas(1)
@@ -10532,22 +10533,32 @@ Delber Vilaça`
     const termo = normalizarTexto(buscaProdutosControle)
 
     const inicioMesProdutosControle = inicioMesAtual()
+    const periodoAnteriorProdutosControle = periodoMesAnterior()
 
     function dataMovimentacaoProduto(item) {
       return String(item?.vendas?.data_venda || item?.data_venda || item?.created_at || '').slice(0, 10)
     }
 
-    const movimentacoesProdutosMesAtual = movimentacoesProdutos.filter((item) => {
+    const periodoLancamentosProdutosSelecionado = (() => {
+      if (periodoLancamentosProdutos === 'mesAnterior') return periodoAnteriorProdutosControle
+      if (periodoLancamentosProdutos === 'todos') return null
+      return { inicio: inicioMesProdutosControle, fim: dataHoje() }
+    })()
+
+    const lancamentosProdutosFiltrados = movimentacoesProdutos.filter((item) => {
+      if (!periodoLancamentosProdutosSelecionado) return true
       const dataItem = dataMovimentacaoProduto(item)
-      return dataItem && dataItem >= inicioMesProdutosControle
+      return dataItem &&
+        dataItem >= periodoLancamentosProdutosSelecionado.inicio &&
+        dataItem <= periodoLancamentosProdutosSelecionado.fim
     })
 
-    const totalPecas = movimentacoesProdutosMesAtual.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
-    const pecasVendidasNaData = movimentacoesProdutos
+    const totalPecas = lancamentosProdutosFiltrados.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
+    const pecasVendidasNaData = lancamentosProdutosFiltrados
       .filter((item) => dataMovimentacaoProduto(item) === dataControleProdutos)
       .reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
 
-    const itensLancadosNaData = movimentacoesProdutos.filter((item) => dataMovimentacaoProduto(item) === dataControleProdutos)
+    const itensLancadosNaData = lancamentosProdutosFiltrados.filter((item) => dataMovimentacaoProduto(item) === dataControleProdutos)
 
     const conferenciaProdutosDoDia = Object.values(
       itensLancadosNaData.reduce((acc, item) => {
@@ -10646,12 +10657,12 @@ Delber Vilaça`
       await buscarTudo()
     }
 
-    const totalVendido = movimentacoesProdutosMesAtual.reduce((acc, item) => acc + Number(item.subtotal_venda || 0), 0)
-    const totalCusto = movimentacoesProdutosMesAtual.reduce((acc, item) => acc + Number(item.subtotal_custo || 0), 0)
-    const totalLucro = movimentacoesProdutosMesAtual.reduce((acc, item) => acc + Number(item.lucro || 0), 0)
+    const totalVendido = lancamentosProdutosFiltrados.reduce((acc, item) => acc + Number(item.subtotal_venda || 0), 0)
+    const totalCusto = lancamentosProdutosFiltrados.reduce((acc, item) => acc + Number(item.subtotal_custo || 0), 0)
+    const totalLucro = lancamentosProdutosFiltrados.reduce((acc, item) => acc + Number(item.lucro || 0), 0)
 
     const resumoProdutos = produtos.map((produto) => {
-      const movimentosProduto = movimentacoesProdutos.filter((item) => item.produto_id === produto.id)
+      const movimentosProduto = lancamentosProdutosFiltrados.filter((item) => item.produto_id === produto.id)
 
       const quantidade = movimentosProduto.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
       const valorTotal = movimentosProduto.reduce((acc, item) => acc + Number(item.subtotal_venda || 0), 0)
@@ -10707,7 +10718,7 @@ Delber Vilaça`
       return (produtoAtivo || produtoSelecionado) && contemTermos(texto, termoProdutoLancamento)
     })
 
-    const movimentacoesProdutosFiltradas = movimentacoesProdutos.filter((item) => {
+    const movimentacoesProdutosFiltradas = lancamentosProdutosFiltrados.filter((item) => {
       const texto = normalizarTexto(`
         ${item.vendas?.numero_venda}
         ${item.vendas?.clientes?.nome}
@@ -10747,6 +10758,35 @@ Delber Vilaça`
             placeholder="Buscar produto, fornecedor, cliente, referência ou venda"
             className="w-[460px] bg-zinc-950 border border-zinc-800 rounded-2xl p-4"
           />
+        </div>
+
+        <div className="mb-4">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500 font-bold mb-2">Período dos lançamentos</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setPeriodoLancamentosProdutos('mesAtual')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoLancamentosProdutos === 'mesAtual' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Mês atual
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPeriodoLancamentosProdutos('mesAnterior')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoLancamentosProdutos === 'mesAnterior' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Mês anterior
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPeriodoLancamentosProdutos('todos')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold ${periodoLancamentosProdutos === 'todos' ? 'bg-orange-950 text-white' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}
+            >
+              Todos
+            </button>
+          </div>
         </div>
 
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
