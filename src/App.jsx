@@ -6805,7 +6805,7 @@ Delber Vilaça`
 
     const lucroOperacionalProjetado = totalBruto - totalCustoProdutos - totalTaxas - totalDespesas
     const totalProjetadoFinal = lucroOperacionalProjetado
-    const totalValoresAReceber = totalPendencias + totalEmDelivery + saldoAnteriorEmAberto
+    const totalValoresAReceber = totalPendencias + saldoAnteriorEmAberto
     const recursosTotaisConservador = saldoCaixaAtualInformado + totalValoresAReceber
     const percentualRecebidoSobreVendido = totalBruto > 0 ? (totalRecebido / totalBruto) * 100 : 0
     const caixaLiquidoRealizado = saldoCaixaAtualInformado
@@ -6844,7 +6844,7 @@ Delber Vilaça`
         return dataEntrega && dataEntrega >= periodoCardsPainelSelecionado.inicio && dataEntrega <= periodoCardsPainelSelecionado.fim
       })
       .reduce((acc, item) => acc + Number(item.valor_total || 0), 0)
-    const totalValoresAReceberCardsPainel = totalPendenciasCardsPainel + totalEmDeliveryCardsPainel
+    const totalValoresAReceberCardsPainel = totalPendenciasCardsPainel
 
     const pecasVendidas = movimentacoesMesPainel.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
     const numeroVendas = vendasMesPainel.length
