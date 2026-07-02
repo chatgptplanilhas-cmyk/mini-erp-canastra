@@ -4591,8 +4591,6 @@ Recebi o pagamento de ${moeda(valorPago)} referente à sua compra dos produtos d
 
 Muito obrigado e até breve.
 
-Atenciosamente,
-
 Delber Vilaça
 Queijos Serra da Canastra 🇧🇷`
 
@@ -4615,8 +4613,6 @@ Queijos Serra da Canastra 🇧🇷`
 Recebi o pagamento de ${moeda(valorTotal)} referente às suas compras dos produtos da Queijos Serra da Canastra.
 
 Muito obrigado e até breve.
-
-Atenciosamente,
 
 Delber Vilaça
 Queijos Serra da Canastra 🇧🇷`
