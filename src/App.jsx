@@ -464,14 +464,7 @@ export default function App() {
   const [listaPedidosFornecedorAberta, setListaPedidosFornecedorAberta] = useState(false)
   const pagamentoDeliveryInicial = { forma_pagamento: 'Pix', valor: '' }
 
-  const [caixaAtual, setCaixaAtual] = useState(() => {
-    try {
-      const salvo = window.localStorage.getItem('miniErpCaixaAtual')
-      return salvo !== null ? Number(salvo) || 0 : 1439.81
-    } catch (erro) {
-      return 1439.81
-    }
-  })
+  const [caixaAtual, setCaixaAtual] = useState(0)
 
   const [formCaixa, setFormCaixa] = useState({
     tipo: 'Entrada',
@@ -1011,14 +1004,6 @@ export default function App() {
       window.removeEventListener('online', sincronizarAoVoltar)
     }
   }, [])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem('miniErpCaixaAtual', String(caixaAtual))
-    } catch (erro) {
-      console.error(erro)
-    }
-  }, [caixaAtual])
 
   useEffect(() => {
     try {
