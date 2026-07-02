@@ -960,6 +960,9 @@ export default function App() {
     status: 'Programado',
   })
   const [clienteDeliveryNomeSugerido, setClienteDeliveryNomeSugerido] = useState('')
+  const [buscaClienteDelivery, setBuscaClienteDelivery] = useState('')
+  const buscaClienteDeliveryInputRef = useRef(null)
+  const [dropdownClienteDeliveryPosicao, setDropdownClienteDeliveryPosicao] = useState(null)
 
   const [formPedidoFornecedor, setFormPedidoFornecedor] = useState({
     produto_id: '',
@@ -1891,6 +1894,169 @@ export default function App() {
     })
   }
 
+  function normalizarBuscaClienteDelivery(valor) {
+    return normalizarTexto(valor).replace(/\s+/g, ' ')
+  }
+
+  function palavrasBuscaClienteDelivery(valor) {
+    return normalizarBuscaClienteDelivery(valor).split(' ').filter(Boolean)
+  }
+
+  function campoCombinaBuscaClienteDelivery(campo, termosBusca) {
+    const palavrasCampo = palavrasBuscaClienteDelivery(campo)
+    if (!palavrasCampo.length) return false
+
+    if (termosBusca.length === 1) {
+      const [termo] = termosBusca
+      if (termo.length < 2) return false
+      if (termo.length === 2) return palavrasCampo[0]?.startsWith(termo)
+
+      return palavrasCampo.some((palavra) => palavra.startsWith(termo))
+    }
+
+    let indicePalavra = 0
+    return termosBusca.every((termo) => {
+      for (let index = indicePalavra; index < palavrasCampo.length; index += 1) {
+        if (palavrasCampo[index].startsWith(termo)) {
+          indicePalavra = index + 1
+          return true
+        }
+      }
+
+      return false
+    })
+  }
+
+  function pontuarCampoBuscaClienteDelivery(campo, termosBusca) {
+    const palavrasCampo = palavrasBuscaClienteDelivery(campo)
+    if (!palavrasCampo.length) return 0
+
+    if (termosBusca.length === 1) {
+      const [termo] = termosBusca
+      if (termo.length < 2) return 0
+      if (palavrasCampo[0]?.startsWith(termo)) return 3
+      if (termo.length === 2) return 0
+      if (palavrasCampo.some((palavra) => palavra.startsWith(termo))) return 2
+      return 0
+    }
+
+    return campoCombinaBuscaClienteDelivery(campo, termosBusca) ? 3 : 0
+  }
+
+  function camposBuscaClienteDelivery(cliente) {
+    return [
+      cliente?.nome,
+      cliente?.referencia,
+      cliente?.local,
+      cliente?.local_entrega,
+      cliente?.cidade,
+      cliente?.observacao,
+    ]
+  }
+
+  function pontuarClienteBuscaDelivery(cliente, termosBusca) {
+    return Math.max(...camposBuscaClienteDelivery(cliente).map((campo) => pontuarCampoBuscaClienteDelivery(campo, termosBusca)))
+  }
+
+  function clientesEncontradosDelivery() {
+    const termo = normalizarBuscaClienteDelivery(buscaClienteDelivery)
+    if (termo.length < 2) return []
+
+    const termosBusca = termo.split(' ').filter(Boolean)
+    if (!termosBusca.length) return []
+    if (termosBusca[0].length < 2) return []
+
+    return clientes
+      .filter((cliente) => cliente.ativo !== false || String(cliente.id) === String(formDelivery.cliente_id))
+      .map((cliente, indice) => ({
+        cliente,
+        indice,
+        pontuacao: pontuarClienteBuscaDelivery(cliente, termosBusca),
+      }))
+      .filter((resultado) => resultado.pontuacao > 0)
+      .sort((a, b) => b.pontuacao - a.pontuacao || a.indice - b.indice)
+      .map((resultado) => resultado.cliente)
+      .slice(0, 8)
+  }
+
+  function atualizarPosicaoDropdownClienteDelivery() {
+    const input = buscaClienteDeliveryInputRef.current
+    const termo = normalizarBuscaClienteDelivery(buscaClienteDelivery)
+
+    if (!input || termo.length < 2) {
+      setDropdownClienteDeliveryPosicao(null)
+      return
+    }
+
+    const retangulo = input.getBoundingClientRect()
+    const largura = retangulo.width
+    const margemTela = 12
+    const esquerda = Math.min(Math.max(retangulo.left, margemTela), Math.max(margemTela, window.innerWidth - largura - margemTela))
+
+    setDropdownClienteDeliveryPosicao({
+      top: retangulo.bottom + 8,
+      left: esquerda,
+      width: largura,
+    })
+  }
+
+  useEffect(() => {
+    if (normalizarBuscaClienteDelivery(buscaClienteDelivery).length < 2) {
+      setDropdownClienteDeliveryPosicao(null)
+      return undefined
+    }
+
+    atualizarPosicaoDropdownClienteDelivery()
+
+    window.addEventListener('resize', atualizarPosicaoDropdownClienteDelivery)
+    window.addEventListener('scroll', atualizarPosicaoDropdownClienteDelivery, true)
+
+    return () => {
+      window.removeEventListener('resize', atualizarPosicaoDropdownClienteDelivery)
+      window.removeEventListener('scroll', atualizarPosicaoDropdownClienteDelivery, true)
+    }
+  }, [buscaClienteDelivery, pagina, modalEdicaoDelivery.aberto])
+
+  function selecionarClienteDelivery(cliente) {
+    if (!cliente?.id) return
+
+    setFormDelivery((deliveryAtual) => ({
+      ...deliveryAtual,
+      cliente_id: cliente.id,
+      referencia: cliente.referencia || deliveryAtual.referencia,
+    }))
+    setBuscaClienteDelivery(cliente.nome || '')
+    setClienteDeliveryNomeSugerido('')
+  }
+
+  function localizarClienteAvulsoDelivery() {
+    return clientes.find((cliente) => {
+      const nome = normalizarTexto(cliente.nome || '')
+      return cliente.ativo !== false && (nome === 'cliente avulso' || nome === 'avulso' || nome.includes('cliente avulso'))
+    })
+  }
+
+  function usarClienteAvulsoDelivery() {
+    const nomeAvulso = capitalizarNomeVendaAvulsa(buscaClienteDelivery || clienteDeliveryNomeSugerido || '')
+    const clienteAvulso = localizarClienteAvulsoDelivery()
+
+    if (!nomeAvulso) return
+
+    if (!clienteAvulso) {
+      exibirToast('Cadastre ou ative um cliente chamado Cliente Avulso para usar esta opção.', 'erro')
+      return
+    }
+
+    setFormDelivery((deliveryAtual) => ({
+      ...deliveryAtual,
+      cliente_id: clienteAvulso.id,
+      referencia: deliveryAtual.referencia || nomeAvulso,
+      local_entrega: deliveryAtual.local_entrega || nomeAvulso,
+    }))
+    setBuscaClienteDelivery(nomeAvulso)
+    setClienteDeliveryNomeSugerido(nomeAvulso)
+  }
+
   function extrairTextoClienteVendaPorVoz(texto) {
     const normalizado = limparPontuacaoTexto(texto)
     const encontrado = normalizado.match(/cliente\s+(.+?)(?:\s+referencia|\s+valor|\s+total|\s+pagamento|\s+status|\s+vencimento|\s+data|$)/i)
@@ -2604,6 +2770,7 @@ Queijos Serra da Canastra 🇧🇷`
 
     setEditandoDeliveryId(null)
     setClienteDeliveryNomeSugerido(preVenda.cliente || '')
+    setBuscaClienteDelivery(clienteEncontrado?.nome || preVenda.cliente || '')
     setFormDelivery({
       venda_id: '',
       data_pedido: dataISO(preVenda.criadoEm || preVenda.created_at || dataHoje()),
@@ -5132,16 +5299,18 @@ Delber Vilaça`
   }
 
   function abrirModalNovoClientePeloDelivery() {
-    const nomeSugerido = capitalizarNomeVendaAvulsa(clienteDeliveryNomeSugerido || '')
+    const nomeSugerido = capitalizarNomeVendaAvulsa(buscaClienteDelivery || clienteDeliveryNomeSugerido || '')
     const referenciaSugerida = formDelivery.local_entrega || formDelivery.referencia || ''
 
     setClienteModalOrigemVenda(false)
     setClienteModalOrigemDelivery(true)
+    setClienteDeliveryNomeSugerido(nomeSugerido)
     setAvisoClienteVoz('')
     setTextoClienteVoz('')
     setClienteExpandidoId(null)
     setEditandoClienteId(null)
     setFormCliente({ nome: '', referencia: '', observacao: '', telefone: '' })
+    setPagina('clientes')
     setModalEdicaoCliente({
       aberto: true,
       cliente: null,
@@ -5171,6 +5340,7 @@ Delber Vilaça`
   }
 
   function fecharModalEdicaoCliente() {
+    const voltarParaDelivery = clienteModalOrigemDelivery
     pararClientePorVoz({ aplicar: false })
     setAvisoClienteVoz('')
     setTextoClienteVoz('')
@@ -5185,6 +5355,7 @@ Delber Vilaça`
       telefone: '',
       ativo: true,
     })
+    if (voltarParaDelivery) setPagina('delivery')
   }
 
   async function salvarEdicaoClienteModal() {
@@ -5277,7 +5448,9 @@ Delber Vilaça`
         referencia: deliveryAtual.referencia || clienteCriado.referencia || '',
         local_entrega: deliveryAtual.local_entrega || deliveryAtual.referencia || clienteCriado.referencia || '',
       }))
+      setBuscaClienteDelivery(clienteCriado.nome || '')
       setClienteModalOrigemDelivery(false)
+      setPagina('delivery')
       fecharModalEdicaoCliente()
       buscarTudo()
       exibirToast('Cliente cadastrado e vinculado ao Delivery.')
@@ -5944,6 +6117,7 @@ Delber Vilaça`
         valor_total: '',
         descricao: '',
       })
+      setBuscaClienteDelivery('')
       return
     }
 
@@ -5959,6 +6133,7 @@ Delber Vilaça`
       valor_total: String(venda.valor_total || ''),
       descricao: `Venda #${venda.numero_venda}`,
     })
+    setBuscaClienteDelivery(venda.clientes?.nome || '')
   }
 
   async function salvarDelivery(e) {
@@ -6048,6 +6223,7 @@ Delber Vilaça`
     setDeliveryExpandidoId(null)
     setEditandoDeliveryId(item.id)
     setClienteDeliveryNomeSugerido('')
+    setBuscaClienteDelivery(item.clientes?.nome || '')
     setModalEdicaoDelivery({ aberto: true, item })
 
     setFormDelivery({
@@ -6071,6 +6247,7 @@ Delber Vilaça`
   function limparDelivery() {
     setEditandoDeliveryId(null)
     setClienteDeliveryNomeSugerido('')
+    setBuscaClienteDelivery('')
     setFormDelivery({
       venda_id: '',
       data_pedido: dataHoje(),
@@ -12400,6 +12577,92 @@ Delber Vilaça`
   }
 
 
+  function renderCampoBuscaClienteDelivery() {
+    const termoBuscaClienteDelivery = normalizarBuscaClienteDelivery(buscaClienteDelivery)
+    const termoClienteDeliveryExibicao = buscaClienteDelivery.trim()
+    const resultados = clientesEncontradosDelivery()
+    const clienteSelecionado = clientes.find((cliente) => String(cliente.id) === String(formDelivery.cliente_id))
+
+    return (
+      <div>
+        <div className="relative">
+          <input
+            ref={buscaClienteDeliveryInputRef}
+            value={buscaClienteDelivery}
+            onChange={(e) => {
+              const valor = e.target.value
+              setBuscaClienteDelivery(valor)
+            }}
+            onFocus={atualizarPosicaoDropdownClienteDelivery}
+            placeholder="Digite nome, referência ou local"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
+          />
+
+          {termoBuscaClienteDelivery.length >= 2 && dropdownClienteDeliveryPosicao && (
+            <div
+              className="fixed z-[1000] rounded-2xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl"
+              style={{
+                top: `${dropdownClienteDeliveryPosicao.top}px`,
+                left: `${dropdownClienteDeliveryPosicao.left}px`,
+                width: `${dropdownClienteDeliveryPosicao.width}px`,
+              }}
+            >
+              {resultados.length > 0 ? (
+                <div className="grid max-h-60 gap-1 overflow-y-auto overscroll-contain pr-1">
+                  {resultados.map((cliente) => (
+                    <button
+                      key={`cliente-delivery-${cliente.id}`}
+                      type="button"
+                      onClick={() => selecionarClienteDelivery(cliente)}
+                      className="cursor-pointer rounded-xl px-3 py-2 text-left text-sm transition hover:bg-zinc-900 focus-visible:outline-none focus-visible:bg-zinc-900"
+                    >
+                      <span className="block truncate font-bold leading-tight text-white">{cliente.nome}</span>
+                      <span className="mt-0.5 block truncate text-xs leading-tight text-zinc-400">
+                        {cliente.referencia || cliente.local || cliente.local_entrega || cliente.cidade || cliente.observacao || 'Sem referência'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-amber-900/60 bg-zinc-950 p-4 shadow-inner shadow-amber-950/20">
+                  <div className="mb-4">
+                    <p className="text-sm font-bold text-amber-100">Cliente não encontrado</p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                      "{termoClienteDeliveryExibicao}" não está no cadastro.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={abrirModalNovoClientePeloDelivery}
+                      className="flex min-h-11 items-center justify-center rounded-xl border border-green-800/70 bg-green-950 px-3 py-2 text-center text-xs font-bold text-green-100 transition hover:bg-green-900"
+                    >
+                      Cadastrar cliente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={usarClienteAvulsoDelivery}
+                      className="flex min-h-11 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-center text-xs font-bold text-zinc-100 transition hover:border-amber-800/70 hover:bg-zinc-800"
+                    >
+                      Usar como cliente avulso
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {clienteSelecionado && (
+          <p className="mt-1 text-[11px] font-semibold text-green-300">
+            Selecionado: {clienteSelecionado.nome}
+          </p>
+        )}
+      </div>
+    )
+  }
+
   function TelaDelivery() {
     const termo = normalizarTexto(buscaDelivery)
 
@@ -12497,37 +12760,7 @@ Delber Vilaça`
             ))}
           </select>
 
-          <select
-            value={formDelivery.cliente_id}
-            onChange={(e) => {
-              const cliente = clientes.find((item) => String(item.id) === String(e.target.value))
-              setFormDelivery({
-                ...formDelivery,
-                cliente_id: e.target.value,
-                referencia: cliente?.referencia || formDelivery.referencia,
-              })
-            }}
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
-          >
-            <option value="">Selecionar cliente</option>
-            {clientes
-              .filter((cliente) => cliente.ativo !== false || String(cliente.id) === String(formDelivery.cliente_id))
-              .map((cliente) => (
-                <option key={cliente.id} value={cliente.id}>
-                  {cliente.nome} | {cliente.referencia || 'Sem referência'}
-                </option>
-              ))}
-          </select>
-
-          {preVendaDeliveryOrigemId && !formDelivery.cliente_id && clienteDeliveryNomeSugerido && (
-            <button
-              type="button"
-              onClick={abrirModalNovoClientePeloDelivery}
-              className="bg-green-950 hover:bg-green-900 rounded-2xl p-3 font-semibold"
-            >
-              + Cadastrar cliente
-            </button>
-          )}
+          {renderCampoBuscaClienteDelivery()}
 
           <div>
             <label className="block text-xs uppercase text-zinc-500 mb-2">
@@ -14770,27 +15003,7 @@ Delber Vilaça`
                 ))}
               </select>
 
-              <select
-                value={formDelivery.cliente_id}
-                onChange={(e) => {
-                  const cliente = clientes.find((item) => String(item.id) === String(e.target.value))
-                  setFormDelivery({
-                    ...formDelivery,
-                    cliente_id: e.target.value,
-                    referencia: cliente?.referencia || formDelivery.referencia,
-                  })
-                }}
-                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3"
-              >
-                <option value="">Selecionar cliente</option>
-                {clientes
-                  .filter((cliente) => cliente.ativo !== false || String(cliente.id) === String(formDelivery.cliente_id))
-                  .map((cliente) => (
-                    <option key={cliente.id} value={cliente.id}>
-                      {cliente.nome} | {cliente.referencia || 'Sem referência'}
-                    </option>
-                  ))}
-              </select>
+              {renderCampoBuscaClienteDelivery()}
 
               <div>
                 <label className="block text-xs uppercase text-zinc-500 mb-2">
