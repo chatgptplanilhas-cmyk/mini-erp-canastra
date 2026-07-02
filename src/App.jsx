@@ -1296,8 +1296,8 @@ export default function App() {
     }
   }
 
-  function montarPayloadPreVenda(preVenda) {
-    return {
+  function montarPayloadPreVenda(preVenda, opcoes = {}) {
+    const payload = {
       cliente_nome: preVenda?.cliente || preVenda?.cliente_nome || 'Cliente não informado',
       referencia: preVenda?.referencia || extrairReferenciaPreVendaPorVoz(preVenda?.transcricao || ''),
       forma_pagamento: preVenda?.pagamento || preVenda?.forma_pagamento || extrairPagamentoPreVendaPorVoz(preVenda?.transcricao || ''),
@@ -1308,6 +1308,10 @@ export default function App() {
       mensagem_gerada: preVenda?.status === 'Mensagem gerada' || Boolean(preVenda?.mensagemGerada),
       updated_at: new Date().toISOString(),
     }
+
+    const dataPreVenda = preVenda?.criadoEm || preVenda?.created_at
+    if (opcoes.incluirDataCriacao && dataPreVenda) payload.created_at = dataPreVenda
+    return payload
   }
 
   function erroColunaFormaPagamentoPreVenda(error) {
@@ -1626,6 +1630,20 @@ export default function App() {
     if (Number.isNaN(dataObj.getTime())) return dataHoje()
     const { ano, mes, dia } = partesDataBrasil(dataObj)
     return `${ano}-${mes}-${dia}`
+  }
+
+  function ajustarDataPreVenda(dataSelecionada, dataAtual) {
+    if (!dataSelecionada) return dataAtual || new Date().toISOString()
+    const partes = String(dataSelecionada).split('-').map(Number)
+    if (partes.length !== 3 || partes.some((parte) => !Number.isFinite(parte))) {
+      return dataAtual || new Date().toISOString()
+    }
+
+    const [ano, mes, dia] = partes
+    const base = new Date(dataAtual || new Date().toISOString())
+    const dataBase = Number.isNaN(base.getTime()) ? new Date() : base
+    dataBase.setFullYear(ano, mes - 1, dia)
+    return dataBase.toISOString()
   }
 
   function periodoMesAnterior() {
@@ -2418,7 +2436,7 @@ export default function App() {
       status: editada.status || 'Pendente',
     }
 
-    const payloadAtualizacaoPreVenda = montarPayloadPreVenda(atualizada)
+    const payloadAtualizacaoPreVenda = montarPayloadPreVenda(atualizada, { incluirDataCriacao: true })
     let { data, error } = await supabase
       .from('prevendas')
       .update(payloadAtualizacaoPreVenda)
@@ -7940,6 +7958,21 @@ Delber Vilaça`
                   <input
                     value={preVendaEdicaoModal.preVenda.cliente || ''}
                     onChange={(e) => atualizarCampoEdicaoPreVenda('cliente', e.target.value)}
+                    className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="block text-[11px] uppercase text-zinc-500 mb-2">Data da pr&eacute;-venda</span>
+                  <input
+                    type="date"
+                    value={dataISO(preVendaEdicaoModal.preVenda.criadoEm || preVendaEdicaoModal.preVenda.created_at || dataHoje())}
+                    onClick={abrirCalendario}
+                    onFocus={abrirCalendario}
+                    onChange={(e) => atualizarCampoEdicaoPreVenda(
+                      'criadoEm',
+                      ajustarDataPreVenda(e.target.value, preVendaEdicaoModal.preVenda.criadoEm || preVendaEdicaoModal.preVenda.created_at),
+                    )}
                     className="w-full bg-black border border-zinc-800 rounded-2xl px-4 py-3 text-sm outline-none focus:border-orange-700"
                   />
                 </label>
