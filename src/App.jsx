@@ -7416,14 +7416,14 @@ Delber Vilaça`
       const statusNormalizado = normalizarTexto(statusTexto)
       const estaConvertida = statusNormalizado.includes('convertida') || statusNormalizado.includes('convertido')
       const estaDeliveryProgramado = statusNormalizado.includes('delivery programado')
-      const estaFinalizada = estaConvertida || estaDeliveryProgramado
-      const estaDelivery = statusNormalizado.includes('delivery') && !estaDeliveryProgramado
-      const estaEmLancamento = estaDelivery || statusNormalizado.includes('lancamento') || statusNormalizado.includes('lançamento')
-      const cardClass = estaFinalizada
+      const estaEmLancamento = statusNormalizado.includes('lancamento')
+      const cardClass = estaConvertida
         ? 'w-full rounded-xl border border-emerald-950/70 bg-emerald-950/10 hover:border-emerald-800/80 hover:bg-emerald-950/20 px-3 py-2 text-left transition opacity-85'
+        : estaDeliveryProgramado
+          ? 'w-full rounded-xl border border-sky-950/70 bg-[#111821] hover:border-sky-800/60 hover:bg-[#142031] px-3 py-2 text-left transition'
         : estaEmLancamento
-          ? 'w-full rounded-xl border border-orange-700/70 bg-orange-950/20 hover:border-orange-500 hover:bg-orange-950/30 px-3 py-2 text-left transition shadow-[0_0_0_1px_rgba(251,146,60,0.08)]'
-          : 'w-full rounded-xl border border-zinc-900 bg-[#181410] hover:border-orange-900/80 hover:bg-[#211915] px-3 py-2 text-left transition'
+          ? 'w-full rounded-xl border border-amber-900/45 bg-[#181511] hover:border-amber-800/55 hover:bg-[#1d1812] px-3 py-2 text-left transition'
+          : 'w-full rounded-xl border border-amber-900/35 bg-[#171613] hover:border-amber-800/45 hover:bg-[#1b1813] px-3 py-2 text-left transition'
       return (
         <button
           key={`linha-prevenda-${chavePreVendaResumo(item, indice)}`}
@@ -7433,13 +7433,13 @@ Delber Vilaça`
           className={`${cardClass} min-w-0 max-w-full box-border overflow-hidden`}
         >
           <div
-            className={`grid w-full max-w-full items-start gap-x-1.5 overflow-hidden ${estaFinalizada ? 'opacity-90' : ''}`}
+            className={`grid w-full max-w-full items-start gap-x-1.5 overflow-hidden ${estaConvertida ? 'opacity-90' : ''}`}
             style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}
           >
             <div className="min-w-0 flex-1 text-left">
               <div className="flex min-w-0 items-baseline gap-1.5">
-                <h3 className={`${estaFinalizada ? 'text-[14px]' : 'text-[15px]'} min-w-0 font-black text-white leading-tight truncate`}>
-                  {estaFinalizada ? `✓ ${item.cliente}` : item.cliente}
+                <h3 className={`${estaConvertida ? 'text-[14px]' : 'text-[15px]'} min-w-0 font-black text-white leading-tight truncate`}>
+                  {item.cliente}
                 </h3>
                 <span className="shrink-0 text-[12px] font-semibold leading-tight text-zinc-400">
                   |
@@ -7451,9 +7451,18 @@ Delber Vilaça`
               <p className="mt-0.5 text-[12px] font-semibold leading-tight text-zinc-500">
                 {quantidadeItens}
               </p>
-              {estaDeliveryProgramado && (
-                <span className="mt-1 inline-flex rounded-full border border-emerald-900/70 bg-emerald-950/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-200">
-                  📦 No Delivery
+              {estaConvertida ? (
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-900/70 bg-emerald-950/35 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-200">
+                  <span className="text-[11px] leading-none text-emerald-300" aria-hidden="true">{'\u2713'}</span>
+                  Venda j&aacute; lan&ccedil;ada
+                </span>
+              ) : estaDeliveryProgramado ? (
+                <span className="mt-1 inline-flex rounded-full border border-sky-800/55 bg-sky-950/35 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-sky-200">
+                  {'\uD83D\uDCE6 No Delivery'}
+                </span>
+              ) : (
+                <span className="mt-1 inline-flex rounded-full border border-amber-800/45 bg-amber-950/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-amber-200">
+                  Aguardando lan&ccedil;amento
                 </span>
               )}
             </div>
@@ -7847,7 +7856,7 @@ Delber Vilaça`
                       abrirEdicaoPreVenda(detalhe)
                       fecharDetalhePreVenda()
                     }}
-                    className="rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-3 py-2.5 text-xs font-bold text-white"
+                    className="inline-flex min-h-[40px] h-auto items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 py-2 text-sm font-bold leading-normal text-white"
                   >
                     ✏️ Editar
                   </button>
@@ -7855,7 +7864,7 @@ Delber Vilaça`
                   <button
                     type="button"
                     onClick={() => criarDeliveryAPartirPreVenda(detalhe)}
-                    className="rounded-xl bg-amber-900/80 hover:bg-amber-800 px-3 py-2.5 text-xs font-bold text-white"
+                    className="inline-flex min-h-[40px] h-auto items-center justify-center rounded-lg bg-amber-900/80 hover:bg-amber-800 px-4 py-2 text-sm font-bold leading-normal text-white"
                   >
                     Adicionar ao delivery
                   </button>
@@ -7863,7 +7872,7 @@ Delber Vilaça`
                   <button
                     type="button"
                     onClick={() => setConfirmDeletePreVenda(true)}
-                    className="rounded-xl border border-red-950 bg-red-950/20 hover:bg-red-950/40 px-3 py-2.5 text-xs font-semibold text-red-100"
+                    className="inline-flex min-h-[40px] h-auto items-center justify-center rounded-lg border border-red-950 bg-red-950/20 hover:bg-red-950/40 px-4 py-2 text-sm font-semibold leading-normal text-red-100"
                   >
                     Excluir
                   </button>
