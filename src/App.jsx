@@ -163,6 +163,96 @@ function detectarSistemaMiniErp() {
   }
 }
 
+const CHAVE_CONFIG_PIX_RAPIDO = 'miniErpPixRapidoConfigV1'
+const CONFIG_PIX_RAPIDO_INICIAL = {
+  tipoChave: 'Aleatoria',
+  chave: '4e84083c-370d-4cf1-8c39-fcdf0562bcbd',
+  instituicao: '',
+}
+
+function normalizarConfigPixRapido(config = {}) {
+  return {
+    tipoChave: String(config.tipoChave || CONFIG_PIX_RAPIDO_INICIAL.tipoChave).trim() || CONFIG_PIX_RAPIDO_INICIAL.tipoChave,
+    chave: String(config.chave || CONFIG_PIX_RAPIDO_INICIAL.chave).trim() || CONFIG_PIX_RAPIDO_INICIAL.chave,
+    instituicao: String(config.instituicao || '').trim(),
+  }
+}
+
+function carregarConfigPixRapidoInicial() {
+  try {
+    const salvo = window.localStorage.getItem(CHAVE_CONFIG_PIX_RAPIDO)
+    return normalizarConfigPixRapido(salvo ? JSON.parse(salvo) : CONFIG_PIX_RAPIDO_INICIAL)
+  } catch (erro) {
+    return { ...CONFIG_PIX_RAPIDO_INICIAL }
+  }
+}
+
+function removerAcentosPix(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function limitarTextoPix(texto, tamanho) {
+  return removerAcentosPix(texto)
+    .toUpperCase()
+    .replace(/[^A-Z0-9 $%*+\-./:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, tamanho)
+}
+
+function campoPix(id, valor) {
+  const texto = String(valor ?? '')
+  return `${id}${String(texto.length).padStart(2, '0')}${texto}`
+}
+
+function crc16Pix(payload) {
+  let crc = 0xffff
+
+  for (let indice = 0; indice < payload.length; indice += 1) {
+    crc ^= payload.charCodeAt(indice) << 8
+
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1
+      crc &= 0xffff
+    }
+  }
+
+  return crc.toString(16).toUpperCase().padStart(4, '0')
+}
+
+function montarCodigoPixCopiaCola({ chave, valor, recebedor = 'Delber Vilaca', instituicao = '' }) {
+  const valorPix = Number(valor || 0).toFixed(2)
+  const nomeRecebedor = limitarTextoPix(recebedor, 25) || 'DELBERVILACA'
+  const cidade = limitarTextoPix('CANASTRA', 15)
+  const descricao = limitarTextoPix(instituicao ? `PIX ${instituicao}` : 'PIX RAPIDO', 25) || 'PIX RAPIDO'
+  const infoConta = [
+    campoPix('00', 'br.gov.bcb.pix'),
+    campoPix('01', String(chave || '').trim()),
+    campoPix('02', descricao),
+  ].join('')
+  const dadosAdicionais = campoPix('05', 'PIXERP')
+  const payloadSemCrc = [
+    campoPix('00', '01'),
+    campoPix('26', infoConta),
+    campoPix('52', '0000'),
+    campoPix('53', '986'),
+    campoPix('54', valorPix),
+    campoPix('58', 'BR'),
+    campoPix('59', nomeRecebedor),
+    campoPix('60', cidade),
+    campoPix('62', dadosAdicionais),
+    '6304',
+  ].join('')
+
+  return `${payloadSemCrc}${crc16Pix(payloadSemCrc)}`
+}
+
+function urlQrCodePix(codigoPix) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=12&data=${encodeURIComponent(codigoPix)}`
+}
+
 
 export default function App() {
   const [mostrarAberturaPwa, setMostrarAberturaPwa] = useState(true)
@@ -196,6 +286,15 @@ export default function App() {
     cliente: null,
     itens: [],
     selecionados: [],
+  })
+  const [configPixRapido, setConfigPixRapido] = useState(() => carregarConfigPixRapidoInicial())
+  const [valorPixRapido, setValorPixRapido] = useState('')
+  const [pixRapidoGerado, setPixRapidoGerado] = useState(null)
+  const [modalPixRapidoPreVenda, setModalPixRapidoPreVenda] = useState({
+    aberto: false,
+    cliente: '',
+    referencia: '',
+    observacao: '',
   })
 
   const [novaVersaoDisponivel, setNovaVersaoDisponivel] = useState(false)
@@ -404,6 +503,14 @@ export default function App() {
       window.removeEventListener('offline', atualizarStatusOnline)
     }
   }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CHAVE_CONFIG_PIX_RAPIDO, JSON.stringify(normalizarConfigPixRapido(configPixRapido)))
+    } catch (erro) {
+      console.error('Falha ao salvar configuracao Pix Rapido.', erro)
+    }
+  }, [configPixRapido])
 
   const [toast, setToast] = useState({
     visivel: false,
@@ -2397,6 +2504,142 @@ export default function App() {
     setTextoPreVendaVoz(novaPreVenda.transcricao)
     setAvisoPreVenda(`Pré-venda registrada para ${novaPreVenda.cliente}.`)
     exibirToast('Pré-venda registrada.')
+  }
+
+  function atualizarConfigPixRapido(campo, valor) {
+    setConfigPixRapido((atual) => ({
+      ...atual,
+      [campo]: valor,
+    }))
+  }
+
+  function gerarPixRapido(e) {
+    e?.preventDefault?.()
+
+    const valor = numero(valorPixRapido)
+    const config = normalizarConfigPixRapido(configPixRapido)
+
+    if (valor <= 0) {
+      exibirToast('Informe um valor valido para o Pix.', 'erro')
+      return
+    }
+
+    if (!config.chave) {
+      exibirToast('Informe a chave Pix para gerar o QR Code.', 'erro')
+      return
+    }
+
+    const codigo = montarCodigoPixCopiaCola({
+      chave: config.chave,
+      valor,
+      recebedor: 'Delber Vilaca',
+      instituicao: config.instituicao,
+    })
+
+    setConfigPixRapido(config)
+    setPixRapidoGerado({
+      id: `pix-rapido-${Date.now()}`,
+      codigo,
+      qrCodeUrl: urlQrCodePix(codigo),
+      valor,
+      criadoEm: new Date().toISOString(),
+      status: 'Aguardando pagamento',
+      tipoChave: config.tipoChave,
+      chave: config.chave,
+      instituicao: config.instituicao,
+    })
+    setModalPixRapidoPreVenda({ aberto: false, cliente: '', referencia: '', observacao: '' })
+    exibirToast('QR Code Pix gerado.')
+  }
+
+  async function copiarCodigoPixRapido() {
+    if (!pixRapidoGerado?.codigo) return
+
+    try {
+      await navigator.clipboard.writeText(pixRapidoGerado.codigo)
+      exibirToast('Codigo Pix copiado.')
+    } catch (erro) {
+      console.error('Erro ao copiar codigo Pix:', erro)
+      exibirToast('Nao consegui copiar automaticamente.', 'erro')
+    }
+  }
+
+  function cancelarPixRapido() {
+    setPixRapidoGerado((atual) => atual ? { ...atual, status: 'Cancelado' } : atual)
+    setModalPixRapidoPreVenda({ aberto: false, cliente: '', referencia: '', observacao: '' })
+    exibirToast('Pix cancelado.')
+  }
+
+  function gerarNovaCobrancaPixRapido() {
+    setValorPixRapido('')
+    setPixRapidoGerado(null)
+    setModalPixRapidoPreVenda({ aberto: false, cliente: '', referencia: '', observacao: '' })
+  }
+
+  function abrirModalPixRapidoPreVenda() {
+    if (!pixRapidoGerado || pixRapidoGerado.status === 'Cancelado') return
+    setModalPixRapidoPreVenda({ aberto: true, cliente: '', referencia: '', observacao: '' })
+  }
+
+  function fecharModalPixRapidoPreVenda() {
+    setModalPixRapidoPreVenda({ aberto: false, cliente: '', referencia: '', observacao: '' })
+  }
+
+  async function salvarPixRapidoEmPreVenda(e) {
+    e?.preventDefault?.()
+
+    if (!pixRapidoGerado) return
+
+    const cliente = modalPixRapidoPreVenda.cliente.trim()
+    const referencia = modalPixRapidoPreVenda.referencia.trim()
+    const observacao = modalPixRapidoPreVenda.observacao.trim()
+    const valor = Number(pixRapidoGerado.valor || 0)
+    const textoOrigem = observacao
+      ? `Origem Pix Rapido. ${observacao}`
+      : 'Origem Pix Rapido. Completar itens depois na Pre-venda.'
+    const preVendaPix = {
+      cliente: cliente || 'Cliente nao informado',
+      referencia,
+      pagamento: 'Pix',
+      itens: observacao ? [{ nome: observacao, quantidade: 1, valorUnitario: valor, valor }] : [],
+      total: valor,
+      transcricao: textoOrigem,
+      status: 'Aguardando lancamento',
+      mensagemGerada: false,
+      criadoEm: new Date().toISOString(),
+    }
+    const payload = montarPayloadPreVenda(preVendaPix, { incluirDataCriacao: true })
+    delete payload.updated_at
+
+    let { data, error } = await supabase
+      .from('prevendas')
+      .insert(payload)
+      .select('*')
+      .single()
+
+    if (error && erroColunaFormaPagamentoPreVenda(error)) {
+      const tentativa = await supabase
+        .from('prevendas')
+        .insert(payloadPreVendaSemFormaPagamento(payload))
+        .select('*')
+        .single()
+      data = tentativa.data
+      error = tentativa.error
+    }
+
+    if (error) {
+      console.error('Erro ao salvar Pix Rapido em Pre-vendas:', error)
+      exibirToast('Erro ao salvar em Pre-vendas.', 'erro')
+      return
+    }
+
+    const novaPreVenda = normalizarPreVendaBanco(data)
+    setPreVendas((listaAtual) => [novaPreVenda, ...listaAtual.filter((item) => item.id !== novaPreVenda.id)])
+    atualizarCacheOffline({ preVendas: [novaPreVenda, ...(preVendas || []).filter((item) => item.id !== novaPreVenda.id)] })
+    setPixRapidoGerado((atual) => atual ? { ...atual, status: 'Pagamento recebido' } : atual)
+    fecharModalPixRapidoPreVenda()
+    setPagina('pre-vendas')
+    exibirToast('Pre-venda criada pelo Pix Rapido.')
   }
 
   function iniciarPreVendaPorVoz() {
@@ -6847,6 +7090,7 @@ Delber Vilaça`
   const itensMenu = [
     { id: 'painel', icone: '📊', texto: 'Painel' },
     { id: 'pre-vendas', icone: '🎙️', texto: 'Pré-vendas' },
+    { id: 'pix-rapido', icone: 'QR', texto: 'Pix Rápido / QR Code' },
     { id: 'vendas', icone: '🧾', texto: 'Vendas' },
     { id: 'clientes', icone: '👤', texto: 'Cadastro de Clientes' },
     { id: 'produtos', icone: '🧀', texto: 'Cadastro de Produtos' },
@@ -7451,6 +7695,184 @@ Delber Vilaça`
     )
   }
 
+
+  function TelaPixRapido() {
+    const configAtual = normalizarConfigPixRapido(configPixRapido)
+    const pixCancelado = pixRapidoGerado?.status === 'Cancelado'
+    const pixRecebido = pixRapidoGerado?.status === 'Pagamento recebido'
+
+    return (
+      <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-5 lg:p-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-6">
+          <div>
+            <p className="text-orange-400 uppercase tracking-[5px] text-xs mb-3">QR Code</p>
+            <h2 className="text-3xl lg:text-5xl font-bold leading-tight">Pix R&aacute;pido</h2>
+            <p className="text-zinc-500 mt-3 max-w-2xl">
+              Gere uma cobran&ccedil;a Pix por valor e envie para Pr&eacute;-vendas quando confirmar o recebimento.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 px-4 py-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Status</p>
+            <p className="text-xl font-bold text-orange-300">{pixRapidoGerado?.status || 'Sem QR Code'}</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+          <div className="grid gap-4">
+            <form onSubmit={gerarPixRapido} className="rounded-[26px] border border-orange-950/70 bg-[#15110f]/80 p-4">
+              <h3 className="text-lg font-black text-white mb-4">Nova cobran&ccedil;a</h3>
+
+              <label className="block mb-4">
+                <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Valor do Pix</span>
+                <input
+                  value={valorPixRapido}
+                  onChange={(e) => setValorPixRapido(e.target.value)}
+                  placeholder="R$ 0,00"
+                  inputMode="decimal"
+                  className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-lg font-bold text-white outline-none focus:border-orange-700"
+                />
+              </label>
+
+              <button
+                type="submit"
+                className="w-full rounded-2xl bg-orange-900 px-5 py-4 text-sm font-bold text-white transition hover:bg-orange-800"
+              >
+                Gerar QR Code
+              </button>
+            </form>
+
+            <div className="rounded-[26px] border border-zinc-900 bg-zinc-950/70 p-4">
+              <h3 className="text-lg font-black text-white mb-4">Configura&ccedil;&atilde;o Pix</h3>
+
+              <div className="grid gap-3">
+                <label className="block">
+                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Tipo de chave Pix</span>
+                  <select
+                    value={configPixRapido.tipoChave}
+                    onChange={(e) => atualizarConfigPixRapido('tipoChave', e.target.value)}
+                    className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-orange-700"
+                  >
+                    <option value="Aleatoria">Aleat&oacute;ria</option>
+                    <option value="CPF">CPF</option>
+                    <option value="CNPJ">CNPJ</option>
+                    <option value="Telefone">Telefone</option>
+                    <option value="E-mail">E-mail</option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Chave Pix</span>
+                  <input
+                    value={configPixRapido.chave}
+                    onChange={(e) => atualizarConfigPixRapido('chave', e.target.value)}
+                    placeholder={CONFIG_PIX_RAPIDO_INICIAL.chave}
+                    className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-orange-700"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Institui&ccedil;&atilde;o</span>
+                  <input
+                    value={configPixRapido.instituicao}
+                    onChange={(e) => atualizarConfigPixRapido('instituicao', e.target.value)}
+                    placeholder="Institui&ccedil;&atilde;o"
+                    className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-orange-700"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[26px] border border-zinc-900 bg-[#15110f]/80 p-4">
+            {!pixRapidoGerado ? (
+              <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-dashed border-zinc-800 bg-black/50 p-6 text-center text-sm text-zinc-500">
+                Nenhum QR Code gerado.
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+                  <div className="rounded-3xl border border-zinc-800 bg-white p-4">
+                    <img
+                      src={pixRapidoGerado.qrCodeUrl}
+                      alt="QR Code Pix"
+                      className="mx-auto h-[280px] w-[280px] max-w-full rounded-xl bg-white"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 rounded-2xl border border-zinc-800 bg-black p-4">
+                    <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
+                      <span className="text-zinc-500">Valor</span>
+                      <strong className="text-orange-200">{moeda(pixRapidoGerado.valor)}</strong>
+                    </p>
+                    <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
+                      <span className="text-zinc-500">Status</span>
+                      <strong className={pixCancelado ? 'text-red-300' : pixRecebido ? 'text-green-300' : 'text-yellow-300'}>
+                        {pixRapidoGerado.status}
+                      </strong>
+                    </p>
+                    <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
+                      <span className="text-zinc-500">Tipo de chave</span>
+                      <strong className="text-white">{pixRapidoGerado.tipoChave || configAtual.tipoChave}</strong>
+                    </p>
+                    {pixRapidoGerado.instituicao && (
+                      <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
+                        <span className="text-zinc-500">Institui&ccedil;&atilde;o</span>
+                        <strong className="text-white">{pixRapidoGerado.instituicao}</strong>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <label className="block">
+                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Pix Copia e Cola</span>
+                  <textarea
+                    value={pixRapidoGerado.codigo}
+                    readOnly
+                    rows={5}
+                    className="w-full resize-none rounded-2xl border border-zinc-800 bg-black p-4 text-xs leading-relaxed text-zinc-200 outline-none"
+                  />
+                </label>
+
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <button
+                    type="button"
+                    onClick={copiarCodigoPixRapido}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-100 transition hover:border-orange-900"
+                  >
+                    Copiar c&oacute;digo Pix
+                  </button>
+                  <button
+                    type="button"
+                    onClick={abrirModalPixRapidoPreVenda}
+                    disabled={pixCancelado || pixRecebido}
+                    className="rounded-2xl bg-green-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Pagamento recebido
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelarPixRapido}
+                    disabled={pixCancelado || pixRecebido}
+                    className="rounded-2xl bg-red-950 px-4 py-3 text-sm font-bold text-red-100 transition hover:bg-red-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Cancelar Pix
+                  </button>
+                  <button
+                    type="button"
+                    onClick={gerarNovaCobrancaPixRapido}
+                    className="rounded-2xl border border-orange-900 bg-orange-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-900"
+                  >
+                    Gerar nova cobran&ccedil;a
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   function TelaPreVendas() {
     const lista = preVendasFiltradas()
@@ -14440,6 +14862,7 @@ Delber Vilaça`
     if (pagina === 'ponto-equilibrio') return TelaPontoEquilibrio()
     if (pagina === 'clientes') return TelaClientes()
     if (pagina === 'pre-vendas') return TelaPreVendas()
+    if (pagina === 'pix-rapido') return TelaPixRapido()
     if (pagina === 'vendas') return TelaVendas()
     if (pagina === 'pendencias') return TelaPendencias()
     if (pagina === 'cobrancas') return TelaCobrancas()
@@ -14494,6 +14917,85 @@ Delber Vilaça`
         <div className={`mini-toast mini-toast-${toast.tipo}`} role="status" aria-live="polite">
           <span>{toast.tipo === 'sucesso' ? '✓' : '!'}</span>
           <p>{toast.mensagem}</p>
+        </div>
+      )}
+
+      {modalPixRapidoPreVenda.aberto && pixRapidoGerado && (
+        <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/85 p-3 pt-6 pb-[140px] backdrop-blur-sm md:items-center md:p-4">
+          <form
+            onSubmit={salvarPixRapidoEmPreVenda}
+            className="w-full max-w-2xl rounded-[26px] border border-orange-950 bg-[#15110f] p-4 shadow-2xl md:p-6"
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-orange-400 font-bold">Pix R&aacute;pido</p>
+                <h3 className="mt-1 text-2xl font-black text-white leading-tight">Salvar em Pr&eacute;-vendas</h3>
+                <p className="mt-2 text-sm font-bold text-orange-200">{moeda(pixRapidoGerado.valor)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={fecharModalPixRapidoPreVenda}
+                className="h-12 w-12 shrink-0 rounded-2xl bg-zinc-900 text-2xl font-black text-white hover:bg-zinc-800"
+                aria-label="Fechar"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="grid gap-3">
+              <label className="block">
+                <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Cliente, opcional</span>
+                <input
+                  value={modalPixRapidoPreVenda.cliente}
+                  onChange={(e) => setModalPixRapidoPreVenda({ ...modalPixRapidoPreVenda, cliente: e.target.value })}
+                  placeholder="Cliente"
+                  className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-orange-700"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Refer&ecirc;ncia, opcional</span>
+                <input
+                  value={modalPixRapidoPreVenda.referencia}
+                  onChange={(e) => setModalPixRapidoPreVenda({ ...modalPixRapidoPreVenda, referencia: e.target.value })}
+                  placeholder="Refer&ecirc;ncia"
+                  className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-orange-700"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Itens ou observa&ccedil;&atilde;o, opcional</span>
+                <textarea
+                  value={modalPixRapidoPreVenda.observacao}
+                  onChange={(e) => setModalPixRapidoPreVenda({ ...modalPixRapidoPreVenda, observacao: e.target.value })}
+                  placeholder="Itens ou observa&ccedil;&atilde;o"
+                  rows={4}
+                  className="w-full resize-none rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-orange-700"
+                />
+              </label>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm font-bold text-zinc-200">
+                <input type="checkbox" checked readOnly className="h-4 w-4 accent-orange-600" />
+                Lan&ccedil;ar depois
+              </label>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={fecharModalPixRapidoPreVenda}
+                className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold text-white hover:bg-zinc-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="rounded-2xl bg-orange-900 px-5 py-3 font-bold text-white hover:bg-orange-800"
+              >
+                Salvar em Pr&eacute;-vendas
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -15438,10 +15940,10 @@ Delber Vilaça`
 
           <button
             type="button"
-            onClick={() => setPagina('clientes')}
-            className={pagina === 'clientes' ? 'mini-bottom-active' : ''}
+            onClick={() => setPagina('pix-rapido')}
+            className={pagina === 'pix-rapido' ? 'mini-bottom-active' : ''}
           >
-            Clientes
+            QR Code
           </button>
 
           <button
