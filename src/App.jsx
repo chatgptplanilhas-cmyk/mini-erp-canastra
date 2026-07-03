@@ -169,6 +169,7 @@ const CONFIG_PIX_RAPIDO_INICIAL = {
   chave: '4e84083c-370d-4cf1-8c39-fcdf0562bcbd',
   instituicao: '',
 }
+const DESCRICAO_PIX_RAPIDO_PADRAO = 'QUEIJOS CANASTRA'
 
 function normalizarConfigPixRapido(config = {}) {
   return {
@@ -226,7 +227,7 @@ function montarCodigoPixCopiaCola({ chave, valor, recebedor = 'Delber Vilaca', i
   const valorPix = Number(valor || 0).toFixed(2)
   const nomeRecebedor = limitarTextoPix(recebedor, 25) || 'DELBERVILACA'
   const cidade = limitarTextoPix('CANASTRA', 15)
-  const descricao = limitarTextoPix(instituicao ? `PIX ${instituicao}` : 'PIX RAPIDO', 25) || 'PIX RAPIDO'
+  const descricao = limitarTextoPix(DESCRICAO_PIX_RAPIDO_PADRAO, 25) || DESCRICAO_PIX_RAPIDO_PADRAO
   const infoConta = [
     campoPix('00', 'br.gov.bcb.pix'),
     campoPix('01', String(chave || '').trim()),
