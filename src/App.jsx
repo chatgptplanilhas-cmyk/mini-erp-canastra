@@ -3346,6 +3346,14 @@ Queijos Serra da Canastra 🇧🇷`
     return moeda(numeroValor)
   }
 
+  function moedaInputCentavos(valor) {
+    const digitos = String(valor || '').replace(/\D/g, '')
+
+    if (!digitos) return ''
+
+    return moeda(Number(digitos) / 100)
+  }
+
   function percentual(valor) {
     return `${Number(valor || 0).toFixed(2).replace('.', ',')}%`
   }
@@ -7727,9 +7735,9 @@ Delber Vilaça`
                 <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Valor do Pix</span>
                 <input
                   value={valorPixRapido}
-                  onChange={(e) => setValorPixRapido(e.target.value)}
+                  onChange={(e) => setValorPixRapido(moedaInputCentavos(e.target.value))}
                   placeholder="R$ 0,00"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-lg font-bold text-white outline-none focus:border-orange-700"
                 />
               </label>
