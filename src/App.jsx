@@ -167,7 +167,7 @@ const CHAVE_CONFIG_PIX_RAPIDO = 'miniErpPixRapidoConfigV1'
 const CONFIG_PIX_RAPIDO_INICIAL = {
   tipoChave: 'Aleatoria',
   chave: '4e84083c-370d-4cf1-8c39-fcdf0562bcbd',
-  instituicao: '',
+  instituicao: 'CloudWalk IP LTDA',
 }
 const DESCRICAO_PIX_RAPIDO_PADRAO = 'QUEIJOS CANASTRA'
 
@@ -291,6 +291,7 @@ export default function App() {
   const [configPixRapido, setConfigPixRapido] = useState(() => carregarConfigPixRapidoInicial())
   const [valorPixRapido, setValorPixRapido] = useState('')
   const [pixRapidoGerado, setPixRapidoGerado] = useState(null)
+  const [modalPixRapidoQrAberto, setModalPixRapidoQrAberto] = useState(false)
   const [modalPixRapidoPreVenda, setModalPixRapidoPreVenda] = useState({
     aberto: false,
     cliente: '',
@@ -504,14 +505,6 @@ export default function App() {
       window.removeEventListener('offline', atualizarStatusOnline)
     }
   }, [])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(CHAVE_CONFIG_PIX_RAPIDO, JSON.stringify(normalizarConfigPixRapido(configPixRapido)))
-    } catch (erro) {
-      console.error('Falha ao salvar configuracao Pix Rapido.', erro)
-    }
-  }, [configPixRapido])
 
   const [toast, setToast] = useState({
     visivel: false,
@@ -2514,6 +2507,34 @@ export default function App() {
     }))
   }
 
+  function gravarConfigPixRapido(config) {
+    const normalizada = normalizarConfigPixRapido(config)
+    window.localStorage.setItem(CHAVE_CONFIG_PIX_RAPIDO, JSON.stringify(normalizada))
+    setConfigPixRapido(normalizada)
+    return normalizada
+  }
+
+  function salvarConfigPixRapido() {
+    try {
+      gravarConfigPixRapido(configPixRapido)
+      exibirToast('Configuracao Pix salva.')
+    } catch (erro) {
+      console.error('Falha ao salvar configuracao Pix Rapido.', erro)
+      exibirToast('Nao foi possivel salvar a configuracao Pix.', 'erro')
+    }
+  }
+
+  function restaurarConfigPixRapidoPadrao() {
+    try {
+      gravarConfigPixRapido(CONFIG_PIX_RAPIDO_INICIAL)
+      exibirToast('Configuracao Pix restaurada.')
+    } catch (erro) {
+      console.error('Falha ao restaurar configuracao Pix Rapido.', erro)
+      setConfigPixRapido(normalizarConfigPixRapido(CONFIG_PIX_RAPIDO_INICIAL))
+      exibirToast('Padrao restaurado nesta sessao.', 'erro')
+    }
+  }
+
   function gerarPixRapido(e) {
     e?.preventDefault?.()
 
@@ -2549,6 +2570,7 @@ export default function App() {
       chave: config.chave,
       instituicao: config.instituicao,
     })
+    setModalPixRapidoQrAberto(true)
     setModalPixRapidoPreVenda({ aberto: false, cliente: '', referencia: '', observacao: '' })
     exibirToast('QR Code Pix gerado.')
   }
@@ -2574,11 +2596,22 @@ export default function App() {
   function gerarNovaCobrancaPixRapido() {
     setValorPixRapido('')
     setPixRapidoGerado(null)
+    setModalPixRapidoQrAberto(false)
     setModalPixRapidoPreVenda({ aberto: false, cliente: '', referencia: '', observacao: '' })
+  }
+
+  function abrirModalPixRapidoQr() {
+    if (!pixRapidoGerado) return
+    setModalPixRapidoQrAberto(true)
+  }
+
+  function fecharModalPixRapidoQr() {
+    setModalPixRapidoQrAberto(false)
   }
 
   function abrirModalPixRapidoPreVenda() {
     if (!pixRapidoGerado || pixRapidoGerado.status === 'Cancelado') return
+    setModalPixRapidoQrAberto(false)
     setModalPixRapidoPreVenda({ aberto: true, cliente: '', referencia: '', observacao: '' })
   }
 
@@ -7705,11 +7738,123 @@ Delber Vilaça`
   }
 
 
-  function TelaPixRapido() {
-    const configAtual = normalizarConfigPixRapido(configPixRapido)
+  function renderPixRapidoGerado({ modal = false } = {}) {
+    if (!pixRapidoGerado) {
+      return (
+        <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-dashed border-zinc-800 bg-black/50 p-6 text-center text-sm text-zinc-500">
+          Nenhum QR Code gerado.
+        </div>
+      )
+    }
+
     const pixCancelado = pixRapidoGerado?.status === 'Cancelado'
     const pixRecebido = pixRapidoGerado?.status === 'Pagamento recebido'
+    const configAtual = normalizarConfigPixRapido(configPixRapido)
+    const classeStatus = pixCancelado ? 'text-red-300' : pixRecebido ? 'text-green-300' : 'text-yellow-300'
+    const classeQr = modal
+      ? 'mx-auto h-[min(72vw,320px)] w-[min(72vw,320px)] rounded-xl bg-white md:h-[360px] md:w-[360px]'
+      : 'mx-auto h-[280px] w-[280px] max-w-full rounded-xl bg-white'
 
+    return (
+      <div className={modal ? 'grid gap-4' : 'grid gap-4'}>
+        <div className={modal ? 'grid gap-4 lg:grid-cols-[390px_1fr] lg:items-start' : 'grid gap-4 lg:grid-cols-[320px_1fr]'}>
+          <div className="rounded-3xl border border-zinc-800 bg-white p-3 md:p-4">
+            <img
+              src={pixRapidoGerado.qrCodeUrl}
+              alt="QR Code Pix"
+              className={classeQr}
+            />
+          </div>
+
+          <div className="grid gap-3 rounded-2xl border border-zinc-800 bg-black p-4">
+            <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
+              <span className="text-zinc-500">Valor</span>
+              <strong className="text-orange-200">{moeda(pixRapidoGerado.valor)}</strong>
+            </p>
+            <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
+              <span className="text-zinc-500">Status</span>
+              <strong className={classeStatus}>
+                {pixRapidoGerado.status}
+              </strong>
+            </p>
+            <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
+              <span className="text-zinc-500">Tipo de chave</span>
+              <strong className="text-white">{pixRapidoGerado.tipoChave || configAtual.tipoChave}</strong>
+            </p>
+            {pixRapidoGerado.instituicao && (
+              <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
+                <span className="text-zinc-500">Institui&ccedil;&atilde;o</span>
+                <strong className="text-white">{pixRapidoGerado.instituicao}</strong>
+              </p>
+            )}
+          </div>
+        </div>
+
+        <label className="block">
+          <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Pix Copia e Cola</span>
+          <textarea
+            value={pixRapidoGerado.codigo}
+            readOnly
+            rows={modal ? 3 : 5}
+            className="w-full resize-none rounded-2xl border border-zinc-800 bg-black p-4 text-xs leading-relaxed text-zinc-200 outline-none"
+          />
+        </label>
+
+        <div className={modal ? 'grid gap-2 sm:grid-cols-2 xl:grid-cols-5' : 'grid gap-2 sm:grid-cols-2 xl:grid-cols-5'}>
+          {!modal && (
+            <button
+              type="button"
+              onClick={abrirModalPixRapidoQr}
+              className="rounded-2xl border border-orange-900 bg-orange-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-900"
+            >
+              Abrir QR Code
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={copiarCodigoPixRapido}
+            className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-100 transition hover:border-orange-900"
+          >
+            Copiar c&oacute;digo Pix
+          </button>
+          <button
+            type="button"
+            onClick={abrirModalPixRapidoPreVenda}
+            disabled={pixCancelado || pixRecebido}
+            className="rounded-2xl bg-green-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Pagamento recebido
+          </button>
+          <button
+            type="button"
+            onClick={cancelarPixRapido}
+            disabled={pixCancelado || pixRecebido}
+            className="rounded-2xl bg-red-950 px-4 py-3 text-sm font-bold text-red-100 transition hover:bg-red-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancelar Pix
+          </button>
+          <button
+            type="button"
+            onClick={gerarNovaCobrancaPixRapido}
+            className="rounded-2xl border border-orange-900 bg-orange-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-900"
+          >
+            Gerar nova cobran&ccedil;a
+          </button>
+          {modal && (
+            <button
+              type="button"
+              onClick={fecharModalPixRapidoQr}
+              className="rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-zinc-700"
+            >
+              Fechar
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  function TelaPixRapido() {
     return (
       <section className={`mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-5 lg:p-8 ${classePrioridadePixConteudo}`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-6">
@@ -7789,94 +7934,29 @@ Delber Vilaça`
                     className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-orange-700"
                   />
                 </label>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={salvarConfigPixRapido}
+                    className="rounded-2xl bg-orange-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-800"
+                  >
+                    Salvar configura&ccedil;&atilde;o Pix
+                  </button>
+                  <button
+                    type="button"
+                    onClick={restaurarConfigPixRapidoPadrao}
+                    className="rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm font-bold text-zinc-100 transition hover:border-orange-900"
+                  >
+                    Restaurar padr&atilde;o
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="rounded-[26px] border border-zinc-900 bg-[#15110f]/80 p-4">
-            {!pixRapidoGerado ? (
-              <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-dashed border-zinc-800 bg-black/50 p-6 text-center text-sm text-zinc-500">
-                Nenhum QR Code gerado.
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-                  <div className="rounded-3xl border border-zinc-800 bg-white p-4">
-                    <img
-                      src={pixRapidoGerado.qrCodeUrl}
-                      alt="QR Code Pix"
-                      className="mx-auto h-[280px] w-[280px] max-w-full rounded-xl bg-white"
-                    />
-                  </div>
-
-                  <div className="grid gap-3 rounded-2xl border border-zinc-800 bg-black p-4">
-                    <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
-                      <span className="text-zinc-500">Valor</span>
-                      <strong className="text-orange-200">{moeda(pixRapidoGerado.valor)}</strong>
-                    </p>
-                    <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
-                      <span className="text-zinc-500">Status</span>
-                      <strong className={pixCancelado ? 'text-red-300' : pixRecebido ? 'text-green-300' : 'text-yellow-300'}>
-                        {pixRapidoGerado.status}
-                      </strong>
-                    </p>
-                    <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
-                      <span className="text-zinc-500">Tipo de chave</span>
-                      <strong className="text-white">{pixRapidoGerado.tipoChave || configAtual.tipoChave}</strong>
-                    </p>
-                    {pixRapidoGerado.instituicao && (
-                      <p className="flex justify-between gap-3 border-b border-zinc-900 pb-2">
-                        <span className="text-zinc-500">Institui&ccedil;&atilde;o</span>
-                        <strong className="text-white">{pixRapidoGerado.instituicao}</strong>
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <label className="block">
-                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Pix Copia e Cola</span>
-                  <textarea
-                    value={pixRapidoGerado.codigo}
-                    readOnly
-                    rows={5}
-                    className="w-full resize-none rounded-2xl border border-zinc-800 bg-black p-4 text-xs leading-relaxed text-zinc-200 outline-none"
-                  />
-                </label>
-
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  <button
-                    type="button"
-                    onClick={copiarCodigoPixRapido}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-100 transition hover:border-orange-900"
-                  >
-                    Copiar c&oacute;digo Pix
-                  </button>
-                  <button
-                    type="button"
-                    onClick={abrirModalPixRapidoPreVenda}
-                    disabled={pixCancelado || pixRecebido}
-                    className="rounded-2xl bg-green-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Pagamento recebido
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelarPixRapido}
-                    disabled={pixCancelado || pixRecebido}
-                    className="rounded-2xl bg-red-950 px-4 py-3 text-sm font-bold text-red-100 transition hover:bg-red-900 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Cancelar Pix
-                  </button>
-                  <button
-                    type="button"
-                    onClick={gerarNovaCobrancaPixRapido}
-                    className="rounded-2xl border border-orange-900 bg-orange-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-900"
-                  >
-                    Gerar nova cobran&ccedil;a
-                  </button>
-                </div>
-              </div>
-            )}
+            {renderPixRapidoGerado()}
           </div>
         </div>
       </section>
@@ -14931,6 +15011,37 @@ Delber Vilaça`
         <div className={`mini-toast mini-toast-${toast.tipo}`} role="status" aria-live="polite">
           <span>{toast.tipo === 'sucesso' ? '✓' : '!'}</span>
           <p>{toast.mensagem}</p>
+        </div>
+      )}
+
+      {modalPixRapidoQrAberto && pixRapidoGerado && (
+        <div className="fixed inset-0 z-[1000] flex h-dvh items-stretch justify-center overflow-hidden bg-black/90 p-2 backdrop-blur-sm md:items-center md:p-4" role="dialog" aria-modal="true">
+          <div className="flex h-full w-full max-w-5xl flex-col overflow-y-auto rounded-[28px] border border-orange-950 bg-[#15110f] p-4 shadow-2xl md:h-auto md:max-h-[92vh] md:p-6">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-orange-400 font-bold">Pix R&aacute;pido</p>
+                <h3 className="mt-1 text-2xl font-black text-white leading-tight">QR Code</h3>
+                <div className="mt-3 flex flex-wrap gap-2 text-sm font-bold">
+                  <span className="rounded-2xl border border-zinc-800 bg-black px-3 py-2 text-orange-200">
+                    Valor: {moeda(pixRapidoGerado.valor)}
+                  </span>
+                  <span className="rounded-2xl border border-zinc-800 bg-black px-3 py-2 text-yellow-300">
+                    Status: {pixRapidoGerado.status}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={fecharModalPixRapidoQr}
+                className="h-12 w-12 shrink-0 rounded-2xl bg-zinc-900 text-2xl font-black text-white hover:bg-zinc-800"
+                aria-label="Fechar QR Code"
+              >
+                &times;
+              </button>
+            </div>
+
+            {renderPixRapidoGerado({ modal: true })}
+          </div>
         </div>
       )}
 
