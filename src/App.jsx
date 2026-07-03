@@ -7710,7 +7710,7 @@ Delber Vilaça`
     const pixRecebido = pixRapidoGerado?.status === 'Pagamento recebido'
 
     return (
-      <section className="mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-5 lg:p-8">
+      <section className={`mobile-panel-card bg-black border border-orange-950 rounded-[28px] p-5 lg:p-8 ${classePrioridadePixConteudo}`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-6">
           <div>
             <p className="text-orange-400 uppercase tracking-[5px] text-xs mb-3">QR Code</p>
@@ -14905,6 +14905,11 @@ Delber Vilaça`
     return '•'
   }
 
+  const pixRapidoMobilePrioritario = pagina === 'pix-rapido'
+  const classePrioridadePixConteudo = pixRapidoMobilePrioritario ? 'order-1 lg:order-none' : ''
+  const classePrioridadePixCabecalho = pixRapidoMobilePrioritario ? 'order-2 lg:order-none mt-4 lg:mt-0' : ''
+  const classePrioridadePixOperacional = pixRapidoMobilePrioritario ? 'order-2 lg:order-none' : ''
+
   return (
     <div className="min-h-screen bg-[#15110f] text-white overflow-x-hidden">
       {mostrarAberturaPwa && (
@@ -15971,8 +15976,8 @@ Delber Vilaça`
           </button>
         </div>
 
-        <main className="mini-app-main p-4 lg:p-8">
-          <section className="mobile-panel-card bg-black border border-orange-950 rounded-[24px] lg:rounded-[28px] p-5 lg:p-8 mb-6">
+        <main className={`mini-app-main p-4 lg:p-8${pixRapidoMobilePrioritario ? ' flex flex-col lg:block' : ''}`}>
+          <section className={`mobile-panel-card bg-black border border-orange-950 rounded-[24px] lg:rounded-[28px] p-5 lg:p-8 mb-6 ${classePrioridadePixCabecalho}`}>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <h2 className="text-3xl lg:text-5xl font-bold mb-3 lg:mb-4 leading-tight">Mini ERP Queijos Serra da Canastra</h2>
@@ -15986,7 +15991,7 @@ Delber Vilaça`
           </section>
 
           {downgradeBloqueado && (
-            <section className="mini-update-alert mini-update-alert-danger">
+            <section className={`mini-update-alert mini-update-alert-danger ${classePrioridadePixOperacional}`}>
               <div>
                 <strong>Versão anterior bloqueada</strong>
                 <span>
@@ -15998,7 +16003,7 @@ Delber Vilaça`
           )}
 
           {novaVersaoDisponivel && (
-            <section className="mini-update-alert">
+            <section className={`mini-update-alert ${classePrioridadePixOperacional}`}>
               <div>
                 <strong>Nova versão disponível</strong>
                 <span>Versão publicada: {versaoPublicada}. Atualize antes de continuar o atendimento.</span>
@@ -16007,7 +16012,7 @@ Delber Vilaça`
             </section>
           )}
 
-          <section className={`mini-sync-bar ${erroSincronizacaoDados ? 'mini-sync-bar-error' : ''}`}>
+          <section className={`mini-sync-bar ${erroSincronizacaoDados ? 'mini-sync-bar-error' : ''} ${classePrioridadePixOperacional}`}>
             <div>
               <strong>{sincronizandoDados ? 'Atualizando dados' : 'Sincronização automática'}</strong>
               <span>{textoUltimaAtualizacaoDados()}</span>
@@ -16017,7 +16022,7 @@ Delber Vilaça`
             </button>
           </section>
 
-          <section className={`mini-offline-bar ${online ? 'mini-offline-bar-online' : 'mini-offline-bar-offline'}`}>
+          <section className={`mini-offline-bar ${online ? 'mini-offline-bar-online' : 'mini-offline-bar-offline'} ${classePrioridadePixOperacional}`}>
             <div>
               <strong>{online ? 'Operação online' : 'Modo offline ativo'}</strong>
               <span>{textoStatusConexao()} · {textoCacheOffline()}</span>
