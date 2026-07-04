@@ -5032,8 +5032,6 @@ Saldo restante em aberto: ${moeda(saldoFinal)}.
 
 Agradeço pela confiança.
 
-Atenciosamente,
-
 Delber Vilaça
 Queijos Serra da Canastra`
 
@@ -5139,7 +5137,6 @@ Stone Pagamentos S.A.
 
 Assim que realizar a transferência, peço a gentileza de enviar o comprovante para registro.
 
-Atenciosamente,
 Delber Vilaça | Queijos Serra da Canastra`
   }
 
@@ -5160,7 +5157,6 @@ Instituição: Stone Pagamentos S.A.
 
 Após realizar a transferência, peço que envie o comprovante para que eu possa registrar o pagamento no sistema.
 
-Atenciosamente,
 Delber Vilaça | Queijos Serra da Canastra`
   }
 
@@ -5246,7 +5242,6 @@ Muito obrigado pela confiança nos produtos da Queijos Serra da Canastra 🇧�
 
 Se precisar fazer um novo pedido ou tiver alguma dúvida, basta entrar em contato. 🤝
 
-Atenciosamente,
 Delber Vilaça`
 
     abrirWhatsApp({ telefone, mensagem })
