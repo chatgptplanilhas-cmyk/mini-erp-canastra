@@ -5021,8 +5021,16 @@ Queijos Serra da Canastra 🇧🇷`
 
   function montarMensagemCobranca({ cliente, valor }) {
     const nomeCliente = cliente.nome || 'cliente'
+    const horaBrasil = Number(
+      new Intl.DateTimeFormat('pt-BR', {
+        hour: '2-digit',
+        hour12: false,
+        timeZone: TIME_ZONE_BRASIL,
+      }).format(new Date())
+    )
+    const saudacao = horaBrasil < 12 ? 'Bom dia' : horaBrasil < 18 ? 'Boa tarde' : 'Boa noite'
 
-    return `Olá, ${nomeCliente}. Tudo bem?
+    return `${saudacao}, ${nomeCliente}.
 
 Conforme combinado, seguem os dados para o pagamento via Pix da sua compra:
 
