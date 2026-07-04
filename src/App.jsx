@@ -1337,7 +1337,7 @@ export default function App() {
     const original = String(texto || '')
     const porMarcador = extrairTrechoMarcadoPreVenda(
       original,
-      ['forma de pagamento', 'pagamento', 'pagou no', 'pagou em'],
+      ['forma de pagamento', 'fama de pagamento', 'forma pagamento', 'pagamento', 'pagou no', 'pagou em'],
       []
     )
 
@@ -1347,7 +1347,7 @@ export default function App() {
   function removerMetadadosPreVendaPorVoz(texto) {
     let limpo = String(texto || '')
 
-    const itensMarcados = extrairTrechoMarcadoPreVenda(limpo, ['itens adquiridos', 'itens'], ['forma de pagamento', 'pagamento'])
+    const itensMarcados = extrairTrechoMarcadoPreVenda(limpo, ['itens adquiridos', 'itens'], ['forma de pagamento', 'fama de pagamento', 'forma pagamento', 'pagamento'])
     if (itensMarcados) return itensMarcados
 
     REFERENCIAS_PRE_VENDA_VOZ.forEach((referencia) => {
@@ -2220,6 +2220,10 @@ export default function App() {
         .replace(/\b(comprou|pegou|levou|ficou com|ficou|compras?|cliente|itens?)\b/gi, ' ')
         .replace(/\b(o|a|e|por|valor|reais|real|r\$)\b/gi, ' ')
         .replace(/\b(cada|unidade|unit[aá]rio)\b/gi, ' ')
+        .replace(/\btran[cç]\b/gi, 'trança')
+        .replace(/\bdoce\s+peda[cç]\b/gi, 'doce pedaço')
+        .replace(/\b(?:quit[aã]o?|kit[aã]o?)\b/gi, 'kitão')
+        .replace(/\bgoiabada\s+casc[aã]o?\b/gi, 'goiabada cascão')
         .replace(/\s+/g, ' ')
         .trim()
     ).replace(/\b(De|Do|Da|Dos|Das)\b/g, (parte) => parte.toLowerCase())
