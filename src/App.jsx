@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { TIME_ZONE_BRASIL } from './constants/app'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
 import { primeiroNome } from './utils/texto'
@@ -7,7 +8,6 @@ import { compararVersoes, normalizarVersao } from './utils/versao'
 const APP_VERSION = '2026.06.24.03'
 const APP_VERSION_LABEL = `Mini ERP v${APP_VERSION}`
 const PWA_SPLASH_DURATION_MS = 1600
-const TIME_ZONE_BRASIL = 'America/Sao_Paulo'
 
 const MINI_ERP_HIGHEST_VERSION_KEY = 'miniErpHighestAcceptedVersion'
 const MINI_ERP_DOWNGRADE_BLOCK_KEY = 'miniErpDowngradeBlocked'
