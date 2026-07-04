@@ -24,3 +24,10 @@ export function inicioMesAtual() {
     const { ano, mes } = partesDataBrasil()
     return `${ano}-${mes}-01`
   }
+
+export function dataISO(data) {
+    const dataObj = data instanceof Date ? data : new Date(data)
+    if (Number.isNaN(dataObj.getTime())) return dataHoje()
+    const { ano, mes, dia } = partesDataBrasil(dataObj)
+    return `${ano}-${mes}-${dia}`
+  }

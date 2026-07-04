@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
-import { dataHoje, inicioMesAtual, partesDataBrasil } from './utils/datas'
+import { dataHoje, dataISO, inicioMesAtual, partesDataBrasil } from './utils/datas'
 import { moeda, moedaInput, moedaInputCentavos, numero, percentual } from './utils/formatacao'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
@@ -1682,12 +1682,7 @@ export default function App() {
 
 
 
-  function dataISO(data) {
-    const dataObj = data instanceof Date ? data : new Date(data)
-    if (Number.isNaN(dataObj.getTime())) return dataHoje()
-    const { ano, mes, dia } = partesDataBrasil(dataObj)
-    return `${ano}-${mes}-${dia}`
-  }
+
 
   function ajustarDataPreVenda(dataSelecionada, dataAtual) {
     if (!dataSelecionada) return dataAtual || new Date().toISOString()
