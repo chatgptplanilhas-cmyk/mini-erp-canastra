@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
+import { partesDataBrasil } from './utils/datas'
 import { moeda, moedaInput, moedaInputCentavos, numero, percentual } from './utils/formatacao'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
@@ -1675,20 +1676,7 @@ export default function App() {
     })
   }
 
-  function partesDataBrasil(data = new Date()) {
-    const partes = new Intl.DateTimeFormat('en-CA', {
-      timeZone: TIME_ZONE_BRASIL,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(data)
 
-    return {
-      ano: partes.find((parte) => parte.type === 'year')?.value || '1970',
-      mes: partes.find((parte) => parte.type === 'month')?.value || '01',
-      dia: partes.find((parte) => parte.type === 'day')?.value || '01',
-    }
-  }
 
   function dataHoje() {
     const { ano, mes, dia } = partesDataBrasil()

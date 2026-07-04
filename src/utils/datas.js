@@ -1,0 +1,16 @@
+import { TIME_ZONE_BRASIL } from '../constants/app'
+
+export function partesDataBrasil(data = new Date()) {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+      timeZone: TIME_ZONE_BRASIL,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(data)
+
+    return {
+      ano: partes.find((parte) => parte.type === 'year')?.value || '1970',
+      mes: partes.find((parte) => parte.type === 'month')?.value || '01',
+      dia: partes.find((parte) => parte.type === 'day')?.value || '01',
+    }
+  }
