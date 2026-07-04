@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
+import { limparTelefone } from './utils/telefone'
 import { compararVersoes, normalizarVersao } from './utils/versao'
 
 const APP_VERSION = '2026.06.24.03'
@@ -1801,10 +1802,6 @@ export default function App() {
     } catch (erro) {
       return null
     }
-  }
-
-  function limparTelefone(telefone) {
-    return String(telefone || '').replace(/\D/g, '')
   }
 
   function abrirWhatsApp({ telefone = '', mensagem = '' } = {}) {
