@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
+import { primeiroNome } from './utils/texto'
 import { compararVersoes, normalizarVersao } from './utils/versao'
 
 const APP_VERSION = '2026.06.24.03'
@@ -3554,10 +3555,6 @@ Queijos Serra da Canastra 🇧🇷`
       texto: 'Sem margem',
       classe: 'mini-indicador-neutro',
     }
-  }
-
-  function primeiroNome(nome) {
-    return String(nome || '').trim().split(/\s+/)[0] || 'Cliente'
   }
 
   function criarDataSegura(data) {
