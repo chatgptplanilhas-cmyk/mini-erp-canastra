@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
+import { compararVersoes, normalizarVersao } from './utils/versao'
 
 const APP_VERSION = '2026.06.24.03'
 const APP_VERSION_LABEL = `Mini ERP v${APP_VERSION}`
@@ -16,28 +17,6 @@ const MENUS_ACOES_SELECTOR = [
   'details.mini-clientes-menu',
   'details.produto-acoes-menu',
 ].join(',')
-
-function normalizarVersao(valor) {
-  return String(valor || '')
-    .trim()
-    .replace(/[^0-9.]/g, '')
-}
-
-function compararVersoes(a, b) {
-  const partesA = normalizarVersao(a).split('.').map((parte) => Number(parte) || 0)
-  const partesB = normalizarVersao(b).split('.').map((parte) => Number(parte) || 0)
-  const tamanho = Math.max(partesA.length, partesB.length)
-
-  for (let indice = 0; indice < tamanho; indice += 1) {
-    const numeroA = partesA[indice] || 0
-    const numeroB = partesB[indice] || 0
-
-    if (numeroA > numeroB) return 1
-    if (numeroA < numeroB) return -1
-  }
-
-  return 0
-}
 
 function lerMaiorVersaoAceita() {
   try {
