@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
-import { primeiroNome } from './utils/texto'
+import { limparPontuacaoTexto, primeiroNome } from './utils/texto'
 import { compararVersoes, normalizarVersao } from './utils/versao'
 
 const APP_VERSION = '2026.06.24.03'
@@ -1827,9 +1827,7 @@ export default function App() {
 
 
 
-  function limparPontuacaoTexto(texto) {
-    return normalizarTexto(texto).replace(/[^a-z0-9\s,./-]/g, ' ')
-  }
+
 
   function capitalizarNomeVendaAvulsa(nome) {
     const ajustes = {
