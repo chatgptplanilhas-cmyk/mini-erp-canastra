@@ -19,3 +19,8 @@ export function dataHoje() {
     const { ano, mes, dia } = partesDataBrasil()
     return `${ano}-${mes}-${dia}`
   }
+
+export function inicioMesAtual() {
+    const { ano, mes } = partesDataBrasil()
+    return `${ano}-${mes}-01`
+  }

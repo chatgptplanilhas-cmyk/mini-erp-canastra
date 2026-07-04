@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
-import { dataHoje, partesDataBrasil } from './utils/datas'
+import { dataHoje, inicioMesAtual, partesDataBrasil } from './utils/datas'
 import { moeda, moedaInput, moedaInputCentavos, numero, percentual } from './utils/formatacao'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
@@ -1680,10 +1680,7 @@ export default function App() {
 
 
 
-  function inicioMesAtual() {
-    const { ano, mes } = partesDataBrasil()
-    return `${ano}-${mes}-01`
-  }
+
 
   function dataISO(data) {
     const dataObj = data instanceof Date ? data : new Date(data)
