@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
-import { dataHoje, dataISO, inicioMesAtual, partesDataBrasil } from './utils/datas'
+import { dataHoje, dataISO, dentroPeriodoFiltro, inicioMesAtual, partesDataBrasil } from './utils/datas'
 import { moeda, moedaInput, moedaInputCentavos, numero, percentual } from './utils/formatacao'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
@@ -1711,13 +1711,7 @@ export default function App() {
     }
   }
 
-  function dentroPeriodoFiltro(data, inicio, fim) {
-    if (!data) return false
-    const valor = String(data).slice(0, 10)
-    if (inicio && valor < inicio) return false
-    if (fim && valor > fim) return false
-    return true
-  }
+
 
   function aplicarPeriodoLista(tipo, setInicio, setFim) {
     const hoje = new Date()

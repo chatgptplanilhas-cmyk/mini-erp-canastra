@@ -31,3 +31,11 @@ export function dataISO(data) {
     const { ano, mes, dia } = partesDataBrasil(dataObj)
     return `${ano}-${mes}-${dia}`
   }
+
+export function dentroPeriodoFiltro(data, inicio, fim) {
+    if (!data) return false
+    const valor = String(data).slice(0, 10)
+    if (inicio && valor < inicio) return false
+    if (fim && valor > fim) return false
+    return true
+  }
