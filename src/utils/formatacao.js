@@ -25,3 +25,11 @@ export function moedaInput(valor) {
 
     return moeda(numeroValor)
   }
+
+export function moedaInputCentavos(valor) {
+    const digitos = String(valor || '').replace(/\D/g, '')
+
+    if (!digitos) return ''
+
+    return moeda(Number(digitos) / 100)
+  }
