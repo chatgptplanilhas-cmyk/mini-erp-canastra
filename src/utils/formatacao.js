@@ -33,3 +33,7 @@ export function moedaInputCentavos(valor) {
 
     return moeda(Number(digitos) / 100)
   }
+
+export function percentual(valor) {
+    return `${Number(valor || 0).toFixed(2).replace('.', ',')}%`
+  }

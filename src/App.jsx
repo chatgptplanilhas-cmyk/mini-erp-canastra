@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
-import { moeda, moedaInput, moedaInputCentavos, numero } from './utils/formatacao'
+import { moeda, moedaInput, moedaInputCentavos, numero, percentual } from './utils/formatacao'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
 import { contemTermos, limparPontuacaoTexto, normalizarTexto, primeiroNome } from './utils/texto'
@@ -3323,9 +3323,7 @@ Queijos Serra da Canastra 🇧🇷`
 
 
 
-  function percentual(valor) {
-    return `${Number(valor || 0).toFixed(2).replace('.', ',')}%`
-  }
+
 
 
   function chaveFormaPagamento(valor) {
