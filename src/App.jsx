@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
-import { limparPontuacaoTexto, primeiroNome } from './utils/texto'
+import { limparPontuacaoTexto, normalizarTexto, primeiroNome } from './utils/texto'
 import { compararVersoes, normalizarVersao } from './utils/versao'
 
 const APP_VERSION = '2026.06.24.03'
@@ -1817,13 +1817,7 @@ export default function App() {
     window.location.href = linkDiretoApp
   }
 
-  function normalizarTexto(valor) {
-    return String(valor || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim()
-  }
+
 
 
 
@@ -13286,7 +13280,7 @@ Delber Vilaça`
           <textarea
             value={formDelivery.descricao}
             onChange={(e) => setFormDelivery({ ...formDelivery, descricao: e.target.value })}
-            placeholder="Itens do pedido" 
+            placeholder="Itens do pedido"
             rows={3}
             className="delivery-itens-textarea lg:col-span-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 resize-y min-h-[74px] leading-relaxed"
           />

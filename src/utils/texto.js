@@ -5,3 +5,11 @@ export function primeiroNome(nome) {
 export function limparPontuacaoTexto(texto) {
     return normalizarTexto(texto).replace(/[^a-z0-9\s,./-]/g, ' ')
   }
+
+export function normalizarTexto(valor) {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+  }
