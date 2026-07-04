@@ -13,3 +13,12 @@ export function normalizarTexto(valor) {
       .toLowerCase()
       .trim()
   }
+
+export function contemTermos(textoBase, termoBusca) {
+    const texto = normalizarTexto(textoBase)
+    const termos = normalizarTexto(termoBusca).split(/\s+/).filter(Boolean)
+
+    if (termos.length === 0) return true
+
+    return termos.every((termo) => texto.includes(termo))
+  }

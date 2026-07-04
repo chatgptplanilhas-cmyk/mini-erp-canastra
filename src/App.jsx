@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
-import { limparPontuacaoTexto, normalizarTexto, primeiroNome } from './utils/texto'
+import { contemTermos, limparPontuacaoTexto, normalizarTexto, primeiroNome } from './utils/texto'
 import { compararVersoes, normalizarVersao } from './utils/versao'
 
 const APP_VERSION = '2026.06.24.03'
@@ -3265,14 +3265,7 @@ Queijos Serra da Canastra 🇧🇷`
     })
   }
 
-  function contemTermos(textoBase, termoBusca) {
-    const texto = normalizarTexto(textoBase)
-    const termos = normalizarTexto(termoBusca).split(/\s+/).filter(Boolean)
 
-    if (termos.length === 0) return true
-
-    return termos.every((termo) => texto.includes(termo))
-  }
 
   function clientesParaVendaFiltrados() {
     const termo = normalizarTexto(buscaClienteVenda)
