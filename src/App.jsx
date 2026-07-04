@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
+import { numero } from './utils/formatacao'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
 import { contemTermos, limparPontuacaoTexto, normalizarTexto, primeiroNome } from './utils/texto'
@@ -1428,18 +1429,7 @@ export default function App() {
     atualizarCacheOffline({ preVendas: lista })
   }
 
-  function numero(valor) {
-    const texto = String(valor ?? '').trim()
 
-    if (!texto) return 0
-
-    const limpo = texto
-      .replace(/[^0-9,.-]/g, '')
-      .replace(/\.(?=\d{3}(\D|$))/g, '')
-      .replace(',', '.')
-
-    return Number(limpo) || 0
-  }
 
   function salvarMovimentoCaixa() {
     const campoValor = document.getElementById('campo-ajuste-caixa-valor')
