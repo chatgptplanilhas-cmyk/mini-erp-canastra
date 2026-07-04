@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
-import { moeda, numero } from './utils/formatacao'
+import { moeda, moedaInput, numero } from './utils/formatacao'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
 import { contemTermos, limparPontuacaoTexto, normalizarTexto, primeiroNome } from './utils/texto'
@@ -3319,13 +3319,7 @@ Queijos Serra da Canastra 🇧🇷`
 
 
 
-  function moedaInput(valor) {
-    const numeroValor = numero(valor)
 
-    if (!numeroValor) return ''
-
-    return moeda(numeroValor)
-  }
 
   function moedaInputCentavos(valor) {
     const digitos = String(valor || '').replace(/\D/g, '')

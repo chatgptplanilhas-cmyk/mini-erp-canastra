@@ -17,3 +17,11 @@ export function moeda(valor) {
       currency: 'BRL',
     })
   }
+
+export function moedaInput(valor) {
+    const numeroValor = numero(valor)
+
+    if (!numeroValor) return ''
+
+    return moeda(numeroValor)
+  }
