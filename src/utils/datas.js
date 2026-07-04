@@ -14,3 +14,8 @@ export function partesDataBrasil(data = new Date()) {
       dia: partes.find((parte) => parte.type === 'day')?.value || '01',
     }
   }
+
+export function dataHoje() {
+    const { ano, mes, dia } = partesDataBrasil()
+    return `${ano}-${mes}-${dia}`
+  }
