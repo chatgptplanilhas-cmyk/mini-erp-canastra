@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIME_ZONE_BRASIL } from './constants/app'
-import { numero } from './utils/formatacao'
+import { moeda, numero } from './utils/formatacao'
 import { supabase } from './lib/supabase'
 import { limparTelefone } from './utils/telefone'
 import { contemTermos, limparPontuacaoTexto, normalizarTexto, primeiroNome } from './utils/texto'
@@ -3317,12 +3317,7 @@ Queijos Serra da Canastra 🇧🇷`
     return 'EM ABERTO'
   }
 
-  function moeda(valor) {
-    return Number(valor || 0).toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    })
-  }
+
 
   function moedaInput(valor) {
     const numeroValor = numero(valor)

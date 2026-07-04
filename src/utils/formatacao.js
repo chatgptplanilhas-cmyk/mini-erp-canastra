@@ -10,3 +10,10 @@ export function numero(valor) {
 
     return Number(limpo) || 0
   }
+
+export function moeda(valor) {
+    return Number(valor || 0).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    })
+  }
