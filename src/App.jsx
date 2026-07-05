@@ -5036,20 +5036,20 @@ Queijos Serra da Canastra 🇧🇷`
 
     return `${saudacao}, ${nomeCliente}.
 
-Conforme combinado, seguem os dados para o pagamento via Pix da sua compra:
+Conforme combinado, seguem os dados para o pagamento via Pix:
 
 💰 Valor: ${valor}
 
-🔑 Chave Pix:
-queijosserradacanastra@hotmail.com
+🔑 Chave Pix e-mail:
+pixqueijos@hotmail.com
 
 Dados para conferência:
 Delber Juliano Vilaça
-Stone Pagamentos S.A.
+InfinitePay | CLOUDWALK IP LTDA
 
-Assim que realizar a transferência, peço a gentileza de enviar o comprovante para registro.
+Assim que realizar a transferência, favor enviar o comprovante para registro.
 
-Delber Vilaça | Queijos Serra da Canastra`
+Delber Vilaça | Queijos Serra da Canastra🇧🇷`
   }
 
   function montarMensagemResumoPix({ valor }) {
