@@ -5115,6 +5115,131 @@ Delber Vilaça | Queijos Serra da Canastra`
     })
   }
 
+  const [cobrancasSelecionadasLote, setCobrancasSelecionadasLote] = useState({})
+  const [filaCobrancasLote, setFilaCobrancasLote] = useState([])
+  const [indiceCobrancaLote, setIndiceCobrancaLote] = useState(0)
+
+  function chaveSelecaoCobrancaLote(pendencia) {
+    return String(pendencia?.id || `${pendencia?.venda_id || ''}-${pendencia?.cliente_id || ''}-${pendencia?.vencimento || ''}-${pendencia?.saldo_restante || ''}`)
+  }
+
+  function chaveGrupoCobrancaLote(pendencia) {
+    const cliente = clienteDaPendencia(pendencia)
+    return String(pendencia?.cliente_id || pendencia?.vendas?.cliente_id || `${cliente.nome || ''}-${cliente.referencia || ''}` || pendencia?.id || '')
+  }
+  function alternarCobrancaLote(pendencia) {
+    const chave = chaveSelecaoCobrancaLote(pendencia)
+    if (!chave) return
+
+    setCobrancasSelecionadasLote((selecionadas) => {
+      const novasSelecionadas = { ...selecionadas }
+      if (novasSelecionadas[chave]) {
+        delete novasSelecionadas[chave]
+      } else {
+        novasSelecionadas[chave] = true
+      }
+      return novasSelecionadas
+    })
+  }
+
+  function limparCobrancasLote() {
+    setCobrancasSelecionadasLote({})
+    setFilaCobrancasLote([])
+    setIndiceCobrancaLote(0)
+  }
+
+  function pendenciasSelecionadasDoLocal(local) {
+    return (local?.itens || []).filter((pendencia) => Boolean(cobrancasSelecionadasLote[chaveSelecaoCobrancaLote(pendencia)]))
+  }
+
+  function cobrancasSelecionadasDoLocal(local) {
+    const grupos = {}
+
+    pendenciasSelecionadasDoLocal(local).forEach((pendencia) => {
+      const chave = chaveGrupoCobrancaLote(pendencia)
+      if (!chave) return
+
+      const cliente = clienteDaPendencia(pendencia)
+      if (!grupos[chave]) {
+        grupos[chave] = {
+          key: chave,
+          cliente,
+          itens: [],
+          total: 0,
+          telefone: limparTelefone(cliente.telefone),
+        }
+      }
+
+      grupos[chave].itens.push(pendencia)
+    })
+
+    const hoje = dataHoje()
+
+    return Object.values(grupos)
+      .map((grupo) => {
+        const itensEmAberto = grupo.itens.filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+        const itensVencidos = itensEmAberto.filter((item) => !item.vencimento || item.vencimento <= hoje)
+        const itensValidos = itensVencidos.length > 0 ? itensVencidos : itensEmAberto
+        const total = itensValidos.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+
+        return {
+          ...grupo,
+          itens: itensValidos,
+          total,
+        }
+      })
+      .filter((grupo) => grupo.total > 0)
+  }
+  function abrirItemCobrancaLote(item) {
+    abrirWhatsApp({
+      telefone: item.telefone,
+      mensagem: montarMensagemCobranca({ cliente: item.cliente, valor: moeda(item.total) }),
+    })
+  }
+
+  function iniciarFilaCobrancasLote(local) {
+    const fila = cobrancasSelecionadasDoLocal(local)
+
+    if (fila.length === 0) {
+      exibirToast('Selecione pelo menos uma pendência para cobrar.', 'erro')
+      return
+    }
+
+    const semTelefone = fila.find((item) => !item.telefone)
+    if (semTelefone) {
+      exibirToast(`O cliente ${semTelefone.cliente.nome || 'selecionado'} não possui telefone cadastrado.`, 'erro')
+      return
+    }
+
+    setFilaCobrancasLote(fila)
+    setIndiceCobrancaLote(0)
+    abrirItemCobrancaLote(fila[0])
+  }
+
+  function abrirProximaCobrancaLote() {
+    if (filaCobrancasLote.length === 0) {
+      exibirToast('Nenhuma fila de cobrança em andamento.', 'erro')
+      return
+    }
+
+    const proximoIndice = indiceCobrancaLote + 1
+
+    if (proximoIndice >= filaCobrancasLote.length) {
+      exibirToast('Todas as cobranças selecionadas já foram abertas.')
+      setFilaCobrancasLote([])
+      setIndiceCobrancaLote(0)
+      return
+    }
+
+    setIndiceCobrancaLote(proximoIndice)
+    abrirItemCobrancaLote(filaCobrancasLote[proximoIndice])
+  }
+
+  function encerrarFilaCobrancasLote() {
+    setFilaCobrancasLote([])
+    setIndiceCobrancaLote(0)
+  }
+
   function resumoPixWhatsAppConsolidado(cliente, itens) {
     const telefone = limparTelefone(cliente.telefone)
 
@@ -9880,10 +10005,60 @@ Delber Vilaça`
                 </div>
               </div>
 
+              <div className="hidden lg:block rounded-2xl border border-zinc-800 bg-black/60 p-3 text-sm text-zinc-300">
+                {(() => {
+                  const selecionadasLocal = cobrancasSelecionadasDoLocal(localSelecionado)
+                  const qtdSelecionadas = pendenciasSelecionadasDoLocal(localSelecionado).length
+                  const filaAtiva = filaCobrancasLote.length > 0
+
+                  return (
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <strong className="text-white">{qtdSelecionadas} pendência{qtdSelecionadas === 1 ? '' : 's'} selecionada{qtdSelecionadas === 1 ? '' : 's'}</strong>
+                        {filaAtiva && (
+                          <p className="mt-1 text-xs text-orange-300">
+                            Fila em andamento: {indiceCobrancaLote + 1} de {filaCobrancasLote.length}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => iniciarFilaCobrancasLote(localSelecionado)}
+                          disabled={qtdSelecionadas === 0}
+                          className={`rounded-xl px-3 py-2 text-xs font-bold ${qtdSelecionadas === 0 ? 'bg-zinc-900 text-zinc-600 cursor-not-allowed' : 'bg-emerald-700 text-white hover:bg-emerald-600'}`}
+                        >
+                          Abrir primeira cobrança
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={abrirProximaCobrancaLote}
+                          disabled={!filaAtiva}
+                          className={`rounded-xl px-3 py-2 text-xs font-bold ${!filaAtiva ? 'bg-zinc-900 text-zinc-600 cursor-not-allowed' : 'bg-orange-800 text-white hover:bg-orange-700'}`}
+                        >
+                          Próxima cobrança
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={filaAtiva ? encerrarFilaCobrancasLote : limparCobrancasLote}
+                          className="rounded-xl bg-zinc-800 px-3 py-2 text-xs font-bold text-white hover:bg-zinc-700"
+                        >
+                          {filaAtiva ? 'Encerrar fila' : 'Limpar seleção'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
               <div className="hidden lg:block overflow-hidden mini-cobrancas-desktop-wrap">
                 <table className="w-full mini-cobrancas-desktop-table">
                   <thead className="bg-black text-left text-xs uppercase text-zinc-500">
                     <tr>
+                      <th className="p-4">Lote</th>
                       <th className="p-4">Cliente</th>
                       <th className="p-4">Data venda</th>
                       <th className="p-4">Vencimento</th>
@@ -9905,6 +10080,15 @@ Delber Vilaça`
                       const valorAnteriorLinha = ehSaldoAnterior ? valorLinha : 0
                       return (
                         <tr key={pendencia.id} className="border-t border-zinc-900">
+                          <td className="p-4">
+                            <input
+                              type="checkbox"
+                              aria-label={`Selecionar cobrança de ${clientePendencia.nome || 'cliente'}`}
+                              checked={Boolean(cobrancasSelecionadasLote[chaveSelecaoCobrancaLote(pendencia)])}
+                              onChange={() => alternarCobrancaLote(pendencia)}
+                              className="h-4 w-4 accent-emerald-600"
+                            />
+                          </td>
                           <td className="p-4 font-bold">{clientePendencia.nome || 'Cliente não informado'}</td>
                           <td className="p-4 text-zinc-300 font-semibold">{ehSaldoAnterior ? 'Saldo anterior' : dataBR(pendencia.vendas?.data_venda)}</td>
                           <td className={`p-4 font-semibold ${statusAtual.classe}`}>{dataBR(pendencia.vencimento)}</td>
