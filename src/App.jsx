@@ -5142,6 +5142,35 @@ Delber Vilaça | Queijos Serra da Canastra`
     })
   }
 
+  function todasPendenciasGrupoCobrancaLoteSelecionadas(grupoCliente) {
+    const itens = (grupoCliente?.itens || []).filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+    return itens.length > 0 && itens.every((item) => Boolean(cobrancasSelecionadasLote[chaveSelecaoCobrancaLote(item)]))
+  }
+
+  function alternarGrupoCobrancaLote(grupoCliente) {
+    const itens = (grupoCliente?.itens || []).filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+    if (itens.length === 0) return
+
+    const todosSelecionados = itens.every((item) => Boolean(cobrancasSelecionadasLote[chaveSelecaoCobrancaLote(item)]))
+
+    setCobrancasSelecionadasLote((selecionadas) => {
+      const novasSelecionadas = { ...selecionadas }
+
+      itens.forEach((item) => {
+        const chave = chaveSelecaoCobrancaLote(item)
+        if (!chave) return
+
+        if (todosSelecionados) {
+          delete novasSelecionadas[chave]
+        } else {
+          novasSelecionadas[chave] = true
+        }
+      })
+
+      return novasSelecionadas
+    })
+  }
+
   function limparCobrancasLote() {
     setCobrancasSelecionadasLote({})
     setFilaCobrancasLote([])
@@ -10127,6 +10156,55 @@ Delber Vilaça`
                 </table>
               </div>
 
+              <div className="lg:hidden mini-cobrancas-lote-mobile rounded-2xl border border-zinc-800 bg-black/70 p-3 text-sm text-zinc-300">
+                {(() => {
+                  const qtdSelecionadas = pendenciasSelecionadasDoLocal(localSelecionado).length
+                  const filaAtiva = filaCobrancasLote.length > 0
+
+                  return (
+                    <div className="grid gap-3">
+                      <strong className="text-white">
+                        {qtdSelecionadas} pendência{qtdSelecionadas === 1 ? '' : 's'} selecionada{qtdSelecionadas === 1 ? '' : 's'}
+                      </strong>
+
+                      {filaAtiva && (
+                        <p className="text-xs text-orange-300">
+                          Fila em andamento: {indiceCobrancaLote + 1} de {filaCobrancasLote.length}
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => iniciarFilaCobrancasLote(localSelecionado)}
+                          disabled={qtdSelecionadas === 0}
+                          className={`rounded-xl px-3 py-3 text-xs font-bold ${qtdSelecionadas === 0 ? 'bg-zinc-900 text-zinc-600 cursor-not-allowed' : 'bg-emerald-700 text-white'}`}
+                        >
+                          Abrir primeira
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={abrirProximaCobrancaLote}
+                          disabled={!filaAtiva}
+                          className={`rounded-xl px-3 py-3 text-xs font-bold ${!filaAtiva ? 'bg-zinc-900 text-zinc-600 cursor-not-allowed' : 'bg-orange-800 text-white'}`}
+                        >
+                          Próxima
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={filaAtiva ? encerrarFilaCobrancasLote : limparCobrancasLote}
+                          className="col-span-2 rounded-xl bg-zinc-800 px-3 py-3 text-xs font-bold text-white"
+                        >
+                          {filaAtiva ? 'Encerrar fila' : 'Limpar seleção'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
               <div className="lg:hidden grid gap-3 p-4 mini-cobrancas-clientes-abertos">
                 {(() => {
                   const gruposClientes = localSelecionado.itens.reduce((acc, pendencia) => {
@@ -10182,6 +10260,19 @@ Delber Vilaça`
                             className="mini-pend-cliente-head mini-cobranca-cliente-head"
                             onClick={() => setCobrancaExpandidaId(clienteAberto ? null : grupoCliente.key)}
                           >
+                            <span
+                              className="mr-2 inline-flex items-center"
+                              onClick={(evento) => evento.stopPropagation()}
+                            >
+                              <input
+                                type="checkbox"
+                                aria-label={`Selecionar cobranças de ${grupoCliente.cliente.nome || 'cliente'}`}
+                                checked={todasPendenciasGrupoCobrancaLoteSelecionadas(grupoCliente)}
+                                onChange={() => alternarGrupoCobrancaLote(grupoCliente)}
+                                className="h-5 w-5 accent-emerald-600"
+                              />
+                            </span>
+
                             <div className="mini-pend-cliente-main">
                               <strong>{grupoCliente.cliente.nome || 'Cliente não informado'}</strong>
                               <span>{grupoCliente.itens.length} pendência{grupoCliente.itens.length === 1 ? '' : 's'} • próximo {dataBR(grupoCliente.proximoVencimento)}</span>
