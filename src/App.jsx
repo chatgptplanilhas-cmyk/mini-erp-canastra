@@ -271,6 +271,13 @@ export default function App() {
     itens: [],
     selecionados: [],
   })
+
+  const [modalCobrancaSeletiva, setModalCobrancaSeletiva] = useState({
+    aberto: false,
+    cliente: null,
+    itens: [],
+    selecionados: [],
+  })
   const [configPixRapido, setConfigPixRapido] = useState(() => carregarConfigPixRapidoInicial())
   const [valorPixRapido, setValorPixRapido] = useState('')
   const [pixRapidoGerado, setPixRapidoGerado] = useState(null)
@@ -5088,31 +5095,106 @@ Delber Vilaça | Queijos Serra da Canastra`
     })
   }
 
-  function cobrarWhatsAppConsolidado(cliente, itens, somenteVencidos = true) {
-    const telefone = limparTelefone(cliente.telefone)
+  function prepararItensCobrancaSeletiva(itens = []) {
+    return (itens || [])
+      .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+      .sort((a, b) => {
+        const dataA = String(a.vencimento || '9999-12-31')
+        const dataB = String(b.vencimento || '9999-12-31')
+        if (dataA !== dataB) return dataA.localeCompare(dataB)
+        return Number(a.saldo_restante || 0) - Number(b.saldo_restante || 0)
+      })
+  }
+
+  function abrirCobrancaSeletivaCliente(cliente, itens = []) {
+    const itensValidos = prepararItensCobrancaSeletiva(itens)
+    const telefone = limparTelefone(cliente?.telefone)
 
     if (!telefone) {
-      alert('Este cliente não possui telefone cadastrado.')
+      exibirToast('Este cliente não possui telefone cadastrado.', 'erro')
+      return
+    }
+
+    if (itensValidos.length === 0) {
+      exibirToast('Este cliente não possui valores em aberto para cobrança.', 'erro')
+      return
+    }
+
+    if (itensValidos.length === 1) {
+      abrirWhatsApp({
+        telefone,
+        mensagem: montarMensagemCobranca({
+          cliente,
+          valor: moeda(Number(itensValidos[0].saldo_restante || 0)),
+        }),
+      })
       return
     }
 
     const hoje = dataHoje()
-    const itensEmAberto = (itens || [])
-      .filter((item) => item.status !== 'PAGO' && Number(item.saldo_restante || 0) > 0)
+    const vencidas = itensValidos.filter((item) => !item.vencimento || item.vencimento <= hoje)
+    const selecionadosIniciais = (vencidas.length > 0 ? vencidas : itensValidos).map((item) => item.id)
 
-    if (itensEmAberto.length === 0) {
-      alert('Este cliente não possui valores em aberto para cobrança.')
+    setModalCobrancaSeletiva({
+      aberto: true,
+      cliente,
+      itens: itensValidos,
+      selecionados: selecionadosIniciais,
+    })
+  }
+
+  function fecharModalCobrancaSeletiva() {
+    fecharTecladoMobile()
+    setModalCobrancaSeletiva({
+      aberto: false,
+      cliente: null,
+      itens: [],
+      selecionados: [],
+    })
+  }
+
+  function alternarItemCobrancaSeletiva(pendenciaId) {
+    setModalCobrancaSeletiva((atual) => {
+      const selecionados = atual.selecionados || []
+      const jaSelecionada = selecionados.includes(pendenciaId)
+
+      return {
+        ...atual,
+        selecionados: jaSelecionada
+          ? selecionados.filter((id) => id !== pendenciaId)
+          : [...selecionados, pendenciaId],
+      }
+    })
+  }
+
+  function confirmarCobrancaSeletivaWhatsApp() {
+    const cliente = modalCobrancaSeletiva.cliente
+    const telefone = limparTelefone(cliente?.telefone)
+    const itensSelecionados = (modalCobrancaSeletiva.itens || [])
+      .filter((item) => (modalCobrancaSeletiva.selecionados || []).includes(item.id))
+
+    if (!telefone) {
+      exibirToast('Este cliente não possui telefone cadastrado.', 'erro')
       return
     }
 
-    const itensVencidos = itensEmAberto.filter((item) => !item.vencimento || item.vencimento <= hoje)
-    const itensValidos = somenteVencidos && itensVencidos.length > 0 ? itensVencidos : itensEmAberto
-    const total = itensValidos.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+    if (itensSelecionados.length === 0) {
+      exibirToast('Selecione pelo menos uma pendência para cobrar.', 'erro')
+      return
+    }
+
+    const total = itensSelecionados.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+
+    fecharModalCobrancaSeletiva()
 
     abrirWhatsApp({
       telefone,
       mensagem: montarMensagemCobranca({ cliente, valor: moeda(total) }),
     })
+  }
+
+  function cobrarWhatsAppConsolidado(cliente, itens, somenteVencidos = true) {
+    abrirCobrancaSeletivaCliente(cliente, itens)
   }
 
   const [cobrancasSelecionadasLote, setCobrancasSelecionadasLote] = useState({})
@@ -15305,6 +15387,103 @@ Delber Vilaça`
           </form>
         </div>
       )}
+
+      {modalCobrancaSeletiva.aberto && (() => {
+        const hoje = dataHoje()
+        const itensSelecionados = (modalCobrancaSeletiva.itens || [])
+          .filter((item) => (modalCobrancaSeletiva.selecionados || []).includes(item.id))
+        const totalSelecionado = itensSelecionados.reduce((acc, item) => acc + Number(item.saldo_restante || 0), 0)
+
+        return (
+          <div className="fixed inset-0 z-[999] flex h-dvh items-center justify-center overflow-y-auto overscroll-contain bg-black/80 p-4">
+            <div className="w-full max-w-[720px] max-h-[90vh] overflow-y-auto rounded-[28px] border border-orange-950 bg-[#120f0d] p-6 shadow-2xl" role="dialog" aria-modal="true">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-[4px] text-orange-400">Cobrança</p>
+                  <h2 className="text-2xl font-bold">Selecionar pendências para cobrar</h2>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Cliente: <strong className="text-white">{modalCobrancaSeletiva.cliente?.nome || 'Cliente não informado'}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onPointerDown={fecharTecladoMobile}
+                  onClick={fecharModalCobrancaSeletiva}
+                  className="rounded-2xl bg-zinc-800 px-4 py-2 text-xl font-black text-white hover:bg-zinc-700"
+                  aria-label="Fechar"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="grid gap-3">
+                {(modalCobrancaSeletiva.itens || []).map((pendencia) => {
+                  const selecionada = (modalCobrancaSeletiva.selecionados || []).includes(pendencia.id)
+                  const vencida = !pendencia.vencimento || pendencia.vencimento <= hoje
+                  const ehSaldoAnterior = pendenciaEhHerdada(pendencia) || !pendencia.venda_id
+
+                  return (
+                    <button
+                      key={pendencia.id}
+                      type="button"
+                      onPointerDown={fecharTecladoMobile}
+                      onClick={() => alternarItemCobrancaSeletiva(pendencia.id)}
+                      className={`rounded-2xl border p-4 text-left transition ${selecionada ? 'border-orange-500 bg-orange-950/35' : 'border-zinc-800 bg-zinc-950 hover:border-orange-700'}`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-1 flex h-6 w-6 items-center justify-center rounded-lg border text-xs font-black ${selecionada ? 'border-orange-400 bg-orange-500 text-black' : 'border-zinc-600 text-zinc-500'}`}>
+                            {selecionada ? '✓' : ''}
+                          </span>
+
+                          <div>
+                            <strong className={vencida ? 'text-red-300' : 'text-green-300'}>{dataBR(pendencia.vencimento)}</strong>
+                            <p className="mt-1 text-xs text-zinc-500">{ehSaldoAnterior ? 'Saldo anterior' : `Venda #${pendencia.vendas?.numero_venda || ''}`}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <strong className="text-lg text-orange-300">{moeda(pendencia.saldo_restante)}</strong>
+                          <p className={`mt-1 text-xs font-bold ${vencida ? 'text-red-300' : 'text-green-300'}`}>
+                            {vencida ? 'Atrasado' : 'A vencer'}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-zinc-800 bg-black p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-bold text-zinc-400">Total selecionado</span>
+                  <strong className="text-2xl text-orange-300">{moeda(totalSelecionado)}</strong>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onPointerDown={fecharTecladoMobile}
+                  onClick={fecharModalCobrancaSeletiva}
+                  className="rounded-2xl bg-zinc-800 px-5 py-3 font-bold text-white hover:bg-zinc-700"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={fecharTecladoMobile}
+                  onClick={confirmarCobrancaSeletivaWhatsApp}
+                  className="rounded-2xl bg-emerald-700 px-5 py-3 font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={itensSelecionados.length === 0}
+                >
+                  Abrir cobrança no WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {modalSelecaoCobrancas.aberto && (() => {
         const itensSelecionados = (modalSelecaoCobrancas.itens || [])
