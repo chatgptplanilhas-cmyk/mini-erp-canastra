@@ -7,7 +7,7 @@ import { limparTelefone } from './utils/telefone'
 import { contemTermos, limparPontuacaoTexto, normalizarTexto, primeiroNome } from './utils/texto'
 import { compararVersoes, normalizarVersao } from './utils/versao'
 
-const APP_VERSION = '2026.06.24.03'
+const APP_VERSION = '2026.07.06.01'
 const APP_VERSION_LABEL = `Mini ERP v${APP_VERSION}`
 const PWA_SPLASH_DURATION_MS = 1600
 

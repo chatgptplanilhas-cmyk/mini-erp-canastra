@@ -1,4 +1,4 @@
-const MINI_ERP_VERSION = '2026.06.24.03'
+const MINI_ERP_VERSION = '2026.07.06.01'
 const MINI_ERP_CACHE_NAME = `mini-erp-app-${MINI_ERP_VERSION}`
 const MINI_ERP_CACHE_PREFIX = 'mini-erp-app-'
 const MINI_ERP_ESSENTIAL_URLS = ['/', '/index.html', '/version.json', '/diagnostico-emergencia.html', '/mini-erp-boot-blackbox.js']

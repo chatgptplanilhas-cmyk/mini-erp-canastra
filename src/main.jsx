@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-const MINI_ERP_BOOT_VERSION = '2026.06.24.03'
+const MINI_ERP_BOOT_VERSION = '2026.07.06.01'
 const MINI_ERP_HIGHEST_VERSION_KEY = 'miniErpHighestAcceptedVersion'
 
 function normalizarVersao(valor) {
