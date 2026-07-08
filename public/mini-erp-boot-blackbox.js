@@ -1,5 +1,5 @@
 (() => {
-  const APP_VERSION_ESPERADA = '2026.06.24.03'
+  const APP_VERSION_ESPERADA = '2026.07.06.01'
   const STORAGE_KEY = 'miniErpBootBlackBox'
   const MAX_REGISTROS = 30
 
