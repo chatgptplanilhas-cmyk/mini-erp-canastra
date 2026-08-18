@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict Yn845vCN0kXJgr5YdMNJyNeZwb9r6fiKQGFCV9VuuJoxbG6vsmJKbRZ7POaXtRt
+\restrict cRrh63SxuruGwUIcJ8UaLJZEtWf1oYiRVEcTBAUxWGc6lKHWItW6wZnkqykst3i
 
 -- Dumped from database version 17.6
--- Dumped by pg_dump version 17.10 (Ubuntu 17.10-1.pgdg24.04+1)
+-- Dumped by pg_dump version 17.11 (Ubuntu 17.11-1.pgdg24.04+2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4298,6 +4298,9 @@ COPY auth.flow_state (id, user_id, auth_code, code_challenge_method, code_challe
 --
 
 COPY auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at, id) FROM stdin;
+da53cb15-d95c-4433-af71-ee1509e239d5	da53cb15-d95c-4433-af71-ee1509e239d5	{"sub": "da53cb15-d95c-4433-af71-ee1509e239d5", "email": "joaovitorbatistavilaca@gmail.com", "email_verified": false, "phone_verified": false}	email	2026-08-11 00:31:31.800047+00	2026-08-11 00:31:31.800094+00	2026-08-11 00:31:31.800094+00	008a7aa3-bcd9-4b6f-a6dd-3a0f96643b5f
+0b1a7847-49dc-43b8-84ea-14bc9c771a0c	0b1a7847-49dc-43b8-84ea-14bc9c771a0c	{"sub": "0b1a7847-49dc-43b8-84ea-14bc9c771a0c", "email": "chatgpt.planilhas@gmail.com", "email_verified": false, "phone_verified": false}	email	2026-08-16 23:19:59.511844+00	2026-08-16 23:19:59.511894+00	2026-08-16 23:19:59.511894+00	8c59ef3e-0655-48b3-82e0-d941d87d4ee9
+6aa5d036-1abf-4ed2-9747-9659661a36ce	6aa5d036-1abf-4ed2-9747-9659661a36ce	{"sub": "6aa5d036-1abf-4ed2-9747-9659661a36ce", "email": "delberfinance@gmail.com", "email_verified": true, "phone_verified": false}	email	2026-08-17 13:40:29.803123+00	2026-08-17 13:40:29.803172+00	2026-08-17 13:40:29.803172+00	b7c1913c-b844-4a6c-a1b4-bc07eb5fdd3d
 \.
 
 
@@ -4314,6 +4317,7 @@ COPY auth.instances (id, uuid, raw_base_config, created_at, updated_at) FROM std
 --
 
 COPY auth.mfa_amr_claims (session_id, created_at, updated_at, authentication_method, id) FROM stdin;
+b58a066e-9e96-46cf-a47b-0af89f722924	2026-08-17 13:40:46.938868+00	2026-08-17 13:40:46.938868+00	otp	7ac5fb6f-80b1-4909-be0b-9ddaa545f4e2
 \.
 
 
@@ -4370,6 +4374,8 @@ COPY auth.oauth_consents (id, user_id, client_id, scopes, granted_at, revoked_at
 --
 
 COPY auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, created_at, updated_at) FROM stdin;
+69e61458-0faa-4fa4-aa98-d7ccb628b55b	da53cb15-d95c-4433-af71-ee1509e239d5	confirmation_token	3d4fbcc3c9546b823f4c381f98e16fd78a9c38d8bacddd6ba7dcfed1	joaovitorbatistavilaca@gmail.com	2026-08-11 11:54:32.053363	2026-08-11 11:54:32.053363
+3a9f3d62-a0a6-4448-81dc-aec7d656b5c8	0b1a7847-49dc-43b8-84ea-14bc9c771a0c	confirmation_token	8a73801e67a204fc49ece6bbc70723f2544dda4406a118b6344a7918	chatgpt.planilhas@gmail.com	2026-08-16 23:22:26.121274	2026-08-16 23:22:26.121274
 \.
 
 
@@ -4378,6 +4384,7 @@ COPY auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, crea
 --
 
 COPY auth.refresh_tokens (instance_id, id, token, user_id, revoked, created_at, updated_at, parent, session_id) FROM stdin;
+00000000-0000-0000-0000-000000000000	1	wixy7737dnds	6aa5d036-1abf-4ed2-9747-9659661a36ce	f	2026-08-17 13:40:46.922545+00	2026-08-17 13:40:46.922545+00	\N	b58a066e-9e96-46cf-a47b-0af89f722924
 \.
 
 
@@ -4487,6 +4494,7 @@ COPY auth.schema_migrations (version) FROM stdin;
 --
 
 COPY auth.sessions (id, user_id, created_at, updated_at, factor_id, aal, not_after, refreshed_at, user_agent, ip, tag, oauth_client_id, refresh_token_hmac_key, refresh_token_counter, scopes) FROM stdin;
+b58a066e-9e96-46cf-a47b-0af89f722924	6aa5d036-1abf-4ed2-9747-9659661a36ce	2026-08-17 13:40:46.910165+00	2026-08-17 13:40:46.910165+00	\N	aal1	\N	\N	Mozilla/5.0 (iPhone; CPU iPhone OS 26_6_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/152.0.7977.40 Mobile/15E148 Safari/604.1	189.6.19.197	\N	\N	\N	\N	\N
 \.
 
 
@@ -4511,6 +4519,9 @@ COPY auth.sso_providers (id, resource_id, created_at, updated_at, disabled) FROM
 --
 
 COPY auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, invited_at, confirmation_token, confirmation_sent_at, recovery_token, recovery_sent_at, email_change_token_new, email_change, email_change_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, is_super_admin, created_at, updated_at, phone, phone_confirmed_at, phone_change, phone_change_token, phone_change_sent_at, email_change_token_current, email_change_confirm_status, banned_until, reauthentication_token, reauthentication_sent_at, is_sso_user, deleted_at, is_anonymous) FROM stdin;
+00000000-0000-0000-0000-000000000000	da53cb15-d95c-4433-af71-ee1509e239d5	authenticated	authenticated	joaovitorbatistavilaca@gmail.com	$2a$10$iiJmNwrK7Bt8IsFz4tG.Oep3sa/OrpID56d7W0pnpJsG4LjbAkrIW	\N	\N	3d4fbcc3c9546b823f4c381f98e16fd78a9c38d8bacddd6ba7dcfed1	2026-08-11 11:54:29.69909+00		\N			\N	\N	{"provider": "email", "providers": ["email"]}	{"sub": "da53cb15-d95c-4433-af71-ee1509e239d5", "email": "joaovitorbatistavilaca@gmail.com", "email_verified": false, "phone_verified": false}	\N	2026-08-11 00:31:31.733387+00	2026-08-11 11:54:31.995276+00	\N	\N			\N		0	\N		\N	f	\N	f
+00000000-0000-0000-0000-000000000000	6aa5d036-1abf-4ed2-9747-9659661a36ce	authenticated	authenticated	delberfinance@gmail.com	$2a$10$L/lUOLi6AAVrYXtPHSBBQ..cVqJylB2aZs.8ilrCihQLxSziBUGT.	2026-08-17 13:40:46.90384+00	\N		2026-08-17 13:40:29.822845+00		\N			\N	2026-08-17 13:40:46.910053+00	{"provider": "email", "providers": ["email"]}	{"sub": "6aa5d036-1abf-4ed2-9747-9659661a36ce", "email": "delberfinance@gmail.com", "email_verified": true, "phone_verified": false}	\N	2026-08-17 13:40:29.749685+00	2026-08-17 13:40:46.938193+00	\N	\N			\N		0	\N		\N	f	\N	f
+00000000-0000-0000-0000-000000000000	0b1a7847-49dc-43b8-84ea-14bc9c771a0c	authenticated	authenticated	chatgpt.planilhas@gmail.com	$2a$10$KyMXKOCfIYg4H5Jfk9vohuKtr0nsTopg5nlOJBsfmkvuQrEUdfMQ2	\N	\N	8a73801e67a204fc49ece6bbc70723f2544dda4406a118b6344a7918	2026-08-16 23:22:24.231404+00		\N			\N	\N	{"provider": "email", "providers": ["email"]}	{"sub": "0b1a7847-49dc-43b8-84ea-14bc9c771a0c", "email": "chatgpt.planilhas@gmail.com", "email_verified": false, "phone_verified": false}	\N	2026-08-16 23:19:59.462923+00	2026-08-16 23:22:26.11148+00	\N	\N			\N		0	\N		\N	f	\N	f
 \.
 
 
@@ -6132,6 +6143,16 @@ c1508d5a-693c-426d-b2cf-1feb512e6172	6ccbd4e5-0098-4149-85fb-2f26ddcbb205	2026-0
 c2dd5dc7-1708-43f1-bd1a-cbfc5c63099c	e8c2f687-6d1b-4cfb-b744-3644cae26d5a	2026-07-15	65.00	Pix	Pagamento registrado pelo Mini ERP	2026-07-15 22:48:39.8701	CONFIRMADO	\N	\N
 28943878-ba9c-49ba-b080-76f77e965f11	a84b5989-dbac-4cbe-a0b9-f4d0fdfec89e	2026-07-16	163.00	Pix	Pagamento registrado pelo Mini ERP	2026-07-16 16:07:42.36933	CONFIRMADO	\N	\N
 13328092-b86a-458f-b83c-a2a346f2e084	aa959063-b67f-4b8c-8b3e-03dd5e8de0cb	2026-07-16	55.00	Pix	Pagamento registrado pelo Mini ERP	2026-07-16 16:32:11.826051	CONFIRMADO	\N	\N
+2d63037b-d280-44ad-ba1f-1e7587cdd6ee	06b8db01-6694-4112-a667-9e387f3da522	2026-08-04	143.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-04 20:59:37.577276	CONFIRMADO	\N	\N
+1c5875ee-fcd1-4f00-8e7c-929f1d3babab	c3187805-a30c-4069-8eb0-c480a3cfcf5d	2026-08-04	212.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-04 20:59:37.750586	CONFIRMADO	\N	\N
+51aa4b55-1efd-4538-83b1-790d19c4c8c2	55660830-038c-4a2e-8642-efa2395b4390	2026-08-04	144.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-04 21:00:46.416619	CONFIRMADO	\N	\N
+f3d33395-423f-46a1-a6df-4219feba208f	597489e8-3376-4921-ba71-db9cdb25288e	2026-08-04	93.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-04 21:01:27.117398	CONFIRMADO	\N	\N
+03d42fd6-bcb9-43e0-9238-cbfd7b1e9146	a2a04177-02af-4b73-af54-fb9e0eb880cd	2026-08-06	95.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-06 13:27:44.804394	CONFIRMADO	\N	\N
+ba7576b5-6ff2-477b-b8fd-576724f0c331	5b25250c-0355-432b-9b87-8a6ef7c1900c	2026-08-06	59.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-06 14:12:43.369779	CONFIRMADO	\N	\N
+0a1d3c98-260d-4065-828a-aec0441da19b	c1536a78-e568-4c4c-8447-56477bce80ba	2026-08-07	100.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-07 10:58:12.091703	CONFIRMADO	\N	\N
+9ca79828-4088-4da5-8952-0e0d59eaa743	add98b28-9473-4b1d-b010-435fe38bc53a	2026-08-11	175.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-11 15:19:06.793538	CONFIRMADO	\N	\N
+7c00e388-8a9b-425a-a1ae-e0da54933874	597489e8-3376-4921-ba71-db9cdb25288e	2026-08-11	65.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-11 15:19:31.027466	CONFIRMADO	\N	\N
+109357a0-2c2b-4905-9b72-786f0b1ff20e	a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	2026-08-12	139.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-12 18:13:05.87899	CONFIRMADO	\N	\N
 \.
 
 
@@ -6387,7 +6408,6 @@ ef71fe4d-1599-48c9-a66e-9b64d3baab50	1e8a9988-a7ef-45c5-b883-4f74430c7ebb	2026-0
 58c3808a-a058-44b2-829c-60dc0f33c62d	6fd890b0-a3d2-4c7f-b123-cb1de4da9cb8	2026-06-05	0.00	PAGO	0	2026-05-20 19:55:04.407458	d29586e8-6c89-433e-98db-f4da7b77b82f	VENDA	\N
 9eb0d095-e281-42f2-8be0-8dc8257678da	8855e32b-2b45-4daa-84f6-5ca9fee4c003	2026-06-05	0.00	PAGO	0	2026-05-20 19:59:52.721691	c19b339d-ce7a-4e00-8213-8030892de285	VENDA	\N
 4c1f145c-cb43-4dc7-862b-c92096aced25	92831dfc-add8-4aef-9d8e-d1f065586610	2026-06-05	0.00	PAGO	0	2026-05-16 20:49:07.632916	5218d663-d6a4-494c-9157-77ac26e69629	VENDA	\N
-acfbf417-5744-4116-b06b-8eb7f95418c7	55660830-038c-4a2e-8642-efa2395b4390	2026-06-05	144.00	EM ABERTO	0	2026-05-16 00:17:51.235268	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	VENDA	\N
 695d93a9-4a2f-4218-bdd8-f61f233146d6	daa1b85e-5bb0-4be0-a67c-83bf41fe1e80	2026-06-05	0.00	PAGO	0	2026-05-16 20:48:39.471987	03a7d684-bb62-4042-881b-6fd70d6b1a92	VENDA	\N
 b65aa13e-67ee-4ecd-a008-baa9d46bd1c7	cb890f25-04f2-4d50-986a-351529b5e42c	2026-06-05	0.00	PAGO	0	2026-05-17 12:54:20.1751	fb094592-c779-4046-89f7-f50c2174b4e0	VENDA	\N
 91cc250a-bc95-4f1f-b89a-3c2ca6c8bfbc	4311b941-502c-4d62-bed3-900ac6355593	2026-06-05	0.00	PAGO	0	2026-05-16 00:17:10.373397	571f9e26-f977-4785-8824-70156cb777b0	VENDA	\N
@@ -6408,6 +6428,7 @@ f507ce77-9d68-4b6e-92c0-97b19e434ac1	9617c8e6-e71d-4a31-9983-0c4942ca37a3	2026-0
 693d8ff4-9733-49ea-bd37-0e6f1cd6f92f	9b9a1a9f-495b-4db2-b058-8075a1780838	2026-06-05	0.00	PAGO	0	2026-05-16 20:50:38.246656	de57f20b-3f2b-4b0d-87ff-52299d620358	VENDA	\N
 4495e866-ec29-465f-966f-07971783c9d4	5f087220-0eab-4089-9406-013b7cc37bce	2026-06-05	0.00	PAGO	0	2026-05-17 13:20:42.816641	42a31e31-eb48-4fb8-94f7-d93866663b29	VENDA	\N
 32197ab0-ba39-44ec-af00-6339dceaaf72	900d6999-d493-4c2b-9b8c-e5b9361c2530	2026-07-08	0.00	PAGO	0	2026-05-19 20:13:35.090683	a9e24e8e-2eb9-4ce8-a8ae-2bec251d21e5	VENDA	\N
+acfbf417-5744-4116-b06b-8eb7f95418c7	55660830-038c-4a2e-8642-efa2395b4390	2026-06-05	0.00	PAGO	0	2026-05-16 00:17:51.235268	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	VENDA	\N
 dda5c613-cc0f-4fbe-b02e-ec094b7c5ccb	88186e76-0361-4f2f-b512-3f4807710514	2026-06-05	0.00	PAGO	0	2026-05-20 20:01:04.048823	0f18dd99-28bb-4fd4-b527-297af713423c	VENDA	\N
 4d95a325-c704-43b2-bc97-5298fdad266f	5e3e2e43-8f4c-4697-b516-c7448ec088f0	2026-05-22	0.00	PAGO	0	2026-05-22 14:29:53.255071	298c98d7-a412-4fb3-8f48-a026a12ebfdf	VENDA	\N
 3c7986aa-c8a4-416e-85b8-626546bab057	2191ee18-3955-4ddb-b9dd-1f564bf4744e	2026-06-05	0.00	PAGO	0	2026-05-16 20:51:07.117916	61c4798c-e0b0-45ae-bc51-4f9e384bc178	VENDA	\N
@@ -6492,24 +6513,21 @@ dd625cf5-0f2c-4868-b3f2-2a202c0e4529	eecc30ce-0a87-48fe-b4c8-e75573b7e20f	2026-0
 fa729953-b9a3-412b-892e-247eae9bbb9b	3808084c-39d4-4bb9-8a5b-e098e4685b75	2026-07-06	0.00	PAGO	0	2026-06-09 21:26:18.0544	\N	VENDA	\N
 c803e96d-dbe2-4422-9d99-f0ff73947744	d7204671-5655-48eb-a393-9244f6a62b79	2026-07-08	0.00	PAGO	0	2026-06-09 21:39:42.471298	\N	VENDA	\N
 aab9272d-c4d2-4ca7-8302-be1f45ae0357	46bce739-eacf-4755-af2b-3a0a7a31d919	2026-07-08	0.00	PAGO	0	2026-06-10 20:08:13.589535	\N	VENDA	\N
-062f7906-525f-4c81-8b80-ce81b2df76a5	597489e8-3376-4921-ba71-db9cdb25288e	2026-07-10	158.00	PARCIAL	0	2026-06-25 21:31:18.386944	\N	VENDA	\N
+b1f0967f-963a-4f34-92c4-c0b4fe0b2678	a2a04177-02af-4b73-af54-fb9e0eb880cd	2026-07-08	0.00	PAGO	0	2026-06-29 18:54:33.60601	\N	VENDA	\N
 3da1c781-b4ff-4e42-9391-30225cde2646	be13abde-81f6-42a3-8bb2-9e69e8e55a46	2026-07-08	0.00	PAGO	0	2026-06-11 19:48:00.776266	\N	VENDA	\N
 b329c65c-3054-4e74-ae5d-2f3cb3af45b9	f57eecc7-f47c-4ad8-9331-6f311a4a1527	2026-07-10	0.00	PAGO	0	2026-06-13 23:06:58.722878	\N	VENDA	\N
 4ef68a2a-47bd-4054-82d8-4bba0758c8eb	b51006bb-5ac5-4010-9822-6f1ba902b5a7	2026-07-08	0.00	PAGO	0	2026-06-17 23:07:58.688023	\N	VENDA	\N
 af19d994-0043-4b88-8481-9932382f19c2	4449921c-aeed-4e04-b327-f62a4ac3cf13	2026-07-08	55.00	EM ABERTO	0	2026-06-13 23:05:16.295874	\N	VENDA	\N
 c0fa8669-02b3-4ada-9a2b-330b015d3630	c297a42d-4eff-4cfe-9f56-b1126ae629d9	2026-07-08	0.00	PAGO	0	2026-06-25 21:44:01.34399	\N	VENDA	\N
-5989d13a-ab1f-4835-bfd7-8d9b334cea95	c3187805-a30c-4069-8eb0-c480a3cfcf5d	2026-07-10	212.00	EM ABERTO	0	2026-06-25 21:34:39.677245	\N	VENDA	\N
 ac8fc309-5453-4598-b44a-bfb4fdc2a507	fa491960-865c-4cf8-bfe1-eb220e004dd0	2026-07-08	0.00	PAGO	0	2026-06-25 20:53:26.487862	\N	VENDA	\N
 159cb18e-f1d1-4adc-bc4b-40f85481e82d	a6f7902c-9446-46f5-bf96-e801bd14eee7	2026-07-15	0.00	PAGO	0	2026-06-18 22:19:52.130186	\N	VENDA	\N
-b1f0967f-963a-4f34-92c4-c0b4fe0b2678	a2a04177-02af-4b73-af54-fb9e0eb880cd	2026-07-08	95.00	EM ABERTO	0	2026-06-29 18:54:33.60601	\N	VENDA	\N
 a8d60631-10b3-4ddf-9b3d-33b1a0b1e7bc	d2bc1443-14a7-4e18-a34f-c49cbc2a357e	\N	0.00	PAGO	0	2026-06-16 00:04:33.020675	\N	VENDA	\N
 e3ccca80-5c17-4c1b-8a60-29d5c9666c56	3ce74009-f96c-4bec-af2d-afbf0e656fc0	\N	0.00	PAGO	0	2026-06-10 20:31:32.561909	\N	VENDA	\N
 fe0fb959-a951-400b-b36f-30ae754b7a65	067ee613-032c-4f68-98c2-71778c57e51c	2026-06-16	0.00	PAGO	0	2026-06-16 20:47:49.420688	\N	VENDA	\N
 0b282748-6a44-46ae-ac30-88698ddce994	7070ff73-13ea-4776-a665-1ed263747749	2026-07-08	0.00	PAGO	0	2026-06-25 20:40:15.302235	\N	VENDA	\N
 8907acfc-be23-4337-93a5-ecfa67f3e036	75d759d3-982b-461b-8771-151dad1afbce	2026-06-22	0.00	PAGO	0	2026-06-22 12:22:43.505293	\N	VENDA	\N
 f0dfc3f6-83f3-44f6-b9dd-b2bd2b23ea26	c72a765a-67d6-4a87-ab1c-c2c0f0f64937	2026-06-23	0.00	PAGO	0	2026-06-25 20:43:22.640714	\N	VENDA	\N
-eaf47e91-fcc8-4682-83ae-96e6ad19f930	a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	2026-07-15	139.00	EM ABERTO	0	2026-07-01 21:04:50.533757	\N	VENDA	\N
-33acd9fc-8381-4aef-a60f-481b809d36fc	06b8db01-6694-4112-a667-9e387f3da522	2026-07-10	143.00	EM ABERTO	0	2026-07-01 21:33:42.109489	\N	VENDA	\N
+33acd9fc-8381-4aef-a60f-481b809d36fc	06b8db01-6694-4112-a667-9e387f3da522	2026-07-10	0.00	PAGO	0	2026-07-01 21:33:42.109489	\N	VENDA	\N
 f0cb91b0-297d-433d-98a7-415ca518aba0	cfd05997-0c4f-48c2-97d5-5129206213b2	2026-07-08	0.00	PAGO	0	2026-06-29 20:31:14.668899	\N	VENDA	\N
 18965fe8-d976-40ef-93db-b6cf54666dc0	21dc3079-29a7-4941-8265-91f0e2997890	2026-07-15	0.00	PAGO	0	2026-06-10 20:15:45.664941	\N	VENDA	\N
 0fec0ad7-72ba-416a-8aa8-68157765c41f	b9eb3a50-b2b6-4fed-acd5-2bda74c58ebe	2026-07-08	55.00	EM ABERTO	0	2026-07-02 21:12:38.54805	\N	VENDA	\N
@@ -6562,14 +6580,17 @@ d70ab820-67c5-4172-a22e-eaf7c6099db1	1bbfbfd6-c23d-4b0e-a2e7-3ad9f0edc6d3	2026-0
 01fb39ef-7491-406f-8fee-41ecda298f45	e8c2f687-6d1b-4cfb-b744-3644cae26d5a	2026-07-08	65.00	PARCIAL	0	2026-06-25 20:51:55.791771	\N	VENDA	\N
 94f21489-00b9-4019-9c75-ff923f0d9b40	a84b5989-dbac-4cbe-a0b9-f4d0fdfec89e	2026-07-15	0.00	PAGO	0	2026-06-10 20:11:50.212298	\N	VENDA	\N
 69d0b323-132f-4d24-9654-3b19082ef158	aa959063-b67f-4b8c-8b3e-03dd5e8de0cb	2026-07-15	0.00	PAGO	0	2026-06-29 20:29:55.871452	\N	VENDA	\N
+5989d13a-ab1f-4835-bfd7-8d9b334cea95	c3187805-a30c-4069-8eb0-c480a3cfcf5d	2026-07-10	0.00	PAGO	0	2026-06-25 21:34:39.677245	\N	VENDA	\N
+eaf47e91-fcc8-4682-83ae-96e6ad19f930	a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	2026-07-15	0.00	PAGO	0	2026-07-01 21:04:50.533757	\N	VENDA	\N
+062f7906-525f-4c81-8b80-ce81b2df76a5	597489e8-3376-4921-ba71-db9cdb25288e	2026-07-10	0.00	PAGO	0	2026-06-25 21:31:18.386944	\N	VENDA	\N
 cbc34d8d-35e9-4ad6-badd-18bebca0b8e3	7d44c7e7-263d-4fac-979d-12ca98a90a7f	2026-07-15	0.00	PAGO	0	2026-06-10 20:14:54.97638	\N	VENDA	\N
-879836a2-106c-437d-aec0-4b68d842ff87	c1536a78-e568-4c4c-8447-56477bce80ba	2026-08-07	100.00	PARCIAL	0	2026-07-05 15:49:31.475266	\N	VENDA	\N
 bb142ef1-dfbb-4891-9102-e367b28863a3	a2763421-9391-4ae9-b43d-b57cb1c94c83	2026-07-08	0.00	PAGO	0	2026-07-02 21:39:43.353178	\N	VENDA	\N
 9931c16d-dd54-4139-a77b-49081182f242	b3dabb37-619c-49f9-8c9b-bea57e3a4c5f	2026-07-06	0.00	PAGO	0	2026-07-04 23:05:08.106421	\N	VENDA	\N
 3eb9a997-523f-4ad4-83c7-6b0bca0a8114	e094c1a3-cb3a-43b6-ad0c-9a191dcdd3f5	2026-07-08	0.00	PAGO	0	2026-07-02 21:40:11.898321	\N	VENDA	\N
-0c7e51d8-77f1-4d39-bb42-fcefdcd6ba98	5b25250c-0355-432b-9b87-8a6ef7c1900c	2026-08-07	59.00	EM ABERTO	0	2026-07-07 00:37:33.188202	\N	VENDA	\N
 5bfe1ca1-210d-4c06-9977-fc54002f77f4	51dde775-7b57-40c6-8f7a-c2089646eb65	2026-07-06	0.00	PAGO	0	2026-07-04 23:06:00.423307	\N	VENDA	\N
-629d1ad4-7ee5-41ee-9b90-bb8ae24d99c0	add98b28-9473-4b1d-b010-435fe38bc53a	2026-08-07	175.00	EM ABERTO	0	2026-07-07 21:09:00.784844	\N	VENDA	\N
+0c7e51d8-77f1-4d39-bb42-fcefdcd6ba98	5b25250c-0355-432b-9b87-8a6ef7c1900c	2026-08-07	0.00	PAGO	0	2026-07-07 00:37:33.188202	\N	VENDA	\N
+879836a2-106c-437d-aec0-4b68d842ff87	c1536a78-e568-4c4c-8447-56477bce80ba	2026-08-07	0.00	PAGO	0	2026-07-05 15:49:31.475266	\N	VENDA	\N
+629d1ad4-7ee5-41ee-9b90-bb8ae24d99c0	add98b28-9473-4b1d-b010-435fe38bc53a	2026-08-07	0.00	PAGO	0	2026-07-07 21:09:00.784844	\N	VENDA	\N
 \.
 
 
@@ -6772,6 +6793,7 @@ c37b7c20-85da-4f6d-815a-caf99e842bcb	Kátia	EP 210 Sul	[{"nome": "Desidratado Pu
 7f9f55bb-9b46-4eb5-8697-0485a9b01921	Lúcia	Paulo Freire	[{"nome": "Cocada Cremosa", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}, {"nome": "Frescal", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}, {"nome": "Doce de Leite", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}]	150.00	Lúcia referência Paulo Freire itens adquiridos uma cocada cremosa r$ 50 um frescal r$ 50 um doce de leite r$ 50 forma de pagamento em aberto	Pendente	f	2026-07-07 22:26:43.97411+00	2026-07-07 22:26:43.97411+00	Fiado / Em aberto
 dd7618d2-f117-40a5-a666-9eee84dc6b75	Ruth	CEAN	[{"nome": "Mussarela Palito", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}]	49.00	cliente Rute referência itens adquiridos uma mussarela palito 49 forma de pagamento pics	Venda convertida	f	2026-07-07 00:27:59.994523+00	2026-07-07 00:35:39.434+00	Pix
 cbad62d3-3cfd-47b0-919b-0afd8274caa2	Cláudio	CEAN	[{"nome": "Vila Caipira", "valor": 79, "subtotal": 79, "quantidade": 1, "valorUnitario": 79}]	79.00	Cláudio referência ceam itens adquiridos um Vila caipira 79 forma de pagamento pics	Venda convertida	f	2026-07-07 00:28:46.403415+00	2026-07-07 00:35:49.724+00	Pix
+cfd90a1b-b0db-4ab9-8e4c-34ae38879307	Natália	405 Norte	[{"nome": "Desidratado Lemon Pepper", "valor": 35, "subtotal": 35, "quantidade": 1, "valorUnitario": 35}]	35.00	Cliente Natália referência 405 norte itens adquiridos um desidratado Lemon Pepper Valor R$35 forma de pagamento Pix	Pendente	f	2026-08-12 13:14:01.864278+00	2026-08-12 13:14:01.864278+00	Pix
 7fccff7f-f597-4d55-acc3-5c29ccb05874	Jane	314 Sul	[{"nome": "Minas Padrã", "valor": 75, "subtotal": 75, "quantidade": 1, "valorUnitario": 75}, {"nome": "Massa", "valor": 20, "subtotal": 20, "quantidade": 1, "valorUnitario": 20}]	95.00	Jane referência 314 Sul itens adquiridos um Minas padrão 75 uma massa r$ 20 forma de pagamento fiado	Venda convertida	f	2026-07-01 21:13:53.28076+00	2026-07-01 21:31:59.096+00	Fiado / Em aberto
 ecf99f92-73ed-4db2-9a88-6fbd8be9ef30	Wilma	114 Sul	[{"nome": "Parmesã Tradicional", "valor": 60, "subtotal": 60, "quantidade": 1, "valorUnitario": 60}]	60.00	Cliente Wilma referência 114 sul itens adquiridos um parmesão tradicional R$60 forma de pagamento em aberto	Venda convertida	f	2026-07-01 10:41:45.288+00	2026-07-02 21:11:18.928+00	Fiado / Em aberto
 3d6aff1a-d783-4b5a-946a-8c4604f1bfc7	Naira	114 Sul	[{"nome": "Desidratado Com Goiaba", "valor": 40, "subtotal": 40, "quantidade": 1, "valorUnitario": 40}]	40.00	Naira referência 114 Sul itens adquiridos um desidratado com goiaba r$ 40 forma de pagamento em aberto	Venda convertida	f	2026-07-01 22:57:03.94039+00	2026-07-01 22:57:38.515+00	Fiado / Em aberto
@@ -6780,16 +6802,17 @@ c2401ab6-038e-48f0-bba4-b6c35b98bcc8	Kelly	114 Sul	[{"nome": "Desidratado Com Go
 fe49c858-e221-42d9-87be-ee7f2f89de3e	Maria	114 Sul	[{"nome": "Trufado Tradicional", "valor": 65, "subtotal": 65, "quantidade": 1, "valorUnitario": 65}, {"nome": "Requeijã Raspa", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}]	114.00	Cliente Maria referência 114 sul itens adquiridos um trufado tradicional R$65 um requeijão raspa R$49 forma de pagamento Em aberto	Venda convertida	f	2026-07-01 10:46:12.177+00	2026-07-02 21:18:41.94+00	Fiado / Em aberto
 afa7fd87-5630-4d83-9d4b-258cbc9b5dd7	Luiza	113 Norte	[{"nome": "Kit Lombinho", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}, {"nome": "Kit Mix", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}]	104.00	Cliente Luiza referência 113 Norte itens adquiridos um kit lombinho R$49 um kit Mix R$55 forma de pagamento em aberto	Venda convertida	f	2026-07-01 10:46:33.425+00	2026-07-02 21:20:14.758+00	Fiado / Em aberto
 5263c075-3fc5-4202-a269-0d1ae836ac34	Nívea	EP 210 Sul	[{"nome": "Rosquinha de Nata", "valor": 45, "subtotal": 45, "quantidade": 1, "valorUnitario": 45}, {"nome": "Desidratado Com Goiaba", "valor": 40, "subtotal": 40, "quantidade": 1, "valorUnitario": 40}]	85.00	Nívea referência ep 210 Sul itens adquiridos uma rosquinha de nata r$ 45 um desidratado com goiaba r$ 40 forma de pagamento em aberto	Venda convertida	f	2026-07-02 21:36:05.733754+00	2026-07-02 21:39:43.195+00	Fiado / Em aberto
+7132d039-9bee-4e81-9a47-fdeb6e79b3c3	Fabiana	405 Norte	[{"nome": "Vila Caipira", "valor": 79, "subtotal": 79, "quantidade": 1, "valorUnitario": 79}]	79.00	Cliente Fabiana referência 405 norte itens adquiridos um Vila Caipira valor R$79 forma de pagamento crédito	Pendente	f	2026-08-12 14:20:28.36721+00	2026-08-12 14:20:28.36721+00	Crédito
 bf796dac-0981-4db1-b031-0a45f99a14fc	Gabi	Unb	[{"nome": "Trufado Azeitona", "valor": 65, "subtotal": 65, "quantidade": 1, "valorUnitario": 65}]	65.00	Gabi referência UnB itens adquiridos um trufado azeitona r$ 65 pics	Venda convertida	f	2026-07-07 00:29:18.749626+00	2026-07-07 00:36:03.096+00	Pix
 c3a038be-028f-463e-94ae-08d2883b97f3	Maria Lúcia	EP 210 Norte	[{"nome": "Café", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}, {"nome": "Vila Caipira", "valor": 79, "subtotal": 79, "quantidade": 1, "valorUnitario": 79}, {"nome": "Parmesã", "valor": 65, "subtotal": 65, "quantidade": 1, "valorUnitario": 65}]	199.00	cliente Maria Lúcia referência ep 210 Norte itens adquiridos um café 55 um Vila caipira 79 um parmesão 65 forma de pagamento em aberto	Pendente	f	2026-07-07 21:05:41.950437+00	2026-07-07 21:05:41.950437+00	Fiado / Em aberto
 bdf348d0-f0cb-4f40-9c25-5bb0229a8fcc	Mônica	405 Norte	[{"nome": "Frescal", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}]	50.00	Mônica referência 405 Norte itens adquiridos um frescal r$ 50 forma de pagamento em aberto	Pendente	f	2026-07-07 21:06:23.292852+00	2026-07-07 21:06:23.292852+00	Fiado / Em aberto
 085ecc39-95dd-4e35-ab82-717ab4434507	Lucilene	114 Sul	[{"nome": "Mel Pote", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}]	55.00	Cliente Lucilene referência 114 Sul itens adquiridos um mel pote R$55 forma de pagamento em aberto	Venda convertida	f	2026-07-01 10:42:15.096+00	2026-07-02 21:12:38.425+00	Fiado / Em aberto
 4c886b47-3d4a-4f27-afb1-d29b6492a83b	Robson	EP 210 Sul	[{"nome": "Canastra Metade", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}]	50.00	Robson referência ep 210 Sul itens adquiridos um Canastra metade r$ 50 forma de pagamento crédito	Venda convertida	f	2026-07-02 21:36:36.654829+00	2026-07-02 21:39:56.818+00	Crédito
 1d50f777-dc5a-4bd9-bfce-3251406e114a	Marcelo	Gan	[{"nome": "01 Parmesão 59", "valor": 59, "quantidade": 1, "valorUnitario": 59}]	59.00	Origem Pix Rapido. 01 Parmesão 59	Venda convertida	f	2026-07-03 12:27:35.119+00	2026-07-04 22:31:28.012+00	Pix
-7f987dd3-5105-4278-8064-ec3b69d9f4eb	João Victor	Itaúna Minas Gerais	[{"nome": "Geleia de Pimenta Uai", "valor": 29, "subtotal": 29, "quantidade": 1, "valorUnitario": 29}, {"nome": "Cachaç Envelhecida", "valor": 190, "subtotal": 190, "quantidade": 1, "valorUnitario": 190}, {"nome": "Minas Padrã Vila Caipira", "valor": 79, "subtotal": 79, "quantidade": 1, "valorUnitario": 79}]	298.00	Cliente João Victor Referência itaúna Minas Gerais itens adquiridos uma geleia de pimenta uai R$29 uma cachaça envelhecida R$190 um Minas padrão Vila Caipira R$79 forma de pagamento crédito	Pendente	f	2026-07-09 16:38:49.872491+00	2026-07-09 16:38:49.872491+00	Crédito
 d7688c7e-2617-4b52-9c1c-0f74ed548322	Suzana	CEAN	[{"nome": "Canastra Buba", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}, {"nome": "Rosquinha de Nata", "valor": 45, "subtotal": 45, "quantidade": 1, "valorUnitario": 45}]	100.00	Suzana referência ceam itens adquiridos uma mussarela búfala 49 uma rosquinha de nata 51 forma de pagamento crédito	Venda convertida	f	2026-07-07 00:30:18.710395+00	2026-07-07 00:36:19.094+00	Crédito
 4fcac8a6-3513-4d38-b076-9675102d7e11	Ângela	CEAN	[{"nome": "Parmesã Tradicional", "valor": 59, "subtotal": 59, "quantidade": 1, "valorUnitario": 59}]	59.00	Ângela referência ceam itens adquiridos um parmesão tradicional 59 forma de pagamento em aberto	Venda convertida	f	2026-07-07 00:33:05.077706+00	2026-07-07 00:37:32.788+00	Fiado / Em aberto
 48ec01d8-61f1-497a-8ca0-8f24df93b3e9	Andrea	110 Norte	[{"nome": "Parmesã Capa Preta", "valor": 130, "subtotal": 130, "quantidade": 2, "valorUnitario": 65}, {"nome": "Parmesã Defumado", "valor": 130, "subtotal": 130, "quantidade": 2, "valorUnitario": 65}, {"nome": "Tranç", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}]	315.00	Andrea referência 110 norte itens adquiridos dois parmesão capa preta r$ 65 dois parmesão defumado 65 uma trança r$ 55 forma de pagamento em aberto	Pendente	f	2026-07-07 21:07:10.370111+00	2026-07-07 21:07:10.370111+00	Fiado / Em aberto
+f88bf69c-5770-4d35-95e7-4822287fc2d0	Odila	405 Norte	[{"nome": "Kit Provoleto", "valor": 75, "subtotal": 75, "quantidade": 1, "valorUnitario": 75}, {"nome": "Cremosinho Búfala", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}, {"nome": "Desidratado Lemon Pepper", "valor": 35, "subtotal": 35, "quantidade": 1, "valorUnitario": 35}]	160.00	Cliente Odila referência 405 norte itens adquiridos um kit provou leto R$75 um cremos Zinho búfala R$50 um desidratado Lemon Pepper R$35 Forma de pagamento crédito	Pendente	f	2026-08-12 14:21:00.639245+00	2026-08-12 14:21:42.596+00	Crédito
 \.
 
 
@@ -7151,7 +7174,6 @@ ad2b6ba6-ed56-4942-acb6-c58685c6a825	89	42963653-1462-485d-a1a5-ca8832afac72	202
 53cd6762-d038-4eea-90d5-e352d751e4a5	91	42963653-1462-485d-a1a5-ca8832afac72	2026-05-18	213.00	206.29	Crédito Master | Visa	3.15	6.71	PAGO	2026-05-18 19:13:20.180821	\N
 bab9868f-d987-4ec8-b4e6-6a470e7a241a	93	42963653-1462-485d-a1a5-ca8832afac72	2026-05-18	119.00	119.00	Pix	0.00	0.00	PAGO	2026-05-18 19:15:32.338742	\N
 205b506d-d213-448c-b550-ad847dffb620	94	42963653-1462-485d-a1a5-ca8832afac72	2026-05-18	263.00	254.72	Crédito Master | Visa	3.15	8.28	PAGO	2026-05-18 19:15:46.443146	\N
-55660830-038c-4a2e-8642-efa2395b4390	29	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-05-12	144.00	144.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-05-16 00:17:51.031748	\N
 a2ab5bd2-f9a5-4f88-9b12-60676bb25ba3	105	c0aa151d-0aba-4c9a-bc6d-520971eb8f65	2026-05-19	119.00	119.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-05-19 20:18:44.416395	\N
 c1e3a89f-fe3a-4dc1-9a8e-92c2681be6c0	96	42963653-1462-485d-a1a5-ca8832afac72	2026-05-19	124.00	120.09	Crédito Master | Visa	3.15	3.91	PAGO	2026-05-19 20:11:18.25871	\N
 3a1a6dec-bcdc-4d27-ae58-dc471ab029d5	97	42963653-1462-485d-a1a5-ca8832afac72	2026-05-19	198.00	198.00	Pix	0.00	0.00	PAGO	2026-05-19 20:11:43.098312	\N
@@ -7174,6 +7196,7 @@ c08bf390-9774-490e-b1f7-360ac3e25884	130	71eeb19b-9be0-4b78-befa-540470cffb0c	20
 8855e32b-2b45-4daa-84f6-5ca9fee4c003	109	c19b339d-ce7a-4e00-8213-8030892de285	2026-05-20	49.00	49.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-05-20 19:59:52.553697	\N
 cafc11d3-5460-4046-86c6-ca884b7716ab	108	12b03c8f-3695-47a2-966b-1885fa5a1bad	2026-05-20	128.00	128.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-05-20 19:59:24.054721	\N
 44eee381-2015-46b6-9ad5-9df7e9cb620a	121	3bb6ec2b-0b46-4ae2-84d2-ff95d7af0103	2026-05-18	49.00	49.00	Pix	0.00	0.00	PAGO	2026-05-26 23:12:23.413731	\N
+55660830-038c-4a2e-8642-efa2395b4390	29	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-05-12	144.00	144.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-05-16 00:17:51.031748	\N
 d791b36e-9a99-478e-bc12-ecb2520e31b6	128	42963653-1462-485d-a1a5-ca8832afac72	2026-05-26	49.00	49.00	Pix	0.00	0.00	PAGO	2026-05-27 20:32:53.920375	\N
 2519490f-2d5e-4421-9283-8400d41e9e67	129	42963653-1462-485d-a1a5-ca8832afac72	2026-05-26	89.00	86.20	Crédito Master | Visa	3.15	2.80	PAGO	2026-05-27 20:33:17.47972	\N
 7e880a15-fe45-4d0d-82ea-9848e93a8e9e	131	42963653-1462-485d-a1a5-ca8832afac72	2026-05-26	40.00	40.00	Pix	0.00	0.00	PAGO	2026-05-27 20:58:10.727168	\N
@@ -7418,10 +7441,8 @@ f1f03345-129a-49a6-b651-3c4a49a524e9	353	42963653-1462-485d-a1a5-ca8832afac72	20
 c72a765a-67d6-4a87-ab1c-c2c0f0f64937	361	42963653-1462-485d-a1a5-ca8832afac72	2026-06-23	95.00	95.00	Crédito Master | Visa	3.09	0.00	PAGO	2026-06-25 20:43:22.456798	Ingrid
 5c266cdb-ce16-4284-b17d-750efc688a87	364	3bb6ec2b-0b46-4ae2-84d2-ff95d7af0103	2026-06-23	80.00	79.33	Débito Master | Visa	0.84	0.67	PAGO	2026-06-25 20:51:32.760814	\N
 e77a5ad3-38e3-4032-af93-f16502439351	383	c89fe789-ee32-4f4f-a723-eae8fe2f638a	2026-06-25	94.00	94.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-29 20:27:03.084687	\N
-597489e8-3376-4921-ba71-db9cdb25288e	370	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-15	229.00	229.00	Fiado / Em aberto	0.00	0.00	PARCIAL	2026-06-25 21:31:18.003404	\N
-c3187805-a30c-4069-8eb0-c480a3cfcf5d	371	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-25	212.00	212.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-06-25 21:34:39.521389	\N
+a2a04177-02af-4b73-af54-fb9e0eb880cd	373	fca883c0-51e4-4a5a-a8d9-ae27fac505af	2026-06-26	95.00	95.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-29 18:54:33.381814	\N
 a6f7902c-9446-46f5-bf96-e801bd14eee7	349	0ea43ae6-06df-4655-b547-2af2341ff80c	2026-06-18	55.00	55.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-18 22:19:51.930291	\N
-a2a04177-02af-4b73-af54-fb9e0eb880cd	373	fca883c0-51e4-4a5a-a8d9-ae27fac505af	2026-06-26	95.00	95.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-06-29 18:54:33.381814	\N
 d23098c1-ec94-4e74-86ba-f5161526d373	374	42963653-1462-485d-a1a5-ca8832afac72	2026-06-29	85.00	85.00	Pix	0.00	0.00	PAGO	2026-06-29 18:54:54.305388	Franco
 e2e29013-927e-4ace-91cd-f9c9181067a0	377	42963653-1462-485d-a1a5-ca8832afac72	2026-06-26	49.00	49.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-29 18:56:12.542456	Simone
 83199d77-1819-4694-9734-70406cdb5c85	378	42963653-1462-485d-a1a5-ca8832afac72	2026-06-26	38.00	38.00	Pix	0.00	0.00	PAGO	2026-06-29 18:56:32.153225	Fernando
@@ -7436,10 +7457,10 @@ eee92851-c425-433f-9b2b-c653ffa6d7a2	388	42963653-1462-485d-a1a5-ca8832afac72	20
 868afeeb-b443-4bde-aee9-85b438f5a853	392	42963653-1462-485d-a1a5-ca8832afac72	2026-06-25	55.00	53.30	Crédito Master | Visa	3.09	1.70	PAGO	2026-06-29 20:30:15.228953	Avulso
 3ac567c7-ef14-4f26-81df-c567e5630b8d	393	42963653-1462-485d-a1a5-ca8832afac72	2026-06-25	193.00	193.00	Pix	0.00	0.00	PAGO	2026-06-29 20:30:31.762402	Davi
 422744c8-e6a5-46c6-8272-7cf696376698	394	42963653-1462-485d-a1a5-ca8832afac72	2026-06-25	55.00	55.00	Pix	0.00	0.00	PAGO	2026-06-29 20:30:53.877778	Victor
+c3187805-a30c-4069-8eb0-c480a3cfcf5d	371	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-25	212.00	212.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 21:34:39.521389	\N
 64cceb23-bdff-4e97-9554-5309d85404a2	397	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	159.00	159.00	Pix	0.00	0.00	PAGO	2026-07-01 20:40:22.063018	Alicia
 0f431ab2-b5ef-49e0-b2c4-f9ddf2feffab	398	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	49.00	49.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 20:46:37.231981	Ana
 0c4b7be1-e0dd-4e4a-b996-e9aa443ef8a4	399	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	214.00	214.00	Pix	0.00	0.00	PAGO	2026-07-01 21:03:55.72267	Ruth Neia
-a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	400	80d1408f-e1e8-4ae5-9e99-7b88ab0ea20c	2026-06-30	139.00	139.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-07-01 21:04:50.277258	\N
 97c70f44-000d-475a-913e-d6280dec780c	319	571f9e26-f977-4785-8824-70156cb777b0	2026-06-15	144.00	144.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-16 00:25:29.99923	\N
 fa491960-865c-4cf8-bfe1-eb220e004dd0	368	61c4798c-e0b0-45ae-bc51-4f9e384bc178	2026-06-23	79.00	79.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 20:53:26.199409	\N
 ef0ea975-20bb-4053-abe8-32c4274df224	351	c1f823a4-ccc5-4be3-a14e-52f19d73d6da	2026-06-18	94.00	94.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-18 22:21:51.939932	\N
@@ -7466,11 +7487,13 @@ b51006bb-5ac5-4010-9822-6f1ba902b5a7	340	09353ced-354f-4c18-ae4d-973c22d74c62	20
 3882f273-03e1-4243-9257-423655975653	348	ce828fa9-7664-47af-896b-e82a9a0cd113	2026-06-18	49.00	49.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-18 22:18:15.934896	\N
 e8c2f687-6d1b-4cfb-b744-3644cae26d5a	365	0960c594-7067-48c8-b330-49ba276270d9	2026-06-23	130.00	130.00	Fiado / Em aberto	0.00	0.00	PARCIAL	2026-06-25 20:51:55.505559	\N
 aa959063-b67f-4b8c-8b3e-03dd5e8de0cb	391	82df9d97-c476-43cf-a0ef-01fbbc961281	2026-06-25	55.00	55.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-29 20:29:55.574322	\N
+a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	400	80d1408f-e1e8-4ae5-9e99-7b88ab0ea20c	2026-06-30	139.00	139.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 21:04:50.277258	\N
+597489e8-3376-4921-ba71-db9cdb25288e	370	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-15	229.00	229.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 21:31:18.003404	\N
 a12ce5b3-cb25-4761-bed5-4f917e80c93e	401	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	65.00	62.99	Crédito Master | Visa	3.09	2.01	PAGO	2026-07-01 21:06:16.388842	Fernanda
 674c4412-2b67-40e0-a951-0a2fabaee4b9	402	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	99.00	95.94	Crédito Master | Visa	3.09	3.06	PAGO	2026-07-01 21:07:55.602293	Josi
 cbbdcde9-95d5-494a-a829-d0244c80b1eb	404	42963653-1462-485d-a1a5-ca8832afac72	2026-06-25	75.00	75.00	Pix	0.00	0.00	PAGO	2026-07-01 21:31:25.519612	Jucileia
-06b8db01-6694-4112-a667-9e387f3da522	408	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-25	143.00	143.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-07-01 21:33:41.884489	\N
 314d363b-1d17-4015-90e1-623598b05eb4	409	42963653-1462-485d-a1a5-ca8832afac72	2026-06-25	79.00	79.00	Pix	0.00	0.00	PAGO	2026-07-01 21:34:06.697015	Jaqueline
+add98b28-9473-4b1d-b010-435fe38bc53a	448	14445c7a-dee6-4e1b-b0dc-fbb6b5b97a99	2026-07-06	175.00	175.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-07 21:09:00.505454	\N
 b9eb3a50-b2b6-4fed-acd5-2bda74c58ebe	413	ee8b660a-bba9-4a48-b4c7-1ab89f596da1	2026-07-01	55.00	55.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-07-02 21:12:38.312049	\N
 22456170-021a-42f3-af92-2cf81a1b5e73	418	42963653-1462-485d-a1a5-ca8832afac72	2026-07-02	55.00	53.30	Crédito Master | Visa	3.09	1.70	PAGO	2026-07-02 21:39:04.003065	Paula
 80e58a81-8ef0-4ebf-a6be-f5aa0983b3a8	419	42963653-1462-485d-a1a5-ca8832afac72	2026-07-02	104.00	100.79	Crédito Master | Visa	3.09	3.21	PAGO	2026-07-02 21:39:17.96388	Avulso
@@ -7490,7 +7513,6 @@ dbb6ee95-0e3b-45c0-a238-f769492b2909	432	42963653-1462-485d-a1a5-ca8832afac72	20
 dbc81f75-223c-463e-917c-fdd27e8d8738	434	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	45.00	43.61	Crédito Master | Visa	3.09	1.39	PAGO	2026-07-04 22:42:32.01902	\N
 4b883c89-0330-4f91-b472-ce6ce91de054	436	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	49.00	47.49	Crédito Master | Visa	3.09	1.51	PAGO	2026-07-04 23:05:38.708852	\N
 bd8125d3-0cd5-4667-8cf2-9187a0ddfc2f	438	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	45.00	45.00	Pix	0.00	0.00	PAGO	2026-07-04 23:06:24.215193	\N
-c1536a78-e568-4c4c-8447-56477bce80ba	439	243e6aa4-348d-46b6-9416-af5396f2c3e8	2026-07-05	215.00	211.45	Crédito Master | Visa	3.09	3.55	PARCIAL	2026-07-05 15:49:31.043694	\N
 a2763421-9391-4ae9-b43d-b57cb1c94c83	421	2b7e4247-40cf-436e-bdc3-9ee9568e2d51	2026-07-02	85.00	85.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-02 21:39:43.155015	\N
 b3dabb37-619c-49f9-8c9b-bea57e3a4c5f	435	a89e679f-971c-470a-bf4e-4bc3f60f0a0a	2026-06-30	65.00	65.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-04 23:05:07.737069	\N
 1cb8f80b-047e-493c-92a8-4fb204f4ec58	411	66b92731-a181-43ba-919b-ad7c43b4a459	2026-07-02	107.00	107.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-02 17:26:31.334218	\N
@@ -7503,16 +7525,17 @@ e094c1a3-cb3a-43b6-ad0c-9a191dcdd3f5	423	f36bee76-7012-4746-bec2-b3dbf4f60b86	20
 69bbdef7-12c5-4b88-b970-c74c44169a58	441	42963653-1462-485d-a1a5-ca8832afac72	2026-07-06	79.00	79.00	Pix	0.00	0.00	PAGO	2026-07-07 00:35:49.912461	Cláudio
 bb3b53fb-1524-4cc2-9498-5f22770b2748	442	16977f4b-85d1-4a82-90cc-82022b34fe51	2026-07-06	65.00	65.00	Pix	0.00	0.00	PAGO	2026-07-07 00:36:03.326321	\N
 3fc23c6e-802d-42e1-9e64-e701e333b400	443	42963653-1462-485d-a1a5-ca8832afac72	2026-07-06	100.00	96.91	Crédito Master | Visa	3.09	3.09	PAGO	2026-07-07 00:36:19.333373	Suzana
-5b25250c-0355-432b-9b87-8a6ef7c1900c	445	27d44823-4c0e-4ce1-bcc5-3f825f125ce2	2026-07-06	59.00	59.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-07-07 00:37:33.00606	\N
 8cb93c50-e448-4ade-a09b-7f7f7105e18d	446	42963653-1462-485d-a1a5-ca8832afac72	2026-07-06	79.00	79.00	Pix	0.00	0.00	PAGO	2026-07-07 00:37:44.46839	Claudinei
 12de579b-adcf-4532-a647-14469e0892ee	447	42963653-1462-485d-a1a5-ca8832afac72	2026-07-06	177.00	171.53	Crédito Master | Visa	3.09	5.47	PAGO	2026-07-07 00:37:55.463027	Guilherme
 d6f2c148-1fa6-44e1-8e1d-94a1091c3129	407	d308890d-42e3-48fa-b014-83373eec2028	2026-06-25	49.00	49.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 21:33:07.717204	\N
 b3b60f6d-52e5-4f3a-95e6-95d69e1ddab2	403	cb624ad1-f05a-4792-b716-0e577ba7980f	2026-06-25	37.00	37.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 21:18:08.256942	\N
 51dde775-7b57-40c6-8f7a-c2089646eb65	437	0885094a-f102-4c5b-a762-907afba38a00	2026-06-30	55.00	55.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-04 23:06:00.197172	\N
-add98b28-9473-4b1d-b010-435fe38bc53a	448	14445c7a-dee6-4e1b-b0dc-fbb6b5b97a99	2026-07-06	175.00	175.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-07-07 21:09:00.505454	\N
 55fffc00-6772-476f-89bc-561b68829671	406	013c7314-12b4-4631-ad1e-bd119a9ce7cb	2026-06-25	153.00	153.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 21:32:21.716909	\N
 1bbfbfd6-c23d-4b0e-a2e7-3ad9f0edc6d3	414	00d3c7a5-53d6-4ea3-a907-b93fcc8ccc61	2026-07-01	45.00	45.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-02 21:12:59.002857	\N
 b07aa258-1d4a-41b8-b115-5f32a7a41821	415	3995067f-4df0-4f26-bf28-a55af8a1f896	2026-07-01	89.00	89.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-02 21:13:10.335835	\N
+06b8db01-6694-4112-a667-9e387f3da522	408	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-25	143.00	143.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 21:33:41.884489	\N
+5b25250c-0355-432b-9b87-8a6ef7c1900c	445	27d44823-4c0e-4ce1-bcc5-3f825f125ce2	2026-07-06	59.00	59.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-07 00:37:33.00606	\N
+c1536a78-e568-4c4c-8447-56477bce80ba	439	243e6aa4-348d-46b6-9416-af5396f2c3e8	2026-07-05	215.00	211.45	Crédito Master | Visa	3.09	3.55	PAGO	2026-07-05 15:49:31.043694	\N
 \.
 
 
@@ -7990,7 +8013,7 @@ COPY vault.secrets (id, name, description, secret, key_id, nonce, created_at, up
 -- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: auth; Owner: -
 --
 
-SELECT pg_catalog.setval('auth.refresh_tokens_id_seq', 1, false);
+SELECT pg_catalog.setval('auth.refresh_tokens_id_seq', 1, true);
 
 
 --
@@ -9798,5 +9821,5 @@ CREATE EVENT TRIGGER pgrst_drop_watch ON sql_drop
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Yn845vCN0kXJgr5YdMNJyNeZwb9r6fiKQGFCV9VuuJoxbG6vsmJKbRZ7POaXtRt
+\unrestrict cRrh63SxuruGwUIcJ8UaLJZEtWf1oYiRVEcTBAUxWGc6lKHWItW6wZnkqykst3i
 
