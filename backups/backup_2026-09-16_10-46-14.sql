@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict imbfanxXyO0WvXi4rpRiXkWp7KBYvmzcsPCn9sNncc8mWU71SXIBeRZ5Ac4fsfp
+\restrict QVZF70IfkUAQufQ8dLkj8iaAr5ae02tXMjcIYgQYYTwprLwgwei0x1G6BVw9vT4
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.11 (Ubuntu 17.11-1.pgdg24.04+2)
@@ -59,6 +59,9 @@ ALTER TABLE IF EXISTS ONLY auth.webauthn_challenges DROP CONSTRAINT IF EXISTS we
 ALTER TABLE IF EXISTS ONLY auth.sso_domains DROP CONSTRAINT IF EXISTS sso_domains_sso_provider_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_user_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_oauth_client_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_users DROP CONSTRAINT IF EXISTS scim_users_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_users DROP CONSTRAINT IF EXISTS scim_users_sso_provider_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_tokens DROP CONSTRAINT IF EXISTS scim_tokens_sso_provider_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_sso_provider_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_flow_state_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_providers DROP CONSTRAINT IF EXISTS saml_providers_sso_provider_id_fkey;
@@ -68,6 +71,9 @@ ALTER TABLE IF EXISTS ONLY auth.oauth_consents DROP CONSTRAINT IF EXISTS oauth_c
 ALTER TABLE IF EXISTS ONLY auth.oauth_consents DROP CONSTRAINT IF EXISTS oauth_consents_client_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_user_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_client_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_codes DROP CONSTRAINT IF EXISTS mfa_recovery_codes_mfa_recovery_code_set_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_mfa_factor_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_user_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.mfa_challenges DROP CONSTRAINT IF EXISTS mfa_challenges_auth_factor_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.mfa_amr_claims DROP CONSTRAINT IF EXISTS mfa_amr_claims_session_id_fkey;
@@ -110,6 +116,19 @@ DROP INDEX IF EXISTS auth.sso_domains_domain_idx;
 DROP INDEX IF EXISTS auth.sessions_user_id_idx;
 DROP INDEX IF EXISTS auth.sessions_oauth_client_id_idx;
 DROP INDEX IF EXISTS auth.sessions_not_after_idx;
+DROP INDEX IF EXISTS auth.scim_users_user_name_key;
+DROP INDEX IF EXISTS auth.scim_users_user_name_idx;
+DROP INDEX IF EXISTS auth.scim_users_user_id_idx;
+DROP INDEX IF EXISTS auth.scim_users_updated_at_idx;
+DROP INDEX IF EXISTS auth.scim_users_sso_provider_id_idx;
+DROP INDEX IF EXISTS auth.scim_users_id_idx;
+DROP INDEX IF EXISTS auth.scim_users_external_id_key;
+DROP INDEX IF EXISTS auth.scim_users_deleted_at_idx;
+DROP INDEX IF EXISTS auth.scim_users_created_at_idx;
+DROP INDEX IF EXISTS auth.scim_tokens_token_hash_key;
+DROP INDEX IF EXISTS auth.scim_tokens_sso_provider_id_idx;
+DROP INDEX IF EXISTS auth.scim_tokens_revoked_at_idx;
+DROP INDEX IF EXISTS auth.scim_tokens_expires_at_idx;
 DROP INDEX IF EXISTS auth.saml_relay_states_sso_provider_id_idx;
 DROP INDEX IF EXISTS auth.saml_relay_states_for_email_idx;
 DROP INDEX IF EXISTS auth.saml_relay_states_created_at_idx;
@@ -129,6 +148,7 @@ DROP INDEX IF EXISTS auth.oauth_consents_active_user_client_idx;
 DROP INDEX IF EXISTS auth.oauth_consents_active_client_idx;
 DROP INDEX IF EXISTS auth.oauth_clients_deleted_at_idx;
 DROP INDEX IF EXISTS auth.oauth_auth_pending_exp_idx;
+DROP INDEX IF EXISTS auth.mfa_recovery_codes_set_id_idx;
 DROP INDEX IF EXISTS auth.mfa_factors_user_id_idx;
 DROP INDEX IF EXISTS auth.mfa_factors_user_friendly_name_unique;
 DROP INDEX IF EXISTS auth.mfa_challenge_created_at_idx;
@@ -187,6 +207,8 @@ ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_phone_key;
 ALTER TABLE IF EXISTS ONLY auth.sso_providers DROP CONSTRAINT IF EXISTS sso_providers_pkey;
 ALTER TABLE IF EXISTS ONLY auth.sso_domains DROP CONSTRAINT IF EXISTS sso_domains_pkey;
 ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_pkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_users DROP CONSTRAINT IF EXISTS scim_users_pkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_tokens DROP CONSTRAINT IF EXISTS scim_tokens_pkey;
 ALTER TABLE IF EXISTS ONLY auth.schema_migrations DROP CONSTRAINT IF EXISTS schema_migrations_pkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_pkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_providers DROP CONSTRAINT IF EXISTS saml_providers_pkey;
@@ -201,6 +223,10 @@ ALTER TABLE IF EXISTS ONLY auth.oauth_client_states DROP CONSTRAINT IF EXISTS oa
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_pkey;
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_authorization_id_key;
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_authorization_code_key;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_codes DROP CONSTRAINT IF EXISTS mfa_recovery_codes_pkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_user_id_key;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_pkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_mfa_factor_id_key;
 ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_pkey;
 ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_last_challenged_at_key;
 ALTER TABLE IF EXISTS ONLY auth.mfa_challenges DROP CONSTRAINT IF EXISTS mfa_challenges_pkey;
@@ -265,6 +291,8 @@ DROP TABLE IF EXISTS auth.users;
 DROP TABLE IF EXISTS auth.sso_providers;
 DROP TABLE IF EXISTS auth.sso_domains;
 DROP TABLE IF EXISTS auth.sessions;
+DROP TABLE IF EXISTS auth.scim_users;
+DROP TABLE IF EXISTS auth.scim_tokens;
 DROP TABLE IF EXISTS auth.schema_migrations;
 DROP TABLE IF EXISTS auth.saml_relay_states;
 DROP TABLE IF EXISTS auth.saml_providers;
@@ -275,6 +303,8 @@ DROP TABLE IF EXISTS auth.oauth_consents;
 DROP TABLE IF EXISTS auth.oauth_clients;
 DROP TABLE IF EXISTS auth.oauth_client_states;
 DROP TABLE IF EXISTS auth.oauth_authorizations;
+DROP TABLE IF EXISTS auth.mfa_recovery_codes;
+DROP TABLE IF EXISTS auth.mfa_recovery_code_sets;
 DROP TABLE IF EXISTS auth.mfa_factors;
 DROP TABLE IF EXISTS auth.mfa_challenges;
 DROP TABLE IF EXISTS auth.mfa_amr_claims;
@@ -503,7 +533,8 @@ CREATE TYPE auth.factor_status AS ENUM (
 CREATE TYPE auth.factor_type AS ENUM (
     'totp',
     'webauthn',
-    'phone'
+    'phone',
+    'recovery_code'
 );
 
 
@@ -725,6 +756,7 @@ COMMENT ON FUNCTION auth.uid() IS 'Deprecated. Use auth.jwt() -> ''sub'' instead
 
 CREATE FUNCTION extensions.grant_pg_cron_access() RETURNS event_trigger
     LANGUAGE plpgsql
+    SET search_path TO ''
     AS $$
 BEGIN
   IF EXISTS (
@@ -751,6 +783,7 @@ BEGIN
     grant all privileges on all tables in schema cron to postgres with grant option;
     revoke all on table cron.job from postgres;
     grant select on table cron.job to postgres with grant option;
+    revoke trigger on cron.job_run_details from postgres;
   END IF;
 END;
 $$;
@@ -769,11 +802,12 @@ COMMENT ON FUNCTION extensions.grant_pg_cron_access() IS 'Grants access to pg_cr
 
 CREATE FUNCTION extensions.grant_pg_graphql_access() RETURNS event_trigger
     LANGUAGE plpgsql
+    SET search_path TO ''
     AS $_$
 begin
     if not exists (
         select 1
-        from pg_event_trigger_ddl_commands() ev
+        from pg_catalog.pg_event_trigger_ddl_commands() ev
         join pg_catalog.pg_extension e on ev.objid = e.oid
         where e.extname = 'pg_graphql'
     ) then
@@ -823,6 +857,7 @@ COMMENT ON FUNCTION extensions.grant_pg_graphql_access() IS 'Grants access to pg
 
 CREATE FUNCTION extensions.grant_pg_net_access() RETURNS event_trigger
     LANGUAGE plpgsql
+    SET search_path TO ''
     AS $$
 BEGIN
   IF EXISTS (
@@ -849,7 +884,7 @@ BEGIN
       WHERE extname = 'pg_net'
       -- all versions in use on existing projects as of 2025-02-20
       -- version 0.12.0 onwards don't need these applied
-      AND extversion IN ('0.2', '0.6', '0.7', '0.7.1', '0.8', '0.10.0', '0.11.0')
+      AND extversion IN ('0.2', '0.6', '0.7', '0.7.1', '0.8.0', '0.10.0', '0.11.0')
     ) THEN
       ALTER function net.http_get(url text, params jsonb, headers jsonb, timeout_milliseconds integer) SECURITY DEFINER;
       ALTER function net.http_post(url text, body jsonb, params jsonb, headers jsonb, timeout_milliseconds integer) SECURITY DEFINER;
@@ -881,6 +916,7 @@ COMMENT ON FUNCTION extensions.grant_pg_net_access() IS 'Grants access to pg_net
 
 CREATE FUNCTION extensions.pgrst_ddl_watch() RETURNS event_trigger
     LANGUAGE plpgsql
+    SET search_path TO ''
     AS $$
 DECLARE
   cmd record;
@@ -914,6 +950,7 @@ END; $$;
 
 CREATE FUNCTION extensions.pgrst_drop_watch() RETURNS event_trigger
     LANGUAGE plpgsql
+    SET search_path TO ''
     AS $$
 DECLARE
   obj record;
@@ -945,6 +982,7 @@ END; $$;
 
 CREATE FUNCTION extensions.set_graphql_placeholder() RETURNS event_trigger
     LANGUAGE plpgsql
+    SET search_path TO ''
     AS $_$
     DECLARE
     graphql_is_dropped bool;
@@ -965,6 +1003,7 @@ CREATE FUNCTION extensions.set_graphql_placeholder() RETURNS event_trigger
         )
             returns jsonb
             language plpgsql
+            set search_path to ''
         as $$
             DECLARE
                 server_version float;
@@ -2995,6 +3034,35 @@ COMMENT ON COLUMN auth.mfa_factors.last_webauthn_challenge_data IS 'Stores the l
 
 
 --
+-- Name: mfa_recovery_code_sets; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.mfa_recovery_code_sets (
+    id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    mfa_factor_id uuid NOT NULL,
+    failed_verification_count integer DEFAULT 0 NOT NULL,
+    verification_locked_until timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT mfa_recovery_code_sets_failed_verification_count_check CHECK ((failed_verification_count >= 0))
+);
+
+
+--
+-- Name: mfa_recovery_codes; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.mfa_recovery_codes (
+    id uuid NOT NULL,
+    mfa_recovery_code_set_id uuid NOT NULL,
+    code_hash text NOT NULL,
+    consumed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: oauth_authorizations; Type: TABLE; Schema: auth; Owner: -
 --
 
@@ -3100,6 +3168,7 @@ CREATE TABLE auth.one_time_tokens (
     relates_to text NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone,
     CONSTRAINT one_time_tokens_token_hash_check CHECK ((char_length(token_hash) > 0))
 );
 
@@ -3212,6 +3281,43 @@ CREATE TABLE auth.schema_migrations (
 --
 
 COMMENT ON TABLE auth.schema_migrations IS 'Auth: Manages updates to the auth system.';
+
+
+--
+-- Name: scim_tokens; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.scim_tokens (
+    id uuid NOT NULL,
+    sso_provider_id uuid NOT NULL,
+    token_hash text NOT NULL,
+    prefix text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    last_used_at timestamp with time zone,
+    CONSTRAINT scim_tokens_expires_at_future CHECK (((expires_at IS NULL) OR (expires_at > created_at))),
+    CONSTRAINT scim_tokens_revoked_after_created CHECK (((revoked_at IS NULL) OR (revoked_at >= created_at))),
+    CONSTRAINT scim_tokens_token_hash_check CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+);
+
+
+--
+-- Name: scim_users; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.scim_users (
+    id uuid NOT NULL,
+    sso_provider_id uuid NOT NULL,
+    user_id uuid,
+    resource jsonb NOT NULL,
+    user_name text GENERATED ALWAYS AS (lower((resource ->> 'userName'::text))) STORED NOT NULL,
+    external_id text GENERATED ALWAYS AS ((resource ->> 'externalId'::text)) STORED,
+    active boolean GENERATED ALWAYS AS (COALESCE(((resource ->> 'active'::text))::boolean, true)) STORED NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone
+);
 
 
 --
@@ -4299,6 +4405,8 @@ COPY auth.flow_state (id, user_id, auth_code, code_challenge_method, code_challe
 
 COPY auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at, id) FROM stdin;
 da53cb15-d95c-4433-af71-ee1509e239d5	da53cb15-d95c-4433-af71-ee1509e239d5	{"sub": "da53cb15-d95c-4433-af71-ee1509e239d5", "email": "joaovitorbatistavilaca@gmail.com", "email_verified": false, "phone_verified": false}	email	2026-08-11 00:31:31.800047+00	2026-08-11 00:31:31.800094+00	2026-08-11 00:31:31.800094+00	008a7aa3-bcd9-4b6f-a6dd-3a0f96643b5f
+0b1a7847-49dc-43b8-84ea-14bc9c771a0c	0b1a7847-49dc-43b8-84ea-14bc9c771a0c	{"sub": "0b1a7847-49dc-43b8-84ea-14bc9c771a0c", "email": "chatgpt.planilhas@gmail.com", "email_verified": false, "phone_verified": false}	email	2026-08-16 23:19:59.511844+00	2026-08-16 23:19:59.511894+00	2026-08-16 23:19:59.511894+00	8c59ef3e-0655-48b3-82e0-d941d87d4ee9
+6aa5d036-1abf-4ed2-9747-9659661a36ce	6aa5d036-1abf-4ed2-9747-9659661a36ce	{"sub": "6aa5d036-1abf-4ed2-9747-9659661a36ce", "email": "delberfinance@gmail.com", "email_verified": true, "phone_verified": false}	email	2026-08-17 13:40:29.803123+00	2026-08-17 13:40:29.803172+00	2026-08-17 13:40:29.803172+00	b7c1913c-b844-4a6c-a1b4-bc07eb5fdd3d
 \.
 
 
@@ -4315,6 +4423,7 @@ COPY auth.instances (id, uuid, raw_base_config, created_at, updated_at) FROM std
 --
 
 COPY auth.mfa_amr_claims (session_id, created_at, updated_at, authentication_method, id) FROM stdin;
+b58a066e-9e96-46cf-a47b-0af89f722924	2026-08-17 13:40:46.938868+00	2026-08-17 13:40:46.938868+00	otp	7ac5fb6f-80b1-4909-be0b-9ddaa545f4e2
 \.
 
 
@@ -4331,6 +4440,22 @@ COPY auth.mfa_challenges (id, factor_id, created_at, verified_at, ip_address, ot
 --
 
 COPY auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at, secret, phone, last_challenged_at, web_authn_credential, web_authn_aaguid, last_webauthn_challenge_data) FROM stdin;
+\.
+
+
+--
+-- Data for Name: mfa_recovery_code_sets; Type: TABLE DATA; Schema: auth; Owner: -
+--
+
+COPY auth.mfa_recovery_code_sets (id, user_id, mfa_factor_id, failed_verification_count, verification_locked_until, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: mfa_recovery_codes; Type: TABLE DATA; Schema: auth; Owner: -
+--
+
+COPY auth.mfa_recovery_codes (id, mfa_recovery_code_set_id, code_hash, consumed_at, created_at) FROM stdin;
 \.
 
 
@@ -4370,8 +4495,9 @@ COPY auth.oauth_consents (id, user_id, client_id, scopes, granted_at, revoked_at
 -- Data for Name: one_time_tokens; Type: TABLE DATA; Schema: auth; Owner: -
 --
 
-COPY auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, created_at, updated_at) FROM stdin;
-69e61458-0faa-4fa4-aa98-d7ccb628b55b	da53cb15-d95c-4433-af71-ee1509e239d5	confirmation_token	3d4fbcc3c9546b823f4c381f98e16fd78a9c38d8bacddd6ba7dcfed1	joaovitorbatistavilaca@gmail.com	2026-08-11 11:54:32.053363	2026-08-11 11:54:32.053363
+COPY auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, created_at, updated_at, expires_at) FROM stdin;
+69e61458-0faa-4fa4-aa98-d7ccb628b55b	da53cb15-d95c-4433-af71-ee1509e239d5	confirmation_token	3d4fbcc3c9546b823f4c381f98e16fd78a9c38d8bacddd6ba7dcfed1	joaovitorbatistavilaca@gmail.com	2026-08-11 11:54:32.053363	2026-08-11 11:54:32.053363	\N
+3a9f3d62-a0a6-4448-81dc-aec7d656b5c8	0b1a7847-49dc-43b8-84ea-14bc9c771a0c	confirmation_token	8a73801e67a204fc49ece6bbc70723f2544dda4406a118b6344a7918	chatgpt.planilhas@gmail.com	2026-08-16 23:22:26.121274	2026-08-16 23:22:26.121274	\N
 \.
 
 
@@ -4380,6 +4506,7 @@ COPY auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, crea
 --
 
 COPY auth.refresh_tokens (instance_id, id, token, user_id, revoked, created_at, updated_at, parent, session_id) FROM stdin;
+00000000-0000-0000-0000-000000000000	1	wixy7737dnds	6aa5d036-1abf-4ed2-9747-9659661a36ce	f	2026-08-17 13:40:46.922545+00	2026-08-17 13:40:46.922545+00	\N	b58a066e-9e96-46cf-a47b-0af89f722924
 \.
 
 
@@ -4481,6 +4608,27 @@ COPY auth.schema_migrations (version) FROM stdin;
 20260219120000
 20260302000000
 20260625000000
+20260821000000
+20260821010000
+20260824000000
+20260824000001
+20260831180000
+\.
+
+
+--
+-- Data for Name: scim_tokens; Type: TABLE DATA; Schema: auth; Owner: -
+--
+
+COPY auth.scim_tokens (id, sso_provider_id, token_hash, prefix, created_at, expires_at, revoked_at, last_used_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: scim_users; Type: TABLE DATA; Schema: auth; Owner: -
+--
+
+COPY auth.scim_users (id, sso_provider_id, user_id, resource, created_at, updated_at, deleted_at) FROM stdin;
 \.
 
 
@@ -4489,6 +4637,7 @@ COPY auth.schema_migrations (version) FROM stdin;
 --
 
 COPY auth.sessions (id, user_id, created_at, updated_at, factor_id, aal, not_after, refreshed_at, user_agent, ip, tag, oauth_client_id, refresh_token_hmac_key, refresh_token_counter, scopes) FROM stdin;
+b58a066e-9e96-46cf-a47b-0af89f722924	6aa5d036-1abf-4ed2-9747-9659661a36ce	2026-08-17 13:40:46.910165+00	2026-08-17 13:40:46.910165+00	\N	aal1	\N	\N	Mozilla/5.0 (iPhone; CPU iPhone OS 26_6_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/152.0.7977.40 Mobile/15E148 Safari/604.1	189.6.19.197	\N	\N	\N	\N	\N
 \.
 
 
@@ -4514,6 +4663,8 @@ COPY auth.sso_providers (id, resource_id, created_at, updated_at, disabled) FROM
 
 COPY auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, invited_at, confirmation_token, confirmation_sent_at, recovery_token, recovery_sent_at, email_change_token_new, email_change, email_change_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, is_super_admin, created_at, updated_at, phone, phone_confirmed_at, phone_change, phone_change_token, phone_change_sent_at, email_change_token_current, email_change_confirm_status, banned_until, reauthentication_token, reauthentication_sent_at, is_sso_user, deleted_at, is_anonymous) FROM stdin;
 00000000-0000-0000-0000-000000000000	da53cb15-d95c-4433-af71-ee1509e239d5	authenticated	authenticated	joaovitorbatistavilaca@gmail.com	$2a$10$iiJmNwrK7Bt8IsFz4tG.Oep3sa/OrpID56d7W0pnpJsG4LjbAkrIW	\N	\N	3d4fbcc3c9546b823f4c381f98e16fd78a9c38d8bacddd6ba7dcfed1	2026-08-11 11:54:29.69909+00		\N			\N	\N	{"provider": "email", "providers": ["email"]}	{"sub": "da53cb15-d95c-4433-af71-ee1509e239d5", "email": "joaovitorbatistavilaca@gmail.com", "email_verified": false, "phone_verified": false}	\N	2026-08-11 00:31:31.733387+00	2026-08-11 11:54:31.995276+00	\N	\N			\N		0	\N		\N	f	\N	f
+00000000-0000-0000-0000-000000000000	6aa5d036-1abf-4ed2-9747-9659661a36ce	authenticated	authenticated	delberfinance@gmail.com	$2a$10$L/lUOLi6AAVrYXtPHSBBQ..cVqJylB2aZs.8ilrCihQLxSziBUGT.	2026-08-17 13:40:46.90384+00	\N		2026-08-17 13:40:29.822845+00		\N			\N	2026-08-17 13:40:46.910053+00	{"provider": "email", "providers": ["email"]}	{"sub": "6aa5d036-1abf-4ed2-9747-9659661a36ce", "email": "delberfinance@gmail.com", "email_verified": true, "phone_verified": false}	\N	2026-08-17 13:40:29.749685+00	2026-08-17 13:40:46.938193+00	\N	\N			\N		0	\N		\N	f	\N	f
+00000000-0000-0000-0000-000000000000	0b1a7847-49dc-43b8-84ea-14bc9c771a0c	authenticated	authenticated	chatgpt.planilhas@gmail.com	$2a$10$KyMXKOCfIYg4H5Jfk9vohuKtr0nsTopg5nlOJBsfmkvuQrEUdfMQ2	\N	\N	8a73801e67a204fc49ece6bbc70723f2544dda4406a118b6344a7918	2026-08-16 23:22:24.231404+00		\N			\N	\N	{"provider": "email", "providers": ["email"]}	{"sub": "0b1a7847-49dc-43b8-84ea-14bc9c771a0c", "email": "chatgpt.planilhas@gmail.com", "email_verified": false, "phone_verified": false}	\N	2026-08-16 23:19:59.462923+00	2026-08-16 23:22:26.11148+00	\N	\N			\N		0	\N		\N	f	\N	f
 \.
 
 
@@ -4685,6 +4836,7 @@ f36bee76-7012-4746-bec2-b3dbf4f60b86	Elizete	EP 210 Sul	5561991594517	\N	2026-07
 9b3ddfb1-06ab-4cf3-9b33-0d7e0b310505	Valdério	Regional Asa Norte	5561991750526	\N	2026-07-02 23:16:10.525212	t	
 a89e679f-971c-470a-bf4e-4bc3f60f0a0a	Vicente	CHPP	5583998021177	\N	2026-07-04 22:38:13.211968	t	
 89b2ac7b-7d17-440a-bfd5-742628eecb70	Kika	Ministério do Desenv. MDIC	5561992523511	\N	2026-06-16 20:51:14.661957	t	
+c4ca0108-a063-4e98-9b20-3707e915c35a	Alice	Cuidadora	5561984319692	\N	2026-08-19 20:58:37.847058	t	
 \.
 
 
@@ -6145,6 +6297,11 @@ ba7576b5-6ff2-477b-b8fd-576724f0c331	5b25250c-0355-432b-9b87-8a6ef7c1900c	2026-0
 9ca79828-4088-4da5-8952-0e0d59eaa743	add98b28-9473-4b1d-b010-435fe38bc53a	2026-08-11	175.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-11 15:19:06.793538	CONFIRMADO	\N	\N
 7c00e388-8a9b-425a-a1ae-e0da54933874	597489e8-3376-4921-ba71-db9cdb25288e	2026-08-11	65.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-11 15:19:31.027466	CONFIRMADO	\N	\N
 109357a0-2c2b-4905-9b72-786f0b1ff20e	a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	2026-08-12	139.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-12 18:13:05.87899	CONFIRMADO	\N	\N
+f788c654-d56f-4d4f-a2a0-ed167080a429	b9eb3a50-b2b6-4fed-acd5-2bda74c58ebe	2026-08-18	55.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-18 12:46:25.828435	CONFIRMADO	\N	\N
+82664794-20f0-42c7-9318-a36ebb8adc4f	91944b6e-0fb3-44b3-8c1e-ec0c9fce1d08	2026-08-18	50.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-18 14:29:22.319949	CONFIRMADO	\N	\N
+44354b85-1e8c-4475-b8a7-1b0e72032228	8c2c21a5-48a9-4685-a29d-c5b04d463be3	2026-08-20	104.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-20 14:18:44.37585	CONFIRMADO	\N	\N
+fb4a4600-1232-4b53-a56b-2ecb81e9613a	25033e76-a9db-4b89-9277-be464dc43b20	2026-08-28	45.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-28 12:33:32.105843	CONFIRMADO	\N	\N
+d96d1e8e-a49c-4700-8e06-2bc84d442166	e8c2f687-6d1b-4cfb-b744-3644cae26d5a	2026-09-15	65.00	Pix	Pagamento registrado pelo Mini ERP	2026-09-15 15:23:23.990335	CONFIRMADO	\N	\N
 \.
 
 
@@ -6522,7 +6679,6 @@ f0dfc3f6-83f3-44f6-b9dd-b2bd2b23ea26	c72a765a-67d6-4a87-ab1c-c2c0f0f64937	2026-0
 33acd9fc-8381-4aef-a60f-481b809d36fc	06b8db01-6694-4112-a667-9e387f3da522	2026-07-10	0.00	PAGO	0	2026-07-01 21:33:42.109489	\N	VENDA	\N
 f0cb91b0-297d-433d-98a7-415ca518aba0	cfd05997-0c4f-48c2-97d5-5129206213b2	2026-07-08	0.00	PAGO	0	2026-06-29 20:31:14.668899	\N	VENDA	\N
 18965fe8-d976-40ef-93db-b6cf54666dc0	21dc3079-29a7-4941-8265-91f0e2997890	2026-07-15	0.00	PAGO	0	2026-06-10 20:15:45.664941	\N	VENDA	\N
-0fec0ad7-72ba-416a-8aa8-68157765c41f	b9eb3a50-b2b6-4fed-acd5-2bda74c58ebe	2026-07-08	55.00	EM ABERTO	0	2026-07-02 21:12:38.54805	\N	VENDA	\N
 af24f9f1-e7f8-4548-bb5e-2feb3579fafe	714ab0d8-4a3a-47a5-bd71-3ffc5e3df2de	2026-07-08	0.00	PAGO	0	2026-06-13 23:04:36.899279	\N	VENDA	\N
 ff45e00e-1c94-4623-aed6-9d05380e4c96	97c70f44-000d-475a-913e-d6280dec780c	2026-07-09	0.00	PAGO	0	2026-06-16 00:25:30.211645	\N	VENDA	\N
 5aba8fd7-2479-4ac1-94df-08f32bed1b16	a1338d2a-82c6-4223-aabc-e12738e68a5a	2026-07-08	0.00	PAGO	0	2026-06-10 20:09:57.962921	\N	VENDA	\N
@@ -6558,7 +6714,7 @@ b583d590-b36c-4c3f-8b77-691de8b1d5a4	ff3a04be-0cf7-48cd-950c-8b050eca91f3	2026-0
 257b3eab-cf43-4c77-b094-969bc9ec8adf	6cfb6d2e-f15a-40bc-8914-e5c312acb4c6	2026-07-15	0.00	PAGO	0	2026-06-10 20:16:22.402503	\N	VENDA	\N
 bae011d3-e569-463e-98eb-562f279fb6e1	b3b60f6d-52e5-4f3a-95e6-95d69e1ddab2	2026-07-09	0.00	PAGO	0	2026-07-01 21:18:08.650767	\N	VENDA	\N
 a8834358-449a-4d99-bbce-6a14d5fd298f	cb005a65-26a0-4081-8cda-95f93ee599f6	2026-06-25	0.00	PAGO	0	2026-06-16 00:40:18.128832	\N	VENDA	\N
-e716446b-2d7b-468a-a161-1c85ccf01ea4	91944b6e-0fb3-44b3-8c1e-ec0c9fce1d08	2026-07-08	50.00	PARCIAL	0	2026-06-13 12:44:59.386074	\N	VENDA	\N
+01fb39ef-7491-406f-8fee-41ecda298f45	e8c2f687-6d1b-4cfb-b744-3644cae26d5a	2026-07-08	0.00	PAGO	0	2026-06-25 20:51:55.791771	\N	VENDA	\N
 8b4c1a6b-a959-4631-affe-dcca57affeae	98ede5c5-6b53-4dbc-8391-83233afc50d7	2026-07-10	0.00	PAGO	0	2026-06-29 19:00:16.610038	\N	VENDA	\N
 7447eed1-95cb-4cfd-b4ea-b465cee10d11	4a444506-0c90-4271-8e29-92aef5d0cae5	2026-07-08	0.00	PAGO	0	2026-06-10 20:13:35.928074	\N	VENDA	\N
 44b820ed-748a-43d1-a9b1-fd8e3fb63011	55fffc00-6772-476f-89bc-561b68829671	2026-07-09	0.00	PAGO	0	2026-07-01 21:32:21.904414	\N	VENDA	\N
@@ -6569,12 +6725,13 @@ a6dde0c2-bdc7-4def-bf10-ef4ec151de38	2a65ffff-9352-4f99-8e20-e73f6ab95d20	2026-0
 756c5fac-4cff-493a-b3c4-69b49b9979bf	58ef46af-90fe-42e6-948c-f4ecb11f5ef5	2026-07-15	0.00	PAGO	0	2026-06-10 20:14:25.926694	\N	VENDA	\N
 d70ab820-67c5-4172-a22e-eaf7c6099db1	1bbfbfd6-c23d-4b0e-a2e7-3ad9f0edc6d3	2026-07-08	0.00	PAGO	0	2026-07-02 21:12:59.196025	\N	VENDA	\N
 8c0bc8b9-58f6-4b9b-9269-67f5e8190dd8	b07aa258-1d4a-41b8-b115-5f32a7a41821	2026-07-08	0.00	PAGO	0	2026-07-02 21:13:10.590629	\N	VENDA	\N
-01fb39ef-7491-406f-8fee-41ecda298f45	e8c2f687-6d1b-4cfb-b744-3644cae26d5a	2026-07-08	65.00	PARCIAL	0	2026-06-25 20:51:55.791771	\N	VENDA	\N
 94f21489-00b9-4019-9c75-ff923f0d9b40	a84b5989-dbac-4cbe-a0b9-f4d0fdfec89e	2026-07-15	0.00	PAGO	0	2026-06-10 20:11:50.212298	\N	VENDA	\N
 69d0b323-132f-4d24-9654-3b19082ef158	aa959063-b67f-4b8c-8b3e-03dd5e8de0cb	2026-07-15	0.00	PAGO	0	2026-06-29 20:29:55.871452	\N	VENDA	\N
 5989d13a-ab1f-4835-bfd7-8d9b334cea95	c3187805-a30c-4069-8eb0-c480a3cfcf5d	2026-07-10	0.00	PAGO	0	2026-06-25 21:34:39.677245	\N	VENDA	\N
 eaf47e91-fcc8-4682-83ae-96e6ad19f930	a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	2026-07-15	0.00	PAGO	0	2026-07-01 21:04:50.533757	\N	VENDA	\N
 062f7906-525f-4c81-8b80-ce81b2df76a5	597489e8-3376-4921-ba71-db9cdb25288e	2026-07-10	0.00	PAGO	0	2026-06-25 21:31:18.386944	\N	VENDA	\N
+0fec0ad7-72ba-416a-8aa8-68157765c41f	b9eb3a50-b2b6-4fed-acd5-2bda74c58ebe	2026-07-08	0.00	PAGO	0	2026-07-02 21:12:38.54805	\N	VENDA	\N
+e716446b-2d7b-468a-a161-1c85ccf01ea4	91944b6e-0fb3-44b3-8c1e-ec0c9fce1d08	2026-07-08	0.00	PAGO	0	2026-06-13 12:44:59.386074	\N	VENDA	\N
 cbc34d8d-35e9-4ad6-badd-18bebca0b8e3	7d44c7e7-263d-4fac-979d-12ca98a90a7f	2026-07-15	0.00	PAGO	0	2026-06-10 20:14:54.97638	\N	VENDA	\N
 bb142ef1-dfbb-4891-9102-e367b28863a3	a2763421-9391-4ae9-b43d-b57cb1c94c83	2026-07-08	0.00	PAGO	0	2026-07-02 21:39:43.353178	\N	VENDA	\N
 9931c16d-dd54-4139-a77b-49081182f242	b3dabb37-619c-49f9-8c9b-bea57e3a4c5f	2026-07-06	0.00	PAGO	0	2026-07-04 23:05:08.106421	\N	VENDA	\N
@@ -6583,6 +6740,9 @@ bb142ef1-dfbb-4891-9102-e367b28863a3	a2763421-9391-4ae9-b43d-b57cb1c94c83	2026-0
 0c7e51d8-77f1-4d39-bb42-fcefdcd6ba98	5b25250c-0355-432b-9b87-8a6ef7c1900c	2026-08-07	0.00	PAGO	0	2026-07-07 00:37:33.188202	\N	VENDA	\N
 879836a2-106c-437d-aec0-4b68d842ff87	c1536a78-e568-4c4c-8447-56477bce80ba	2026-08-07	0.00	PAGO	0	2026-07-05 15:49:31.475266	\N	VENDA	\N
 629d1ad4-7ee5-41ee-9b90-bb8ae24d99c0	add98b28-9473-4b1d-b010-435fe38bc53a	2026-08-07	0.00	PAGO	0	2026-07-07 21:09:00.784844	\N	VENDA	\N
+43c1c4a0-b52e-47a7-b1f1-b38f7f031e9e	f51124f2-94cf-4ccb-a7c3-b4ba735faebd	2026-09-07	40.00	EM ABERTO	0	2026-08-19 16:34:07.685325	\N	VENDA	\N
+d978cf48-7235-42dc-8b5d-74c004f4a53d	8c2c21a5-48a9-4685-a29d-c5b04d463be3	\N	0.00	PAGO	0	2026-08-20 14:17:07.118041	\N	VENDA	\N
+90ccbf66-d40b-438b-aaf1-7da88ab36044	25033e76-a9db-4b89-9277-be464dc43b20	2026-09-07	0.00	PAGO	0	2026-08-19 21:00:16.529856	\N	VENDA	\N
 \.
 
 
@@ -6774,13 +6934,17 @@ bf81b31c-8d07-448e-97c2-7eb3073d965c	Jefferson	Objetivo	[{"nome": "Mussarela Pal
 f92bbc6f-be91-4a9a-93f0-514d7cbe6177	Avulso	EP 210 Sul	[{"nome": "Mostarda", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}, {"nome": "Mix", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}]	104.00	Túlio referência ep 210 Sul itens adquiridos uma mostarda 49 um kit Mix 55 forma de pagamento crédito	Venda convertida	f	2026-07-02 21:34:40.907748+00	2026-07-02 21:39:18.015+00	Crédito
 4f35e4a2-2951-4d71-8636-ffabe3c56de2	Elizete	Ep 210 Sul	[{"nome": "Mussarela Palito", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}]	49.00	Elizete referência ep-210 Sul itens adquiridos uma mussarela palito 49 forma de pagamento em aberto	Venda convertida	f	2026-07-02 21:37:02.223396+00	2026-07-02 21:40:11.743+00	Fiado / Em aberto
 b7cb78d4-4315-457b-838d-6f681ce6be02	Carlos	Objetivo	[{"nome": "Kit Salame", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}, {"nome": "Reino", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}, {"nome": "Figo", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}]	153.00	Carlos referência objetivo itens adquiridos um kit salame 49 um reino r$ 55 um figo r$ 49 forma de pagamento em aberto	Venda convertida	f	2026-07-01 21:14:30.108598+00	2026-07-01 21:32:21.466+00	Fiado / Em aberto
+557f38fc-b85e-4cd8-8021-6712fc8aedf6	Kerlene	Setor oeste 	[{"nome": "Kit Pimenta", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}, {"nome": "Mussarela Tranç", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}]	104.00	Cliente Keane Itens adquiridos um kit pimenta R$55 Uma mussarela trança R$49 forma de pagamento em aberto	Venda convertida	f	2026-08-20 14:16:14.925623+00	2026-08-20 14:17:07.223+00	Fiado / Em aberto
 d3944e3e-ad3f-4425-ae43-3b00ab86280c	Simone	G A N	[{"nome": "Goiabada Cascã", "valor": 45, "subtotal": 45, "quantidade": 1, "valorUnitario": 45}]	45.00	cliente Simone referência g a n itens adquiridos Uma goiabada cascão r$ 45 forma de pagamento pics	Venda convertida	f	2026-07-04 22:28:39.224314+00	2026-07-04 22:32:02.553+00	Pix
 dc5bb2dd-9862-4268-b83a-01901c1e96af	Guilherme	Águas Claras	[{"nome": "Vila Caipira", "valor": 79, "subtotal": 79, "quantidade": 1, "valorUnitario": 79}, {"nome": "Cascavel", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}, {"nome": "Kit Lombinho", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}]	177.00	Guilherme referência Águas Claras itens adquiridos um Vila caipira 79 uma cascavel 49 um kit lombinho r$ 49 forma de pagamento crédito	Venda convertida	f	2026-07-07 00:34:48.512095+00	2026-07-07 00:37:55.233+00	Crédito
+30642b42-7249-446d-850d-83e2d71c79e4	Vicente	CHPP	[{"nome": "Rosquinha", "valor": 40, "subtotal": 40, "quantidade": 1, "valorUnitario": 40}]	40.00	Cliente Vicente referência CHPP item adquirido uma rosquinha de nata valor R$40 forma de pagamento em aberto	Venda convertida	f	2026-08-19 16:01:46.878321+00	2026-08-19 16:34:07.766+00	Fiado / Em aberto
 f5a7fcd3-8e68-41c3-91a0-73412cf9618e	Regina	CEAN	[{"nome": "Vila Caipira", "valor": 80, "subtotal": 80, "quantidade": 1, "valorUnitario": 80}, {"nome": "Cascavel", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}, {"nome": "Cascão", "valor": 45, "subtotal": 45, "quantidade": 1, "valorUnitario": 45}]	175.00	Regina se um Vila caipira r$ 80 uma cascavel r$ 50 um Cascão r$ 45 fiado	Venda convertida	f	2026-07-07 00:31:27.436743+00	2026-07-07 21:09:00.627+00	Fiado / Em aberto
 cede5814-dcdc-41c7-bd94-d014a9e310eb	Katiane	Paulo Freire	[{"nome": "Frescal", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}, {"nome": "Cocada Cremosa", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}]	100.00	Katiane referência Paulo Freire itens adquiridos um frescal r$ 50 uma cocada cremosa r$ 50 forma de pagamento em aberto	Pendente	f	2026-07-07 22:26:03.83788+00	2026-07-07 22:26:03.83788+00	Fiado / Em aberto
 d3b7c823-2c81-4d1c-a755-6b9cba051408	Claudinei	CEAN	[{"nome": "Canastra Inteiro", "valor": 79, "subtotal": 79, "quantidade": 1, "valorUnitario": 79}]	79.00	Claudinei referência ceam itens adquiridos um Canastra inteiro 79 soma de pagamento p	Venda convertida	f	2026-07-07 00:33:40.4774+00	2026-07-07 00:37:44.256+00	Pix
 cd277cd1-a43b-4362-a9a4-2a38f54c39f7	Rosângela	210 Parque Norte	[{"nome": "Cascão", "valor": 45, "subtotal": 45, "quantidade": 1, "valorUnitario": 45}, {"nome": "Requeijã", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}, {"nome": "Doce de Leite", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}]	143.00	Rosângela referência 210 Parque Norte itens adquiridos uma cascão r$ 45 um requeijão 49 um doce de leite 49 forma de pagamento em aberto	Venda convertida	f	2026-07-01 21:15:30.718375+00	2026-07-01 21:33:41.687+00	Fiado / Em aberto
 c37b7c20-85da-4f6d-815a-caf99e842bcb	Kátia	EP 210 Sul	[{"nome": "Desidratado Puro", "valor": 35, "subtotal": 35, "quantidade": 1, "valorUnitario": 35}]	35.00	Kátia referência ep 210 Sul itens adquiridos um desidratado puro r$ 35 forma de pagamento	Venda convertida	f	2026-07-02 21:35:25.376734+00	2026-07-02 21:39:29.743+00	Pix
+54598304-8ec0-434f-9fd8-259f6332e36a	Alice	Cuidadora 	[{"nome": "Tunguinho", "valor": 45, "subtotal": 45, "quantidade": 1, "valorUnitario": 45}]	45.00	Cliente Açucena referência Fátima E tem adquirido um doce de leite Valor R$45 Forma de pagamento fiado	Venda convertida	f	2026-08-19 20:46:44.434967+00	2026-08-19 21:00:16.579+00	Fiado / Em aberto
+d18f635a-a696-40dd-b7d3-9d3203c24b0f	Cliente nao informado		[]	87.00	Origem Pix Rapido. Completar itens depois na Pre-venda.	Aguardando lancamento	f	2026-08-26 15:12:55.051+00	2026-08-26 15:12:56.166637+00	Pix
 8e1bd819-a4f1-4a88-bc85-3f4c343a8c2d	Jório	GAN	[{"nome": "Trança", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}, {"nome": "Doce de Leite Pedaço", "valor": 35, "subtotal": 35, "quantidade": 1, "valorUnitario": 35}]	84.00	cliente jório referência Gun itens adquiridos uma trança 49 um doce de leite pedaço r$ 35 forma de pagamento crédito	Venda convertida	f	2026-07-03 22:22:59.893+00	2026-07-04 22:31:47.767+00	Crédito
 7f9f55bb-9b46-4eb5-8697-0485a9b01921	Lúcia	Paulo Freire	[{"nome": "Cocada Cremosa", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}, {"nome": "Frescal", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}, {"nome": "Doce de Leite", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}]	150.00	Lúcia referência Paulo Freire itens adquiridos uma cocada cremosa r$ 50 um frescal r$ 50 um doce de leite r$ 50 forma de pagamento em aberto	Pendente	f	2026-07-07 22:26:43.97411+00	2026-07-07 22:26:43.97411+00	Fiado / Em aberto
 dd7618d2-f117-40a5-a666-9eee84dc6b75	Ruth	CEAN	[{"nome": "Mussarela Palito", "valor": 49, "subtotal": 49, "quantidade": 1, "valorUnitario": 49}]	49.00	cliente Rute referência itens adquiridos uma mussarela palito 49 forma de pagamento pics	Venda convertida	f	2026-07-07 00:27:59.994523+00	2026-07-07 00:35:39.434+00	Pix
@@ -6798,6 +6962,7 @@ afa7fd87-5630-4d83-9d4b-258cbc9b5dd7	Luiza	113 Norte	[{"nome": "Kit Lombinho", "
 bf796dac-0981-4db1-b031-0a45f99a14fc	Gabi	Unb	[{"nome": "Trufado Azeitona", "valor": 65, "subtotal": 65, "quantidade": 1, "valorUnitario": 65}]	65.00	Gabi referência UnB itens adquiridos um trufado azeitona r$ 65 pics	Venda convertida	f	2026-07-07 00:29:18.749626+00	2026-07-07 00:36:03.096+00	Pix
 c3a038be-028f-463e-94ae-08d2883b97f3	Maria Lúcia	EP 210 Norte	[{"nome": "Café", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}, {"nome": "Vila Caipira", "valor": 79, "subtotal": 79, "quantidade": 1, "valorUnitario": 79}, {"nome": "Parmesã", "valor": 65, "subtotal": 65, "quantidade": 1, "valorUnitario": 65}]	199.00	cliente Maria Lúcia referência ep 210 Norte itens adquiridos um café 55 um Vila caipira 79 um parmesão 65 forma de pagamento em aberto	Pendente	f	2026-07-07 21:05:41.950437+00	2026-07-07 21:05:41.950437+00	Fiado / Em aberto
 bdf348d0-f0cb-4f40-9c25-5bb0229a8fcc	Mônica	405 Norte	[{"nome": "Frescal", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}]	50.00	Mônica referência 405 Norte itens adquiridos um frescal r$ 50 forma de pagamento em aberto	Pendente	f	2026-07-07 21:06:23.292852+00	2026-07-07 21:06:23.292852+00	Fiado / Em aberto
+9dfb5a1d-ffa3-474b-b064-d8450024eb7e	Alice	Fátima	[{"nome": "Cocada Cremosa", "valor": 45, "subtotal": 45, "quantidade": 1, "valorUnitario": 45}]	45.00	Cliente Alice Referência Fátima Itens adquiridos uma cocada cremosa R$45 forma de pagamento em aberto	Em lançamento	f	2026-08-19 20:47:36.661714+00	2026-08-19 20:47:59.732+00	Fiado / Em aberto
 085ecc39-95dd-4e35-ab82-717ab4434507	Lucilene	114 Sul	[{"nome": "Mel Pote", "valor": 55, "subtotal": 55, "quantidade": 1, "valorUnitario": 55}]	55.00	Cliente Lucilene referência 114 Sul itens adquiridos um mel pote R$55 forma de pagamento em aberto	Venda convertida	f	2026-07-01 10:42:15.096+00	2026-07-02 21:12:38.425+00	Fiado / Em aberto
 4c886b47-3d4a-4f27-afb1-d29b6492a83b	Robson	EP 210 Sul	[{"nome": "Canastra Metade", "valor": 50, "subtotal": 50, "quantidade": 1, "valorUnitario": 50}]	50.00	Robson referência ep 210 Sul itens adquiridos um Canastra metade r$ 50 forma de pagamento crédito	Venda convertida	f	2026-07-02 21:36:36.654829+00	2026-07-02 21:39:56.818+00	Crédito
 1d50f777-dc5a-4bd9-bfce-3251406e114a	Marcelo	Gan	[{"nome": "01 Parmesão 59", "valor": 59, "quantidade": 1, "valorUnitario": 59}]	59.00	Origem Pix Rapido. 01 Parmesão 59	Venda convertida	f	2026-07-03 12:27:35.119+00	2026-07-04 22:31:28.012+00	Pix
@@ -7416,10 +7581,10 @@ d2a5badd-479b-4040-8667-4f3fccc739df	280	70ae3c45-ccec-4145-b588-0c6e0ba31e98	20
 e8129165-07e1-4009-aa06-15afde397a77	335	54b21d33-7c14-4bc9-b89d-43a0b25caaac	2026-06-17	79.00	79.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-17 23:05:34.359363	\N
 86c5b6e0-e6d1-418f-ae95-c0c39bfe8e4c	291	c0aa151d-0aba-4c9a-bc6d-520971eb8f65	2026-06-11	120.00	120.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-11 19:44:57.531316	\N
 6cfb6d2e-f15a-40bc-8914-e5c312acb4c6	287	f8d97e97-cac7-403b-83e0-bdb73d51735c	2026-06-10	77.00	77.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-10 20:16:22.198688	\N
-91944b6e-0fb3-44b3-8c1e-ec0c9fce1d08	302	b1f9d073-9f0d-4a4a-8efb-e38d4edd46e1	2026-06-12	200.00	200.00	Fiado / Em aberto	0.00	0.00	PARCIAL	2026-06-13 12:44:59.106429	\N
 21dc3079-29a7-4941-8265-91f0e2997890	286	94842280-2699-4eb6-a4d4-345b116c5e66	2026-06-10	49.00	49.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-10 20:15:45.467222	\N
 44cca7e0-524f-4e30-aef4-a35b736b6c82	311	1b80b528-1ede-49b3-a1ad-857e15b5e5a8	2026-06-12	98.00	98.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-13 23:07:35.857404	\N
 58ef46af-90fe-42e6-948c-f4ecb11f5ef5	283	03a7d684-bb62-4042-881b-6fd70d6b1a92	2026-06-10	98.00	98.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-10 20:14:25.748148	\N
+91944b6e-0fb3-44b3-8c1e-ec0c9fce1d08	302	b1f9d073-9f0d-4a4a-8efb-e38d4edd46e1	2026-06-12	200.00	200.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-13 12:44:59.106429	\N
 4a95711b-a47c-4476-8891-f2a60b3ed81a	341	42963653-1462-485d-a1a5-ca8832afac72	2026-06-17	45.00	45.00	Pix	0.00	0.00	PAGO	2026-06-17 23:08:19.644707	Fabiana
 da89c6e0-839f-481d-ae61-f977b271577e	342	42963653-1462-485d-a1a5-ca8832afac72	2026-06-17	49.00	47.49	Crédito Master | Visa	3.09	1.51	PAGO	2026-06-17 23:08:38.352417	Andreza
 0ece79c1-83e1-4ebb-a878-70a8f161e46e	346	42963653-1462-485d-a1a5-ca8832afac72	2026-06-18	50.00	50.00	Pix	0.00	0.00	PAGO	2026-06-18 22:16:19.141564	Virna
@@ -7477,16 +7642,16 @@ b51006bb-5ac5-4010-9822-6f1ba902b5a7	340	09353ced-354f-4c18-ae4d-973c22d74c62	20
 2a65ffff-9352-4f99-8e20-e73f6ab95d20	366	0960c594-7067-48c8-b330-49ba276270d9	2026-06-23	124.00	124.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 20:52:47.038826	\N
 6ccbd4e5-0098-4149-85fb-2f26ddcbb205	343	89b2ac7b-7d17-440a-bfd5-742628eecb70	2026-06-18	285.00	285.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-18 22:04:16.970305	\N
 3882f273-03e1-4243-9257-423655975653	348	ce828fa9-7664-47af-896b-e82a9a0cd113	2026-06-18	49.00	49.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-18 22:18:15.934896	\N
-e8c2f687-6d1b-4cfb-b744-3644cae26d5a	365	0960c594-7067-48c8-b330-49ba276270d9	2026-06-23	130.00	130.00	Fiado / Em aberto	0.00	0.00	PARCIAL	2026-06-25 20:51:55.505559	\N
 aa959063-b67f-4b8c-8b3e-03dd5e8de0cb	391	82df9d97-c476-43cf-a0ef-01fbbc961281	2026-06-25	55.00	55.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-29 20:29:55.574322	\N
 a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	400	80d1408f-e1e8-4ae5-9e99-7b88ab0ea20c	2026-06-30	139.00	139.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 21:04:50.277258	\N
 597489e8-3376-4921-ba71-db9cdb25288e	370	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-15	229.00	229.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 21:31:18.003404	\N
+e8c2f687-6d1b-4cfb-b744-3644cae26d5a	365	0960c594-7067-48c8-b330-49ba276270d9	2026-06-23	130.00	130.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 20:51:55.505559	\N
 a12ce5b3-cb25-4761-bed5-4f917e80c93e	401	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	65.00	62.99	Crédito Master | Visa	3.09	2.01	PAGO	2026-07-01 21:06:16.388842	Fernanda
 674c4412-2b67-40e0-a951-0a2fabaee4b9	402	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	99.00	95.94	Crédito Master | Visa	3.09	3.06	PAGO	2026-07-01 21:07:55.602293	Josi
 cbbdcde9-95d5-494a-a829-d0244c80b1eb	404	42963653-1462-485d-a1a5-ca8832afac72	2026-06-25	75.00	75.00	Pix	0.00	0.00	PAGO	2026-07-01 21:31:25.519612	Jucileia
 314d363b-1d17-4015-90e1-623598b05eb4	409	42963653-1462-485d-a1a5-ca8832afac72	2026-06-25	79.00	79.00	Pix	0.00	0.00	PAGO	2026-07-01 21:34:06.697015	Jaqueline
 add98b28-9473-4b1d-b010-435fe38bc53a	448	14445c7a-dee6-4e1b-b0dc-fbb6b5b97a99	2026-07-06	175.00	175.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-07 21:09:00.505454	\N
-b9eb3a50-b2b6-4fed-acd5-2bda74c58ebe	413	ee8b660a-bba9-4a48-b4c7-1ab89f596da1	2026-07-01	55.00	55.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-07-02 21:12:38.312049	\N
+b9eb3a50-b2b6-4fed-acd5-2bda74c58ebe	413	ee8b660a-bba9-4a48-b4c7-1ab89f596da1	2026-07-01	55.00	55.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-02 21:12:38.312049	\N
 22456170-021a-42f3-af92-2cf81a1b5e73	418	42963653-1462-485d-a1a5-ca8832afac72	2026-07-02	55.00	53.30	Crédito Master | Visa	3.09	1.70	PAGO	2026-07-02 21:39:04.003065	Paula
 80e58a81-8ef0-4ebf-a6be-f5aa0983b3a8	419	42963653-1462-485d-a1a5-ca8832afac72	2026-07-02	104.00	100.79	Crédito Master | Visa	3.09	3.21	PAGO	2026-07-02 21:39:17.96388	Avulso
 22abf95f-ba89-4a0c-9831-32615c0a74a5	420	42963653-1462-485d-a1a5-ca8832afac72	2026-07-02	35.00	35.00	Pix	0.00	0.00	PAGO	2026-07-02 21:39:29.700572	Kátia
@@ -7528,6 +7693,9 @@ b07aa258-1d4a-41b8-b115-5f32a7a41821	415	3995067f-4df0-4f26-bf28-a55af8a1f896	20
 06b8db01-6694-4112-a667-9e387f3da522	408	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-25	143.00	143.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 21:33:41.884489	\N
 5b25250c-0355-432b-9b87-8a6ef7c1900c	445	27d44823-4c0e-4ce1-bcc5-3f825f125ce2	2026-07-06	59.00	59.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-07 00:37:33.00606	\N
 c1536a78-e568-4c4c-8447-56477bce80ba	439	243e6aa4-348d-46b6-9416-af5396f2c3e8	2026-07-05	215.00	211.45	Crédito Master | Visa	3.09	3.55	PAGO	2026-07-05 15:49:31.043694	\N
+f51124f2-94cf-4ccb-a7c3-b4ba735faebd	449	a89e679f-971c-470a-bf4e-4bc3f60f0a0a	2026-08-19	40.00	40.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-08-19 16:34:07.249938	\N
+8c2c21a5-48a9-4685-a29d-c5b04d463be3	451	bd6b01b7-9ef8-4cac-882d-d68ace666140	2026-08-20	104.00	104.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-08-20 14:17:06.671716	\N
+25033e76-a9db-4b89-9277-be464dc43b20	450	c4ca0108-a063-4e98-9b20-3707e915c35a	2026-08-19	45.00	45.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-08-19 21:00:16.300539	\N
 \.
 
 
@@ -8005,7 +8173,7 @@ COPY vault.secrets (id, name, description, secret, key_id, nonce, created_at, up
 -- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: auth; Owner: -
 --
 
-SELECT pg_catalog.setval('auth.refresh_tokens_id_seq', 1, false);
+SELECT pg_catalog.setval('auth.refresh_tokens_id_seq', 1, true);
 
 
 --
@@ -8154,6 +8322,38 @@ ALTER TABLE ONLY auth.mfa_factors
 
 
 --
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_mfa_factor_id_key; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_mfa_factor_id_key UNIQUE (mfa_factor_id);
+
+
+--
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_user_id_key; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: mfa_recovery_codes mfa_recovery_codes_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_codes
+    ADD CONSTRAINT mfa_recovery_codes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: oauth_authorizations oauth_authorizations_authorization_code_key; Type: CONSTRAINT; Schema: auth; Owner: -
 --
 
@@ -8263,6 +8463,22 @@ ALTER TABLE ONLY auth.saml_relay_states
 
 ALTER TABLE ONLY auth.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: scim_tokens scim_tokens_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_tokens
+    ADD CONSTRAINT scim_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: scim_users scim_users_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_users
+    ADD CONSTRAINT scim_users_pkey PRIMARY KEY (id);
 
 
 --
@@ -8715,6 +8931,13 @@ CREATE INDEX mfa_factors_user_id_idx ON auth.mfa_factors USING btree (user_id);
 
 
 --
+-- Name: mfa_recovery_codes_set_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX mfa_recovery_codes_set_id_idx ON auth.mfa_recovery_codes USING btree (mfa_recovery_code_set_id);
+
+
+--
 -- Name: oauth_auth_pending_exp_idx; Type: INDEX; Schema: auth; Owner: -
 --
 
@@ -8845,6 +9068,97 @@ CREATE INDEX saml_relay_states_for_email_idx ON auth.saml_relay_states USING btr
 --
 
 CREATE INDEX saml_relay_states_sso_provider_id_idx ON auth.saml_relay_states USING btree (sso_provider_id);
+
+
+--
+-- Name: scim_tokens_expires_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_tokens_expires_at_idx ON auth.scim_tokens USING btree (expires_at);
+
+
+--
+-- Name: scim_tokens_revoked_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_tokens_revoked_at_idx ON auth.scim_tokens USING btree (revoked_at);
+
+
+--
+-- Name: scim_tokens_sso_provider_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_tokens_sso_provider_id_idx ON auth.scim_tokens USING btree (sso_provider_id);
+
+
+--
+-- Name: scim_tokens_token_hash_key; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX scim_tokens_token_hash_key ON auth.scim_tokens USING btree (token_hash);
+
+
+--
+-- Name: scim_users_created_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_created_at_idx ON auth.scim_users USING btree (sso_provider_id, created_at, id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: scim_users_deleted_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_deleted_at_idx ON auth.scim_users USING btree (deleted_at);
+
+
+--
+-- Name: scim_users_external_id_key; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX scim_users_external_id_key ON auth.scim_users USING btree (sso_provider_id, external_id) WHERE ((external_id IS NOT NULL) AND (deleted_at IS NULL));
+
+
+--
+-- Name: scim_users_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_id_idx ON auth.scim_users USING btree (sso_provider_id, id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: scim_users_sso_provider_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_sso_provider_id_idx ON auth.scim_users USING btree (sso_provider_id);
+
+
+--
+-- Name: scim_users_updated_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_updated_at_idx ON auth.scim_users USING btree (sso_provider_id, updated_at, id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: scim_users_user_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_user_id_idx ON auth.scim_users USING btree (user_id);
+
+
+--
+-- Name: scim_users_user_name_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_user_name_idx ON auth.scim_users USING btree (sso_provider_id, user_name COLLATE "C", id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: scim_users_user_name_key; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX scim_users_user_name_key ON auth.scim_users USING btree (sso_provider_id, user_name) WHERE (deleted_at IS NULL);
 
 
 --
@@ -9153,6 +9467,30 @@ ALTER TABLE ONLY auth.mfa_factors
 
 
 --
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_mfa_factor_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_mfa_factor_id_fkey FOREIGN KEY (mfa_factor_id) REFERENCES auth.mfa_factors(id) ON DELETE CASCADE;
+
+
+--
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: mfa_recovery_codes mfa_recovery_codes_mfa_recovery_code_set_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_codes
+    ADD CONSTRAINT mfa_recovery_codes_mfa_recovery_code_set_id_fkey FOREIGN KEY (mfa_recovery_code_set_id) REFERENCES auth.mfa_recovery_code_sets(id) ON DELETE CASCADE;
+
+
+--
 -- Name: oauth_authorizations oauth_authorizations_client_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
 --
 
@@ -9222,6 +9560,30 @@ ALTER TABLE ONLY auth.saml_relay_states
 
 ALTER TABLE ONLY auth.saml_relay_states
     ADD CONSTRAINT saml_relay_states_sso_provider_id_fkey FOREIGN KEY (sso_provider_id) REFERENCES auth.sso_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: scim_tokens scim_tokens_sso_provider_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_tokens
+    ADD CONSTRAINT scim_tokens_sso_provider_id_fkey FOREIGN KEY (sso_provider_id) REFERENCES auth.sso_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: scim_users scim_users_sso_provider_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_users
+    ADD CONSTRAINT scim_users_sso_provider_id_fkey FOREIGN KEY (sso_provider_id) REFERENCES auth.sso_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: scim_users scim_users_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_users
+    ADD CONSTRAINT scim_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -9813,5 +10175,5 @@ CREATE EVENT TRIGGER pgrst_drop_watch ON sql_drop
 -- PostgreSQL database dump complete
 --
 
-\unrestrict imbfanxXyO0WvXi4rpRiXkWp7KBYvmzcsPCn9sNncc8mWU71SXIBeRZ5Ac4fsfp
+\unrestrict QVZF70IfkUAQufQ8dLkj8iaAr5ae02tXMjcIYgQYYTwprLwgwei0x1G6BVw9vT4
 
