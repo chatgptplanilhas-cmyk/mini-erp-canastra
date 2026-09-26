@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2EbiEiiq6UMA3rFalx8J8coyjoiDiP6jSxtAmcqhiyQGlSap0ciStGufPiR1xXs
+\restrict 2PfjNXjwMetLBwG9SiilcFagY4uNHPQuKYnyyaiuQ9e6oMr8C7qJN4AX22FKXeO
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.11 (Ubuntu 17.11-1.pgdg24.04+2)
@@ -59,6 +59,9 @@ ALTER TABLE IF EXISTS ONLY auth.webauthn_challenges DROP CONSTRAINT IF EXISTS we
 ALTER TABLE IF EXISTS ONLY auth.sso_domains DROP CONSTRAINT IF EXISTS sso_domains_sso_provider_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_user_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_oauth_client_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_users DROP CONSTRAINT IF EXISTS scim_users_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_users DROP CONSTRAINT IF EXISTS scim_users_sso_provider_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_tokens DROP CONSTRAINT IF EXISTS scim_tokens_sso_provider_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_sso_provider_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_flow_state_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_providers DROP CONSTRAINT IF EXISTS saml_providers_sso_provider_id_fkey;
@@ -68,6 +71,9 @@ ALTER TABLE IF EXISTS ONLY auth.oauth_consents DROP CONSTRAINT IF EXISTS oauth_c
 ALTER TABLE IF EXISTS ONLY auth.oauth_consents DROP CONSTRAINT IF EXISTS oauth_consents_client_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_user_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_client_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_codes DROP CONSTRAINT IF EXISTS mfa_recovery_codes_mfa_recovery_code_set_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_mfa_factor_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_user_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.mfa_challenges DROP CONSTRAINT IF EXISTS mfa_challenges_auth_factor_id_fkey;
 ALTER TABLE IF EXISTS ONLY auth.mfa_amr_claims DROP CONSTRAINT IF EXISTS mfa_amr_claims_session_id_fkey;
@@ -110,6 +116,19 @@ DROP INDEX IF EXISTS auth.sso_domains_domain_idx;
 DROP INDEX IF EXISTS auth.sessions_user_id_idx;
 DROP INDEX IF EXISTS auth.sessions_oauth_client_id_idx;
 DROP INDEX IF EXISTS auth.sessions_not_after_idx;
+DROP INDEX IF EXISTS auth.scim_users_user_name_key;
+DROP INDEX IF EXISTS auth.scim_users_user_name_idx;
+DROP INDEX IF EXISTS auth.scim_users_user_id_idx;
+DROP INDEX IF EXISTS auth.scim_users_updated_at_idx;
+DROP INDEX IF EXISTS auth.scim_users_sso_provider_id_idx;
+DROP INDEX IF EXISTS auth.scim_users_id_idx;
+DROP INDEX IF EXISTS auth.scim_users_external_id_key;
+DROP INDEX IF EXISTS auth.scim_users_deleted_at_idx;
+DROP INDEX IF EXISTS auth.scim_users_created_at_idx;
+DROP INDEX IF EXISTS auth.scim_tokens_token_hash_key;
+DROP INDEX IF EXISTS auth.scim_tokens_sso_provider_id_idx;
+DROP INDEX IF EXISTS auth.scim_tokens_revoked_at_idx;
+DROP INDEX IF EXISTS auth.scim_tokens_expires_at_idx;
 DROP INDEX IF EXISTS auth.saml_relay_states_sso_provider_id_idx;
 DROP INDEX IF EXISTS auth.saml_relay_states_for_email_idx;
 DROP INDEX IF EXISTS auth.saml_relay_states_created_at_idx;
@@ -129,6 +148,7 @@ DROP INDEX IF EXISTS auth.oauth_consents_active_user_client_idx;
 DROP INDEX IF EXISTS auth.oauth_consents_active_client_idx;
 DROP INDEX IF EXISTS auth.oauth_clients_deleted_at_idx;
 DROP INDEX IF EXISTS auth.oauth_auth_pending_exp_idx;
+DROP INDEX IF EXISTS auth.mfa_recovery_codes_set_id_idx;
 DROP INDEX IF EXISTS auth.mfa_factors_user_id_idx;
 DROP INDEX IF EXISTS auth.mfa_factors_user_friendly_name_unique;
 DROP INDEX IF EXISTS auth.mfa_challenge_created_at_idx;
@@ -187,6 +207,8 @@ ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_phone_key;
 ALTER TABLE IF EXISTS ONLY auth.sso_providers DROP CONSTRAINT IF EXISTS sso_providers_pkey;
 ALTER TABLE IF EXISTS ONLY auth.sso_domains DROP CONSTRAINT IF EXISTS sso_domains_pkey;
 ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_pkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_users DROP CONSTRAINT IF EXISTS scim_users_pkey;
+ALTER TABLE IF EXISTS ONLY auth.scim_tokens DROP CONSTRAINT IF EXISTS scim_tokens_pkey;
 ALTER TABLE IF EXISTS ONLY auth.schema_migrations DROP CONSTRAINT IF EXISTS schema_migrations_pkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_pkey;
 ALTER TABLE IF EXISTS ONLY auth.saml_providers DROP CONSTRAINT IF EXISTS saml_providers_pkey;
@@ -201,6 +223,10 @@ ALTER TABLE IF EXISTS ONLY auth.oauth_client_states DROP CONSTRAINT IF EXISTS oa
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_pkey;
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_authorization_id_key;
 ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_authorization_code_key;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_codes DROP CONSTRAINT IF EXISTS mfa_recovery_codes_pkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_user_id_key;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_pkey;
+ALTER TABLE IF EXISTS ONLY auth.mfa_recovery_code_sets DROP CONSTRAINT IF EXISTS mfa_recovery_code_sets_mfa_factor_id_key;
 ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_pkey;
 ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_last_challenged_at_key;
 ALTER TABLE IF EXISTS ONLY auth.mfa_challenges DROP CONSTRAINT IF EXISTS mfa_challenges_pkey;
@@ -265,6 +291,8 @@ DROP TABLE IF EXISTS auth.users;
 DROP TABLE IF EXISTS auth.sso_providers;
 DROP TABLE IF EXISTS auth.sso_domains;
 DROP TABLE IF EXISTS auth.sessions;
+DROP TABLE IF EXISTS auth.scim_users;
+DROP TABLE IF EXISTS auth.scim_tokens;
 DROP TABLE IF EXISTS auth.schema_migrations;
 DROP TABLE IF EXISTS auth.saml_relay_states;
 DROP TABLE IF EXISTS auth.saml_providers;
@@ -275,6 +303,8 @@ DROP TABLE IF EXISTS auth.oauth_consents;
 DROP TABLE IF EXISTS auth.oauth_clients;
 DROP TABLE IF EXISTS auth.oauth_client_states;
 DROP TABLE IF EXISTS auth.oauth_authorizations;
+DROP TABLE IF EXISTS auth.mfa_recovery_codes;
+DROP TABLE IF EXISTS auth.mfa_recovery_code_sets;
 DROP TABLE IF EXISTS auth.mfa_factors;
 DROP TABLE IF EXISTS auth.mfa_challenges;
 DROP TABLE IF EXISTS auth.mfa_amr_claims;
@@ -503,7 +533,8 @@ CREATE TYPE auth.factor_status AS ENUM (
 CREATE TYPE auth.factor_type AS ENUM (
     'totp',
     'webauthn',
-    'phone'
+    'phone',
+    'recovery_code'
 );
 
 
@@ -792,7 +823,6 @@ begin
     )
         returns jsonb
         language sql
-        set search_path to ''
     as $$
         select graphql.resolve(
             query := query,
@@ -3004,6 +3034,35 @@ COMMENT ON COLUMN auth.mfa_factors.last_webauthn_challenge_data IS 'Stores the l
 
 
 --
+-- Name: mfa_recovery_code_sets; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.mfa_recovery_code_sets (
+    id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    mfa_factor_id uuid NOT NULL,
+    failed_verification_count integer DEFAULT 0 NOT NULL,
+    verification_locked_until timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT mfa_recovery_code_sets_failed_verification_count_check CHECK ((failed_verification_count >= 0))
+);
+
+
+--
+-- Name: mfa_recovery_codes; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.mfa_recovery_codes (
+    id uuid NOT NULL,
+    mfa_recovery_code_set_id uuid NOT NULL,
+    code_hash text NOT NULL,
+    consumed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: oauth_authorizations; Type: TABLE; Schema: auth; Owner: -
 --
 
@@ -3109,6 +3168,7 @@ CREATE TABLE auth.one_time_tokens (
     relates_to text NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone,
     CONSTRAINT one_time_tokens_token_hash_check CHECK ((char_length(token_hash) > 0))
 );
 
@@ -3221,6 +3281,43 @@ CREATE TABLE auth.schema_migrations (
 --
 
 COMMENT ON TABLE auth.schema_migrations IS 'Auth: Manages updates to the auth system.';
+
+
+--
+-- Name: scim_tokens; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.scim_tokens (
+    id uuid NOT NULL,
+    sso_provider_id uuid NOT NULL,
+    token_hash text NOT NULL,
+    prefix text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    last_used_at timestamp with time zone,
+    CONSTRAINT scim_tokens_expires_at_future CHECK (((expires_at IS NULL) OR (expires_at > created_at))),
+    CONSTRAINT scim_tokens_revoked_after_created CHECK (((revoked_at IS NULL) OR (revoked_at >= created_at))),
+    CONSTRAINT scim_tokens_token_hash_check CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))
+);
+
+
+--
+-- Name: scim_users; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.scim_users (
+    id uuid NOT NULL,
+    sso_provider_id uuid NOT NULL,
+    user_id uuid,
+    resource jsonb NOT NULL,
+    user_name text GENERATED ALWAYS AS (lower((resource ->> 'userName'::text))) STORED NOT NULL,
+    external_id text GENERATED ALWAYS AS ((resource ->> 'externalId'::text)) STORED,
+    active boolean GENERATED ALWAYS AS (COALESCE(((resource ->> 'active'::text))::boolean, true)) STORED NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone
+);
 
 
 --
@@ -4347,6 +4444,22 @@ COPY auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_
 
 
 --
+-- Data for Name: mfa_recovery_code_sets; Type: TABLE DATA; Schema: auth; Owner: -
+--
+
+COPY auth.mfa_recovery_code_sets (id, user_id, mfa_factor_id, failed_verification_count, verification_locked_until, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: mfa_recovery_codes; Type: TABLE DATA; Schema: auth; Owner: -
+--
+
+COPY auth.mfa_recovery_codes (id, mfa_recovery_code_set_id, code_hash, consumed_at, created_at) FROM stdin;
+\.
+
+
+--
 -- Data for Name: oauth_authorizations; Type: TABLE DATA; Schema: auth; Owner: -
 --
 
@@ -4382,9 +4495,9 @@ COPY auth.oauth_consents (id, user_id, client_id, scopes, granted_at, revoked_at
 -- Data for Name: one_time_tokens; Type: TABLE DATA; Schema: auth; Owner: -
 --
 
-COPY auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, created_at, updated_at) FROM stdin;
-69e61458-0faa-4fa4-aa98-d7ccb628b55b	da53cb15-d95c-4433-af71-ee1509e239d5	confirmation_token	3d4fbcc3c9546b823f4c381f98e16fd78a9c38d8bacddd6ba7dcfed1	joaovitorbatistavilaca@gmail.com	2026-08-11 11:54:32.053363	2026-08-11 11:54:32.053363
-3a9f3d62-a0a6-4448-81dc-aec7d656b5c8	0b1a7847-49dc-43b8-84ea-14bc9c771a0c	confirmation_token	8a73801e67a204fc49ece6bbc70723f2544dda4406a118b6344a7918	chatgpt.planilhas@gmail.com	2026-08-16 23:22:26.121274	2026-08-16 23:22:26.121274
+COPY auth.one_time_tokens (id, user_id, token_type, token_hash, relates_to, created_at, updated_at, expires_at) FROM stdin;
+69e61458-0faa-4fa4-aa98-d7ccb628b55b	da53cb15-d95c-4433-af71-ee1509e239d5	confirmation_token	3d4fbcc3c9546b823f4c381f98e16fd78a9c38d8bacddd6ba7dcfed1	joaovitorbatistavilaca@gmail.com	2026-08-11 11:54:32.053363	2026-08-11 11:54:32.053363	\N
+3a9f3d62-a0a6-4448-81dc-aec7d656b5c8	0b1a7847-49dc-43b8-84ea-14bc9c771a0c	confirmation_token	8a73801e67a204fc49ece6bbc70723f2544dda4406a118b6344a7918	chatgpt.planilhas@gmail.com	2026-08-16 23:22:26.121274	2026-08-16 23:22:26.121274	\N
 \.
 
 
@@ -4495,6 +4608,27 @@ COPY auth.schema_migrations (version) FROM stdin;
 20260219120000
 20260302000000
 20260625000000
+20260821000000
+20260821010000
+20260824000000
+20260824000001
+20260831180000
+\.
+
+
+--
+-- Data for Name: scim_tokens; Type: TABLE DATA; Schema: auth; Owner: -
+--
+
+COPY auth.scim_tokens (id, sso_provider_id, token_hash, prefix, created_at, expires_at, revoked_at, last_used_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: scim_users; Type: TABLE DATA; Schema: auth; Owner: -
+--
+
+COPY auth.scim_users (id, sso_provider_id, user_id, resource, created_at, updated_at, deleted_at) FROM stdin;
 \.
 
 
@@ -6166,6 +6300,8 @@ ba7576b5-6ff2-477b-b8fd-576724f0c331	5b25250c-0355-432b-9b87-8a6ef7c1900c	2026-0
 f788c654-d56f-4d4f-a2a0-ed167080a429	b9eb3a50-b2b6-4fed-acd5-2bda74c58ebe	2026-08-18	55.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-18 12:46:25.828435	CONFIRMADO	\N	\N
 82664794-20f0-42c7-9318-a36ebb8adc4f	91944b6e-0fb3-44b3-8c1e-ec0c9fce1d08	2026-08-18	50.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-18 14:29:22.319949	CONFIRMADO	\N	\N
 44354b85-1e8c-4475-b8a7-1b0e72032228	8c2c21a5-48a9-4685-a29d-c5b04d463be3	2026-08-20	104.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-20 14:18:44.37585	CONFIRMADO	\N	\N
+fb4a4600-1232-4b53-a56b-2ecb81e9613a	25033e76-a9db-4b89-9277-be464dc43b20	2026-08-28	45.00	Pix	Pagamento registrado pelo Mini ERP	2026-08-28 12:33:32.105843	CONFIRMADO	\N	\N
+d96d1e8e-a49c-4700-8e06-2bc84d442166	e8c2f687-6d1b-4cfb-b744-3644cae26d5a	2026-09-15	65.00	Pix	Pagamento registrado pelo Mini ERP	2026-09-15 15:23:23.990335	CONFIRMADO	\N	\N
 \.
 
 
@@ -6578,6 +6714,7 @@ b583d590-b36c-4c3f-8b77-691de8b1d5a4	ff3a04be-0cf7-48cd-950c-8b050eca91f3	2026-0
 257b3eab-cf43-4c77-b094-969bc9ec8adf	6cfb6d2e-f15a-40bc-8914-e5c312acb4c6	2026-07-15	0.00	PAGO	0	2026-06-10 20:16:22.402503	\N	VENDA	\N
 bae011d3-e569-463e-98eb-562f279fb6e1	b3b60f6d-52e5-4f3a-95e6-95d69e1ddab2	2026-07-09	0.00	PAGO	0	2026-07-01 21:18:08.650767	\N	VENDA	\N
 a8834358-449a-4d99-bbce-6a14d5fd298f	cb005a65-26a0-4081-8cda-95f93ee599f6	2026-06-25	0.00	PAGO	0	2026-06-16 00:40:18.128832	\N	VENDA	\N
+01fb39ef-7491-406f-8fee-41ecda298f45	e8c2f687-6d1b-4cfb-b744-3644cae26d5a	2026-07-08	0.00	PAGO	0	2026-06-25 20:51:55.791771	\N	VENDA	\N
 8b4c1a6b-a959-4631-affe-dcca57affeae	98ede5c5-6b53-4dbc-8391-83233afc50d7	2026-07-10	0.00	PAGO	0	2026-06-29 19:00:16.610038	\N	VENDA	\N
 7447eed1-95cb-4cfd-b4ea-b465cee10d11	4a444506-0c90-4271-8e29-92aef5d0cae5	2026-07-08	0.00	PAGO	0	2026-06-10 20:13:35.928074	\N	VENDA	\N
 44b820ed-748a-43d1-a9b1-fd8e3fb63011	55fffc00-6772-476f-89bc-561b68829671	2026-07-09	0.00	PAGO	0	2026-07-01 21:32:21.904414	\N	VENDA	\N
@@ -6588,7 +6725,6 @@ a6dde0c2-bdc7-4def-bf10-ef4ec151de38	2a65ffff-9352-4f99-8e20-e73f6ab95d20	2026-0
 756c5fac-4cff-493a-b3c4-69b49b9979bf	58ef46af-90fe-42e6-948c-f4ecb11f5ef5	2026-07-15	0.00	PAGO	0	2026-06-10 20:14:25.926694	\N	VENDA	\N
 d70ab820-67c5-4172-a22e-eaf7c6099db1	1bbfbfd6-c23d-4b0e-a2e7-3ad9f0edc6d3	2026-07-08	0.00	PAGO	0	2026-07-02 21:12:59.196025	\N	VENDA	\N
 8c0bc8b9-58f6-4b9b-9269-67f5e8190dd8	b07aa258-1d4a-41b8-b115-5f32a7a41821	2026-07-08	0.00	PAGO	0	2026-07-02 21:13:10.590629	\N	VENDA	\N
-01fb39ef-7491-406f-8fee-41ecda298f45	e8c2f687-6d1b-4cfb-b744-3644cae26d5a	2026-07-08	65.00	PARCIAL	0	2026-06-25 20:51:55.791771	\N	VENDA	\N
 94f21489-00b9-4019-9c75-ff923f0d9b40	a84b5989-dbac-4cbe-a0b9-f4d0fdfec89e	2026-07-15	0.00	PAGO	0	2026-06-10 20:11:50.212298	\N	VENDA	\N
 69d0b323-132f-4d24-9654-3b19082ef158	aa959063-b67f-4b8c-8b3e-03dd5e8de0cb	2026-07-15	0.00	PAGO	0	2026-06-29 20:29:55.871452	\N	VENDA	\N
 5989d13a-ab1f-4835-bfd7-8d9b334cea95	c3187805-a30c-4069-8eb0-c480a3cfcf5d	2026-07-10	0.00	PAGO	0	2026-06-25 21:34:39.677245	\N	VENDA	\N
@@ -6605,8 +6741,8 @@ bb142ef1-dfbb-4891-9102-e367b28863a3	a2763421-9391-4ae9-b43d-b57cb1c94c83	2026-0
 879836a2-106c-437d-aec0-4b68d842ff87	c1536a78-e568-4c4c-8447-56477bce80ba	2026-08-07	0.00	PAGO	0	2026-07-05 15:49:31.475266	\N	VENDA	\N
 629d1ad4-7ee5-41ee-9b90-bb8ae24d99c0	add98b28-9473-4b1d-b010-435fe38bc53a	2026-08-07	0.00	PAGO	0	2026-07-07 21:09:00.784844	\N	VENDA	\N
 43c1c4a0-b52e-47a7-b1f1-b38f7f031e9e	f51124f2-94cf-4ccb-a7c3-b4ba735faebd	2026-09-07	40.00	EM ABERTO	0	2026-08-19 16:34:07.685325	\N	VENDA	\N
-90ccbf66-d40b-438b-aaf1-7da88ab36044	25033e76-a9db-4b89-9277-be464dc43b20	2026-09-07	45.00	EM ABERTO	0	2026-08-19 21:00:16.529856	\N	VENDA	\N
 d978cf48-7235-42dc-8b5d-74c004f4a53d	8c2c21a5-48a9-4685-a29d-c5b04d463be3	\N	0.00	PAGO	0	2026-08-20 14:17:07.118041	\N	VENDA	\N
+90ccbf66-d40b-438b-aaf1-7da88ab36044	25033e76-a9db-4b89-9277-be464dc43b20	2026-09-07	0.00	PAGO	0	2026-08-19 21:00:16.529856	\N	VENDA	\N
 \.
 
 
@@ -7506,10 +7642,10 @@ b51006bb-5ac5-4010-9822-6f1ba902b5a7	340	09353ced-354f-4c18-ae4d-973c22d74c62	20
 2a65ffff-9352-4f99-8e20-e73f6ab95d20	366	0960c594-7067-48c8-b330-49ba276270d9	2026-06-23	124.00	124.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 20:52:47.038826	\N
 6ccbd4e5-0098-4149-85fb-2f26ddcbb205	343	89b2ac7b-7d17-440a-bfd5-742628eecb70	2026-06-18	285.00	285.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-18 22:04:16.970305	\N
 3882f273-03e1-4243-9257-423655975653	348	ce828fa9-7664-47af-896b-e82a9a0cd113	2026-06-18	49.00	49.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-18 22:18:15.934896	\N
-e8c2f687-6d1b-4cfb-b744-3644cae26d5a	365	0960c594-7067-48c8-b330-49ba276270d9	2026-06-23	130.00	130.00	Fiado / Em aberto	0.00	0.00	PARCIAL	2026-06-25 20:51:55.505559	\N
 aa959063-b67f-4b8c-8b3e-03dd5e8de0cb	391	82df9d97-c476-43cf-a0ef-01fbbc961281	2026-06-25	55.00	55.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-29 20:29:55.574322	\N
 a0ffd223-9df7-4cd9-8baf-e7ce01c2c1f9	400	80d1408f-e1e8-4ae5-9e99-7b88ab0ea20c	2026-06-30	139.00	139.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-01 21:04:50.277258	\N
 597489e8-3376-4921-ba71-db9cdb25288e	370	e28a90ae-fdfc-4bf8-8a49-a953569e25c5	2026-06-15	229.00	229.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 21:31:18.003404	\N
+e8c2f687-6d1b-4cfb-b744-3644cae26d5a	365	0960c594-7067-48c8-b330-49ba276270d9	2026-06-23	130.00	130.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-06-25 20:51:55.505559	\N
 a12ce5b3-cb25-4761-bed5-4f917e80c93e	401	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	65.00	62.99	Crédito Master | Visa	3.09	2.01	PAGO	2026-07-01 21:06:16.388842	Fernanda
 674c4412-2b67-40e0-a951-0a2fabaee4b9	402	42963653-1462-485d-a1a5-ca8832afac72	2026-06-30	99.00	95.94	Crédito Master | Visa	3.09	3.06	PAGO	2026-07-01 21:07:55.602293	Josi
 cbbdcde9-95d5-494a-a829-d0244c80b1eb	404	42963653-1462-485d-a1a5-ca8832afac72	2026-06-25	75.00	75.00	Pix	0.00	0.00	PAGO	2026-07-01 21:31:25.519612	Jucileia
@@ -7558,8 +7694,8 @@ b07aa258-1d4a-41b8-b115-5f32a7a41821	415	3995067f-4df0-4f26-bf28-a55af8a1f896	20
 5b25250c-0355-432b-9b87-8a6ef7c1900c	445	27d44823-4c0e-4ce1-bcc5-3f825f125ce2	2026-07-06	59.00	59.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-07-07 00:37:33.00606	\N
 c1536a78-e568-4c4c-8447-56477bce80ba	439	243e6aa4-348d-46b6-9416-af5396f2c3e8	2026-07-05	215.00	211.45	Crédito Master | Visa	3.09	3.55	PAGO	2026-07-05 15:49:31.043694	\N
 f51124f2-94cf-4ccb-a7c3-b4ba735faebd	449	a89e679f-971c-470a-bf4e-4bc3f60f0a0a	2026-08-19	40.00	40.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-08-19 16:34:07.249938	\N
-25033e76-a9db-4b89-9277-be464dc43b20	450	c4ca0108-a063-4e98-9b20-3707e915c35a	2026-08-19	45.00	45.00	Fiado / Em aberto	0.00	0.00	EM ABERTO	2026-08-19 21:00:16.300539	\N
 8c2c21a5-48a9-4685-a29d-c5b04d463be3	451	bd6b01b7-9ef8-4cac-882d-d68ace666140	2026-08-20	104.00	104.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-08-20 14:17:06.671716	\N
+25033e76-a9db-4b89-9277-be464dc43b20	450	c4ca0108-a063-4e98-9b20-3707e915c35a	2026-08-19	45.00	45.00	Fiado / Em aberto	0.00	0.00	PAGO	2026-08-19 21:00:16.300539	\N
 \.
 
 
@@ -8186,6 +8322,38 @@ ALTER TABLE ONLY auth.mfa_factors
 
 
 --
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_mfa_factor_id_key; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_mfa_factor_id_key UNIQUE (mfa_factor_id);
+
+
+--
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_user_id_key; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: mfa_recovery_codes mfa_recovery_codes_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_codes
+    ADD CONSTRAINT mfa_recovery_codes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: oauth_authorizations oauth_authorizations_authorization_code_key; Type: CONSTRAINT; Schema: auth; Owner: -
 --
 
@@ -8295,6 +8463,22 @@ ALTER TABLE ONLY auth.saml_relay_states
 
 ALTER TABLE ONLY auth.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: scim_tokens scim_tokens_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_tokens
+    ADD CONSTRAINT scim_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: scim_users scim_users_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_users
+    ADD CONSTRAINT scim_users_pkey PRIMARY KEY (id);
 
 
 --
@@ -8747,6 +8931,13 @@ CREATE INDEX mfa_factors_user_id_idx ON auth.mfa_factors USING btree (user_id);
 
 
 --
+-- Name: mfa_recovery_codes_set_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX mfa_recovery_codes_set_id_idx ON auth.mfa_recovery_codes USING btree (mfa_recovery_code_set_id);
+
+
+--
 -- Name: oauth_auth_pending_exp_idx; Type: INDEX; Schema: auth; Owner: -
 --
 
@@ -8877,6 +9068,97 @@ CREATE INDEX saml_relay_states_for_email_idx ON auth.saml_relay_states USING btr
 --
 
 CREATE INDEX saml_relay_states_sso_provider_id_idx ON auth.saml_relay_states USING btree (sso_provider_id);
+
+
+--
+-- Name: scim_tokens_expires_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_tokens_expires_at_idx ON auth.scim_tokens USING btree (expires_at);
+
+
+--
+-- Name: scim_tokens_revoked_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_tokens_revoked_at_idx ON auth.scim_tokens USING btree (revoked_at);
+
+
+--
+-- Name: scim_tokens_sso_provider_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_tokens_sso_provider_id_idx ON auth.scim_tokens USING btree (sso_provider_id);
+
+
+--
+-- Name: scim_tokens_token_hash_key; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX scim_tokens_token_hash_key ON auth.scim_tokens USING btree (token_hash);
+
+
+--
+-- Name: scim_users_created_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_created_at_idx ON auth.scim_users USING btree (sso_provider_id, created_at, id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: scim_users_deleted_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_deleted_at_idx ON auth.scim_users USING btree (deleted_at);
+
+
+--
+-- Name: scim_users_external_id_key; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX scim_users_external_id_key ON auth.scim_users USING btree (sso_provider_id, external_id) WHERE ((external_id IS NOT NULL) AND (deleted_at IS NULL));
+
+
+--
+-- Name: scim_users_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_id_idx ON auth.scim_users USING btree (sso_provider_id, id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: scim_users_sso_provider_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_sso_provider_id_idx ON auth.scim_users USING btree (sso_provider_id);
+
+
+--
+-- Name: scim_users_updated_at_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_updated_at_idx ON auth.scim_users USING btree (sso_provider_id, updated_at, id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: scim_users_user_id_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_user_id_idx ON auth.scim_users USING btree (user_id);
+
+
+--
+-- Name: scim_users_user_name_idx; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE INDEX scim_users_user_name_idx ON auth.scim_users USING btree (sso_provider_id, user_name COLLATE "C", id) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: scim_users_user_name_key; Type: INDEX; Schema: auth; Owner: -
+--
+
+CREATE UNIQUE INDEX scim_users_user_name_key ON auth.scim_users USING btree (sso_provider_id, user_name) WHERE (deleted_at IS NULL);
 
 
 --
@@ -9185,6 +9467,30 @@ ALTER TABLE ONLY auth.mfa_factors
 
 
 --
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_mfa_factor_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_mfa_factor_id_fkey FOREIGN KEY (mfa_factor_id) REFERENCES auth.mfa_factors(id) ON DELETE CASCADE;
+
+
+--
+-- Name: mfa_recovery_code_sets mfa_recovery_code_sets_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_code_sets
+    ADD CONSTRAINT mfa_recovery_code_sets_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: mfa_recovery_codes mfa_recovery_codes_mfa_recovery_code_set_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.mfa_recovery_codes
+    ADD CONSTRAINT mfa_recovery_codes_mfa_recovery_code_set_id_fkey FOREIGN KEY (mfa_recovery_code_set_id) REFERENCES auth.mfa_recovery_code_sets(id) ON DELETE CASCADE;
+
+
+--
 -- Name: oauth_authorizations oauth_authorizations_client_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
 --
 
@@ -9254,6 +9560,30 @@ ALTER TABLE ONLY auth.saml_relay_states
 
 ALTER TABLE ONLY auth.saml_relay_states
     ADD CONSTRAINT saml_relay_states_sso_provider_id_fkey FOREIGN KEY (sso_provider_id) REFERENCES auth.sso_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: scim_tokens scim_tokens_sso_provider_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_tokens
+    ADD CONSTRAINT scim_tokens_sso_provider_id_fkey FOREIGN KEY (sso_provider_id) REFERENCES auth.sso_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: scim_users scim_users_sso_provider_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_users
+    ADD CONSTRAINT scim_users_sso_provider_id_fkey FOREIGN KEY (sso_provider_id) REFERENCES auth.sso_providers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: scim_users scim_users_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.scim_users
+    ADD CONSTRAINT scim_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 
 --
@@ -9845,5 +10175,5 @@ CREATE EVENT TRIGGER pgrst_drop_watch ON sql_drop
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2EbiEiiq6UMA3rFalx8J8coyjoiDiP6jSxtAmcqhiyQGlSap0ciStGufPiR1xXs
+\unrestrict 2PfjNXjwMetLBwG9SiilcFagY4uNHPQuKYnyyaiuQ9e6oMr8C7qJN4AX22FKXeO
 
